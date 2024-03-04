@@ -7,6 +7,7 @@ terraform {
 }
 
 provider "zilliz" {
+  api_key         = "fake-api-key"
   cloud_region_id = "gcp-us-west1"
 }
 
@@ -24,3 +25,4 @@ resource "zilliz_cluster" "test" {
 data "zilliz_cluster" "test" {
   id = zilliz_cluster.test.id
 }
+
