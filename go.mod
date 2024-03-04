@@ -1,4 +1,4 @@
-module github.com/hashicorp/terraform-provider-scaffolding-framework
+module github.com/zilliztech/terraform-provider-zillizcloud
 
 go 1.21
 
