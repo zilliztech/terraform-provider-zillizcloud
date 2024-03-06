@@ -6,15 +6,13 @@ package provider
 import (
 	"context"
 	"fmt"
-	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
-	"strconv"
-	"time"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -30,22 +28,14 @@ type CloudProvidersDataSource struct {
 }
 
 // CloudProviderDataSourceModel describes the data source data model.
-type CloudProviderModel struct {
+type CloudProviderItem struct {
 	Description types.String `tfsdk:"description"`
 	CloudId     types.String `tfsdk:"cloud_id"`
 }
 
-func (p CloudProviderModel) AttrTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"cloud_id":    types.StringType,
-		"description": types.StringType,
-	}
-}
-
 // CloudProvidersDataSourceModel describes the data source data model.
 type CloudProvidersDataSourceModel struct {
-	CloudProviders types.List   `tfsdk:"cloud_providers"`
-	Id             types.String `tfsdk:"id"`
+	CloudProviders []CloudProviderItem `tfsdk:"cloud_providers"`
 }
 
 func (d *CloudProvidersDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -74,10 +64,6 @@ func (d *CloudProvidersDataSource) Schema(ctx context.Context, req datasource.Sc
 					},
 				},
 			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "Cluster identifier",
-				Computed:            true,
-			},
 		},
 	}
 }
@@ -103,30 +89,30 @@ func (d *CloudProvidersDataSource) Configure(ctx context.Context, req datasource
 }
 
 func (d *CloudProvidersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data CloudProvidersDataSourceModel
+	var state CloudProvidersDataSourceModel
 
 	// Read Terraform configuration data into the model
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	tflog.Trace(ctx, "sending list cloud providers request...")
 	cloudProviders, err := d.client.ListCloudProviders()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to ListCloudProviders, got error: %s", err))
 		return
 	}
 
-	// Save data into Terraform state
-	data.Id = types.StringValue(strconv.FormatInt(time.Now().Unix(), 10))
 
-	var cps []CloudProviderModel
 	for _, cp := range cloudProviders {
-		cps = append(cps, CloudProviderModel{CloudId: types.StringValue(cp.CloudId), Description: types.StringValue(cp.Description)})
+		state.CloudProviders = append(state.CloudProviders, CloudProviderItem{CloudId: types.StringValue(cp.CloudId), Description: types.StringValue(cp.Description)})
 	}
-	var diag diag.Diagnostics
-	data.CloudProviders, diag = types.ListValueFrom(ctx, types.ObjectType{AttrTypes: CloudProviderModel{}.AttrTypes()}, cps)
-	resp.Diagnostics.Append(diag...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
