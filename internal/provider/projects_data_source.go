@@ -6,15 +6,14 @@ package provider
 import (
 	"context"
 	"fmt"
-	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	"math/rand"
 	"strconv"
-	"time"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -30,22 +29,18 @@ type ProjectsDataSource struct {
 }
 
 // ProjectDataSourceModel describes the data source data model.
-type ProjectModel struct {
-	ProjectId   types.String `tfsdk:"project_id"`
-	ProjectName types.String `tfsdk:"project_name"`
+type ProjectItem struct {
+	ProjectId     types.String `tfsdk:"project_id"`
+	ProjectName   types.String `tfsdk:"project_name"`
+	InstanceCount types.Int64  `tfsdk:"instance_count"`
+	CreatedAt     types.Int64  `tfsdk:"created_at"`
 }
 
-func (p ProjectModel) AttrTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"project_id":   types.StringType,
-		"project_name": types.StringType,
-	}
-}
 
 // ProjectsDataSourceModel describes the data source data model.
 type ProjectsDataSourceModel struct {
-	Projects types.List   `tfsdk:"projects"`
-	Id       types.String `tfsdk:"id"`
+	Projects []ProjectItem `tfsdk:"projects"`
+	Id       types.String  `tfsdk:"id"`
 }
 
 func (d *ProjectsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -69,6 +64,14 @@ func (d *ProjectsDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 						},
 						"project_name": schema.StringAttribute{
 							MarkdownDescription: "Project Name",
+							Computed:            true,
+						},
+						"instance_count": schema.Int64Attribute{
+							MarkdownDescription: "Instance Count",
+							Computed:            true,
+						},
+						"created_at": schema.Int64Attribute{
+							MarkdownDescription: "Created At",
 							Computed:            true,
 						},
 					},
@@ -103,10 +106,10 @@ func (d *ProjectsDataSource) Configure(ctx context.Context, req datasource.Confi
 }
 
 func (d *ProjectsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data ProjectsDataSourceModel
+	var state ProjectsDataSourceModel
 
 	// Read Terraform configuration data into the model
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -118,15 +121,25 @@ func (d *ProjectsDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	// Save data into Terraform state
-	data.Id = types.StringValue(strconv.FormatInt(time.Now().Unix(), 10))
+	state.Id = types.StringValue(strconv.FormatInt(rand.Int63(), 10))
 
-	var ps []ProjectModel
 	for _, p := range projects {
-		ps = append(ps, ProjectModel{ProjectId: types.StringValue(p.ProjectId), ProjectName: types.StringValue(p.ProjectName)})
+
+		item := ProjectItem{
+			ProjectId:     types.StringValue(p.ProjectId),
+			ProjectName:   types.StringValue(p.ProjectName),
+			InstanceCount: types.Int64Value(p.InstanceCount),
+			CreatedAt:     types.Int64Value(p.CreateTimeMilli),
+		}
+
+		state.Projects = append(state.Projects, item)
+
 	}
-	var diag diag.Diagnostics
-	data.Projects, diag = types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ProjectModel{}.AttrTypes()}, ps)
-	resp.Diagnostics.Append(diag...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	// Set state
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
