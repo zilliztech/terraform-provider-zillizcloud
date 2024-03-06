@@ -12,3 +12,6 @@ provider "zilliz" {
 }
 
 data "zilliz_projects" "example" {}
+output "projects" {
+  value = data.zilliz_projects.example.projects
+}

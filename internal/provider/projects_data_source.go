@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
@@ -77,10 +78,6 @@ func (d *ProjectsDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 					},
 				},
 			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "Projects identifier",
-				Computed:            true,
-			},
 		},
 	}
 }
@@ -115,6 +112,7 @@ func (d *ProjectsDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
+	tflog.Trace(ctx, "sending list projects request...")
 	projects, err := d.client.ListProjects()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to ListProjects, got error: %s", err))
