@@ -13,8 +13,7 @@ provider "zilliz" {
 
 
 data "zilliz_cluster" "test" {
-  id = zilliz_cluster.test.id
-  id = "in03-bd4013ae76e3a72"
+  id = "in03-bd4013ae76exxx"
 }
 
 output "output" {
