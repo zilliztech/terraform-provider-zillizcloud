@@ -12,6 +12,7 @@ provider "zilliz" {
 }
 
 data "zilliz_cloud_providers" "example" {}
+
 output "ouput" {
   value = data.zilliz_cloud_providers.example.cloud_providers
 }
