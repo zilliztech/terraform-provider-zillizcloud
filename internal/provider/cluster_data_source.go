@@ -7,10 +7,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
@@ -26,8 +27,8 @@ type ClusterDataSource struct {
 	client *zilliz.Client
 }
 
-// ClusterModel describes the cluster data model.
-type ClusterModel struct {
+// ClusterDataSourceModel describes the cluster data model.
+type ClusterDataSourceModel struct {
 	ClusterId          types.String `tfsdk:"id"`
 	ClusterName        types.String `tfsdk:"cluster_name"`
 	Description        types.String `tfsdk:"description"`
@@ -40,20 +41,6 @@ type ClusterModel struct {
 	CreateTime         types.String `tfsdk:"create_time"`
 }
 
-func (p ClusterModel) AttrTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"id":                   types.StringType,
-		"cluster_name":         types.StringType,
-		"description":          types.StringType,
-		"region_id":            types.StringType,
-		"cluster_type":         types.StringType,
-		"cu_size":              types.Int64Type,
-		"status":               types.StringType,
-		"connect_address":      types.StringType,
-		"private_link_address": types.StringType,
-		"create_time":          types.StringType,
-	}
-}
 
 func (d *ClusterDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_cluster"
@@ -130,31 +117,37 @@ func (d *ClusterDataSource) Configure(ctx context.Context, req datasource.Config
 }
 
 func (d *ClusterDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data ClusterModel
+	var state ClusterDataSourceModel
 
 	// Read Terraform configuration data into the model
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	c, err := d.client.DescribeCluster(data.ClusterId.ValueString())
+	tflog.Trace(ctx, "sending describe project request...")
+	c, err := d.client.DescribeCluster(state.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to DescribeCluster, got error: %s", err))
 		return
 	}
 
 	// Save data into Terraform state
-	data.ClusterId = types.StringValue(c.ClusterId)
-	data.ClusterName = types.StringValue(c.ClusterName)
-	data.Description = types.StringValue(c.Description)
-	data.RegionId = types.StringValue(c.RegionId)
-	data.ClusterType = types.StringValue(c.ClusterType)
-	data.CuSize = types.Int64Value(c.CuSize)
-	data.Status = types.StringValue(c.Status)
-	data.ConnectAddress = types.StringValue(c.ConnectAddress)
-	data.PrivateLinkAddress = types.StringValue(c.PrivateLinkAddress)
-	data.CreateTime = types.StringValue(c.CreateTime)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	state.ClusterId = types.StringValue(c.ClusterId)
+	state.ClusterName = types.StringValue(c.ClusterName)
+	state.Description = types.StringValue(c.Description)
+	state.RegionId = types.StringValue(c.RegionId)
+	state.ClusterType = types.StringValue(c.ClusterType)
+	state.CuSize = types.Int64Value(c.CuSize)
+	state.Status = types.StringValue(c.Status)
+	state.ConnectAddress = types.StringValue(c.ConnectAddress)
+	state.PrivateLinkAddress = types.StringValue(c.PrivateLinkAddress)
+	state.CreateTime = types.StringValue(c.CreateTime)
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }

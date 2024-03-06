@@ -28,8 +28,8 @@ type ClustersDataSource struct {
 	client *zilliz.Client
 }
 
-// ClustersModel describes the clusters data model.
-type ClustersModel struct {
+// ClustersResouceModel describes the clusters data model.
+type ClustersResouceModel struct {
 	Clusters types.List   `tfsdk:"clusters"`
 	Id       types.String `tfsdk:"id"`
 }
@@ -121,7 +121,7 @@ func (d *ClustersDataSource) Configure(ctx context.Context, req datasource.Confi
 }
 
 func (d *ClustersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data ClustersModel
+	var data ClustersResouceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -139,9 +139,9 @@ func (d *ClustersDataSource) Read(ctx context.Context, req datasource.ReadReques
 	// Save data into Terraform state
 	data.Id = types.StringValue(strconv.FormatInt(time.Now().Unix(), 10))
 
-	var cs []ClusterModel
+	var cs []ClusterDataSourceModel
 	for _, c := range clusters.Clusters {
-		cs = append(cs, ClusterModel{
+		cs = append(cs, ClusterDataSourceModel{
 			ClusterId:          types.StringValue(c.ClusterId),
 			ClusterName:        types.StringValue(c.ClusterName),
 			Description:        types.StringValue(c.Description),
@@ -154,7 +154,7 @@ func (d *ClustersDataSource) Read(ctx context.Context, req datasource.ReadReques
 			CreateTime:         types.StringValue(c.CreateTime)})
 	}
 	var diag diag.Diagnostics
-	data.Clusters, diag = types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ClusterModel{}.AttrTypes()}, cs)
+	// data.Clusters, diag = types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ClusterModel{}.AttrTypes()}, cs)
 	resp.Diagnostics.Append(diag...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
