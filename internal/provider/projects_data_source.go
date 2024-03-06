@@ -6,8 +6,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -37,11 +35,10 @@ type ProjectItem struct {
 	CreatedAt     types.Int64  `tfsdk:"created_at"`
 }
 
-
 // ProjectsDataSourceModel describes the data source data model.
 type ProjectsDataSourceModel struct {
 	Projects []ProjectItem `tfsdk:"projects"`
-	Id       types.String  `tfsdk:"id"`
+	Name     types.String  `tfsdk:"name"`
 }
 
 func (d *ProjectsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -54,6 +51,10 @@ func (d *ProjectsDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 		MarkdownDescription: "Cloud Providers data source",
 
 		Attributes: map[string]schema.Attribute{
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Name of the project",
+				Optional:            true,
+			},
 			"projects": schema.ListNestedAttribute{
 				MarkdownDescription: "List of Projects",
 				Computed:            true,
@@ -119,19 +120,26 @@ func (d *ProjectsDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	state.Id = types.StringValue(strconv.FormatInt(rand.Int63(), 10))
+	if state.Name.IsNull() {
+		state.Name = types.StringValue("Default Project")
+	}
+
+	var filteredProjects []zilliz.Project
+	for _, p := range projects {
+		if types.StringValue(p.ProjectName) == state.Name {
+			filteredProjects = append(filteredProjects, p)
+		}
+	}
+	projects = filteredProjects
 
 	for _, p := range projects {
-
 		item := ProjectItem{
 			ProjectId:     types.StringValue(p.ProjectId),
 			ProjectName:   types.StringValue(p.ProjectName),
 			InstanceCount: types.Int64Value(p.InstanceCount),
 			CreatedAt:     types.Int64Value(p.CreateTimeMilli),
 		}
-
 		state.Projects = append(state.Projects, item)
-
 	}
 
 	// Set state
