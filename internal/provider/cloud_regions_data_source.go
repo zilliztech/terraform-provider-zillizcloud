@@ -7,13 +7,12 @@ import (
 	"context"
 	"fmt"
 
-	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
-
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
 // Ensure Region defined types fully satisfy framework interfaces.
@@ -28,26 +27,17 @@ type CloudRegionsDataSource struct {
 	client *zilliz.Client
 }
 
-// CloudRegionDataSourceModel describes the data source data model.
-type CloudRegionModel struct {
+type CloudRegionItem struct {
 	ApiBaseUrl types.String `tfsdk:"api_base_url"`
 	CloudId    types.String `tfsdk:"cloud_id"`
 	RegionId   types.String `tfsdk:"region_id"`
 }
 
-func (p CloudRegionModel) AttrTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"api_base_url": types.StringType,
-		"cloud_id":     types.StringType,
-		"region_id":    types.StringType,
-	}
-}
 
 // CloudRegionsDataSourceModel describes the data source data model.
 type CloudRegionsDataSourceModel struct {
-	CloudRegions types.List   `tfsdk:"cloud_regions"`
+	CloudRegions []CloudRegionItem   `tfsdk:"cloud_regions"`
 	CloudId      types.String `tfsdk:"cloud_id"`
-	Id           types.String `tfsdk:"id"`
 }
 
 func (d *CloudRegionsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -84,10 +74,6 @@ func (d *CloudRegionsDataSource) Schema(ctx context.Context, req datasource.Sche
 				MarkdownDescription: "Cloud ID",
 				Required:            true,
 			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "Cloud Regions identifier",
-				Computed:            true,
-			},
 		},
 	}
 }
@@ -113,33 +99,34 @@ func (d *CloudRegionsDataSource) Configure(ctx context.Context, req datasource.C
 }
 
 func (d *CloudRegionsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data CloudRegionsDataSourceModel
+	var state CloudRegionsDataSourceModel
 
 	// Read Terraform configuration data into the model
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	cloudRegions, err := d.client.ListCloudRegions(data.CloudId.ValueString())
+	tflog.Trace(ctx, "sending list cloud regions request...")
+	cloudRegions, err := d.client.ListCloudRegions(state.CloudId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to ListCloudRegions, got error: %s", err))
 		return
 	}
 
 	// Save data into Terraform state
-	data.Id = data.CloudId
 
-	var crs []CloudRegionModel
 	for _, cr := range cloudRegions {
-		crs = append(crs, CloudRegionModel{
+		state.CloudRegions = append(state.CloudRegions, CloudRegionItem{
 			ApiBaseUrl: types.StringValue(cr.ApiBaseUrl),
 			CloudId:    types.StringValue(cr.CloudId),
 			RegionId:   types.StringValue(cr.RegionId)})
 	}
-	var diag diag.Diagnostics
-	data.CloudRegions, diag = types.ListValueFrom(ctx, types.ObjectType{AttrTypes: CloudRegionModel{}.AttrTypes()}, crs)
-	resp.Diagnostics.Append(diag...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
