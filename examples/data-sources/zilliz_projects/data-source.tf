@@ -13,5 +13,18 @@ provider "zilliz" {
 
 data "zilliz_projects" "example" {}
 output "projects" {
-  value = data.zilliz_projects.example.projects
+// default project
+data "zilliz_projects" "example01" {}
+
+// specific project
+data "zilliz_projects" "example02" {
+  name = "payments"
+}
+
+output "output_01" {
+  value = data.zilliz_projects.example01.projects
+}
+
+output "output_02" {
+  value = data.zilliz_projects.example02.projects
 }
