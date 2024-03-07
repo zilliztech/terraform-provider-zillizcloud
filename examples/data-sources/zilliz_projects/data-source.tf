@@ -12,17 +12,17 @@ provider "zilliz" {
 }
 
 // default project
-data "zilliz_projects" "example01" {}
+data "zilliz_project" "example01" {}
 
 // specific project
-data "zilliz_projects" "example02" {
+data "zilliz_project" "example02" {
   name = "payments"
 }
 
 output "output_01" {
-  value = data.zilliz_projects.example01.projects
+  value = data.zilliz_project.example01
 }
 
 output "output_02" {
-  value = data.zilliz_projects.example02.projects
+  value = data.zilliz_project.example02
 }
