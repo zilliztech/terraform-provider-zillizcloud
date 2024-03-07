@@ -105,7 +105,6 @@ func (d *CloudProvidersDataSource) Read(ctx context.Context, req datasource.Read
 		return
 	}
 
-
 	for _, cp := range cloudProviders {
 		state.CloudProviders = append(state.CloudProviders, CloudProviderItem{CloudId: types.StringValue(cp.CloudId), Description: types.StringValue(cp.Description)})
 	}
