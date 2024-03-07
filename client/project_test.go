@@ -13,7 +13,6 @@ func init() {
 	flag.StringVar(&apiKey, "key", "", "Your TEST secret key for the zilliz cloud API. If present, integration tests will be run using this key.")
 }
 
-
 func TestClient_ListProjects(t *testing.T) {
 	if apiKey == "" {
 		t.Skip("No API key provided")

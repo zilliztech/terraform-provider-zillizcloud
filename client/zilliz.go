@@ -79,9 +79,6 @@ func (c *Client) ListCloudRegions(cloudId string) ([]CloudRegion, error) {
 	return cloudRegions.Data, err
 }
 
-
-
-
 func (c *Client) do(method string, path string, body interface{}, result interface{}) error {
 	u, err := c.buildURL(path)
 	if err != nil {
