@@ -16,74 +16,52 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSource = &ProjectsDataSource{}
+var _ datasource.DataSource = &ProjectDataSource{}
 
-func NewProjectsDataSource() datasource.DataSource {
-	return &ProjectsDataSource{}
+func NewProjectDataSource() datasource.DataSource {
+	return &ProjectDataSource{}
 }
 
-// ProjectsDataSource defines the data source implementation.
-type ProjectsDataSource struct {
+// ProjectDataSource defines the data source implementation.
+type ProjectDataSource struct {
 	client *zilliz.Client
 }
 
-// ProjectDataSourceModel describes the data source data model.
-type ProjectItem struct {
-	ProjectId     types.String `tfsdk:"project_id"`
-	ProjectName   types.String `tfsdk:"project_name"`
+type ProjectsDataSourceModel struct {
+	Id            types.String `tfsdk:"id"`
+	Name          types.String `tfsdk:"name"`
 	InstanceCount types.Int64  `tfsdk:"instance_count"`
 	CreatedAt     types.Int64  `tfsdk:"created_at"`
 }
 
-// ProjectsDataSourceModel describes the data source data model.
-type ProjectsDataSourceModel struct {
-	Projects []ProjectItem `tfsdk:"projects"`
-	Name     types.String  `tfsdk:"name"`
+func (d *ProjectDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_project"
 }
 
-func (d *ProjectsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_projects"
-}
-
-func (d *ProjectsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *ProjectDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "Cloud Providers data source",
-
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "Project Identifier",
+				Computed:            true,
+			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Name of the project",
+				MarkdownDescription: "Project Name",
 				Optional:            true,
 			},
-			"projects": schema.ListNestedAttribute{
-				MarkdownDescription: "List of Projects",
+			"instance_count": schema.Int64Attribute{
+				MarkdownDescription: "Instance Count",
 				Computed:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"project_id": schema.StringAttribute{
-							MarkdownDescription: "Project Identifier",
-							Computed:            true,
-						},
-						"project_name": schema.StringAttribute{
-							MarkdownDescription: "Project Name",
-							Computed:            true,
-						},
-						"instance_count": schema.Int64Attribute{
-							MarkdownDescription: "Instance Count",
-							Computed:            true,
-						},
-						"created_at": schema.Int64Attribute{
-							MarkdownDescription: "Created At",
-							Computed:            true,
-						},
-					},
-				},
+			},
+			"created_at": schema.Int64Attribute{
+				MarkdownDescription: "Created At",
+				Computed:            true,
 			},
 		},
 	}
 }
 
-func (d *ProjectsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *ProjectDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -103,7 +81,7 @@ func (d *ProjectsDataSource) Configure(ctx context.Context, req datasource.Confi
 	d.client = client
 }
 
-func (d *ProjectsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state ProjectsDataSourceModel
 
 	// Read Terraform configuration data into the model
@@ -132,15 +110,23 @@ func (d *ProjectsDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 	projects = filteredProjects
 
-	for _, p := range projects {
-		item := ProjectItem{
-			ProjectId:     types.StringValue(p.ProjectId),
-			ProjectName:   types.StringValue(p.ProjectName),
-			InstanceCount: types.Int64Value(p.InstanceCount),
-			CreatedAt:     types.Int64Value(p.CreateTimeMilli),
-		}
-		state.Projects = append(state.Projects, item)
+	// not found
+	if len(projects) == 0 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Project not found: %s", state.Name))
+		return
 	}
+
+	if len(projects) > 1 {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Multiple projects found with name: %s", state.Name))
+		return
+	}
+
+	p := projects[0]
+	state.Id = types.StringValue(p.ProjectId)
+	state.Name = types.StringValue(p.ProjectName)
+	state.InstanceCount = types.Int64Value(p.InstanceCount)
+	state.CreatedAt = types.Int64Value(p.CreateTimeMilli)
+
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)

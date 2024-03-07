@@ -85,7 +85,7 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 	return []func() datasource.DataSource{
 		NewCloudProvidersDataSource,
 		NewCloudRegionsDataSource,
-		NewProjectsDataSource,
+		NewProjectDataSource,
 		NewClustersDataSource,
 		NewClusterDataSource,
 	}
