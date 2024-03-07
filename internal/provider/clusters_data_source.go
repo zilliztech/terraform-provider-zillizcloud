@@ -11,8 +11,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
@@ -28,10 +29,10 @@ type ClustersDataSource struct {
 	client *zilliz.Client
 }
 
-// ClustersResouceModel describes the clusters data model.
-type ClustersResouceModel struct {
-	Clusters types.List   `tfsdk:"clusters"`
-	Id       types.String `tfsdk:"id"`
+// ClustersDataSourceModel describes the clusters data model.
+type ClustersDataSourceModel struct {
+	Clusters []ClusterDataSourceModel `tfsdk:"clusters"`
+	Id       types.String             `tfsdk:"id"`
 }
 
 func (d *ClustersDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -121,15 +122,16 @@ func (d *ClustersDataSource) Configure(ctx context.Context, req datasource.Confi
 }
 
 func (d *ClustersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data ClustersResouceModel
+	var state ClustersDataSourceModel
 
 	// Read Terraform configuration data into the model
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	tflog.Trace(ctx, "sending ListClusters request...")
 	clusters, err := d.client.ListClusters()
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to ListClusters, got error: %s", err))
@@ -137,11 +139,11 @@ func (d *ClustersDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 
 	// Save data into Terraform state
-	data.Id = types.StringValue(strconv.FormatInt(time.Now().Unix(), 10))
+	state.Id = types.StringValue(strconv.FormatInt(time.Now().Unix(), 10))
 
-	var cs []ClusterDataSourceModel
+	// var cs []ClusterDataSourceModel
 	for _, c := range clusters.Clusters {
-		cs = append(cs, ClusterDataSourceModel{
+		state.Clusters = append(state.Clusters, ClusterDataSourceModel{
 			ClusterId:          types.StringValue(c.ClusterId),
 			ClusterName:        types.StringValue(c.ClusterName),
 			Description:        types.StringValue(c.Description),
@@ -153,8 +155,10 @@ func (d *ClustersDataSource) Read(ctx context.Context, req datasource.ReadReques
 			PrivateLinkAddress: types.StringValue(c.PrivateLinkAddress),
 			CreateTime:         types.StringValue(c.CreateTime)})
 	}
-	var diag diag.Diagnostics
-	// data.Clusters, diag = types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ClusterModel{}.AttrTypes()}, cs)
-	resp.Diagnostics.Append(diag...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	diags := resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
