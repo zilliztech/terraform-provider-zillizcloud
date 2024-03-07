@@ -30,8 +30,8 @@ const (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ClusterResource{}
-
-// var _ resource.ResourceWithImportState = &ClusterResource{}
+var _ resource.ResourceWithConfigure = &ClusterResource{}
+var _ resource.ResourceWithImportState = &ClusterResource{}
 
 func NewClusterResource() resource.Resource {
 	return &ClusterResource{}
@@ -53,6 +53,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Cluster identifier",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"cluster_name": schema.StringAttribute{
 				MarkdownDescription: "The name of the cluster to be created. It is a string of no more than 32 characters.",
@@ -304,10 +307,9 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 }
 
-// Cannot support import due to the username/password attributes only available on creation
-// func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-// 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-// }
+func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
 
 // ClusterResourceModel describes the resource data model.
 type ClusterResourceModel struct {
