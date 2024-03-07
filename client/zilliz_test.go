@@ -46,4 +46,3 @@ func TestClient_CreateCluster(t *testing.T) {
 		})
 	}
 }
-

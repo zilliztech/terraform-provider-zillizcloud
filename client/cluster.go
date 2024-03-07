@@ -1,4 +1,5 @@
 package client
+
 type ModifyClusterParams struct {
 	CuSize int `json:"cuSize"`
 }
@@ -28,8 +29,6 @@ func (c *Client) DropCluster(clusterId string) (*string, error) {
 	}
 	return &response.Data.ClusterId, err
 }
-
-
 
 type Clusters struct {
 	zillizPage
