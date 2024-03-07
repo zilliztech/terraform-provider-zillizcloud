@@ -33,11 +33,10 @@ type CloudRegionItem struct {
 	RegionId   types.String `tfsdk:"region_id"`
 }
 
-
 // CloudRegionsDataSourceModel describes the data source data model.
 type CloudRegionsDataSourceModel struct {
-	CloudRegions []CloudRegionItem   `tfsdk:"cloud_regions"`
-	CloudId      types.String `tfsdk:"cloud_id"`
+	CloudRegions []CloudRegionItem `tfsdk:"cloud_regions"`
+	CloudId      types.String      `tfsdk:"cloud_id"`
 }
 
 func (d *CloudRegionsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
