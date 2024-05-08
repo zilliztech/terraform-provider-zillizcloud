@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
@@ -28,12 +29,12 @@ type ZillizProvider struct {
 
 // zillizProviderModel describes the provider data model.
 type zillizProviderModel struct {
-	ApiKey        types.String `tfsdk:"api_key"`
-	CloudRegionId types.String `tfsdk:"cloud_region_id"`
+	ApiKey   types.String `tfsdk:"api_key"`
+	RegionId types.String `tfsdk:"region_id"`
 }
 
 func (p *ZillizProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "zilliz"
+	resp.TypeName = "zillizcloud"
 	resp.Version = p.version
 }
 
@@ -41,19 +42,22 @@ func (p *ZillizProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"api_key": schema.StringAttribute{
-				MarkdownDescription: "Zilliz API Key",
+				MarkdownDescription: "Zilliz Cloud API Key",
 				Optional:            true,
 				Sensitive:           true,
 			},
-			"cloud_region_id": schema.StringAttribute{
+			"region_id": schema.StringAttribute{
 				MarkdownDescription: "Zilliz Cloud Region Id",
-				Required:            true,
+				Optional:            true,
 			},
 		},
 	}
 }
 
 func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+
+	tflog.Info(ctx, "Configuring client...")
+
 	var data zillizProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -64,11 +68,19 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 
 	// Default to environment variables, but override
 	// with Terraform configuration value if set.
-	apiKey := os.Getenv("ZILLIZ_API_KEY")
+	apiKey := os.Getenv("ZILLIZCLOUD_API_KEY")
 	if !data.ApiKey.IsNull() {
 		apiKey = data.ApiKey.ValueString()
 	}
-	client := zilliz.NewClient(apiKey, data.CloudRegionId.ValueString())
+
+	client, err := zilliz.NewClient(
+		zilliz.WithApiKey(apiKey),
+		zilliz.WithCloudRegionId(data.RegionId.ValueString()),
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to create client: %v", err.Error())
+		return
+	}
 
 	// Zilliz client for data sources and resources
 	resp.DataSourceData = client

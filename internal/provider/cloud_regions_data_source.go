@@ -35,12 +35,12 @@ type CloudRegionItem struct {
 
 // CloudRegionsDataSourceModel describes the data source data model.
 type CloudRegionsDataSourceModel struct {
-	CloudRegions []CloudRegionItem `tfsdk:"cloud_regions"`
+	CloudRegions []CloudRegionItem `tfsdk:"items"`
 	CloudId      types.String      `tfsdk:"cloud_id"`
 }
 
 func (d *CloudRegionsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_cloud_regions"
+	resp.TypeName = req.ProviderTypeName + "_regions"
 }
 
 func (d *CloudRegionsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
@@ -49,7 +49,7 @@ func (d *CloudRegionsDataSource) Schema(ctx context.Context, req datasource.Sche
 		MarkdownDescription: "Cloud Regions data source",
 
 		Attributes: map[string]schema.Attribute{
-			"cloud_regions": schema.ListNestedAttribute{
+			"items": schema.ListNestedAttribute{
 				MarkdownDescription: "List of Cloud Regions",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{

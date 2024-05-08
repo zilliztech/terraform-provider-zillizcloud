@@ -69,7 +69,7 @@ func (d *CloudProvidersDataSource) Schema(ctx context.Context, req datasource.Sc
 }
 
 func (d *CloudProvidersDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	// Prevent panic if the provider has not been configured.
+
 	if req.ProviderData == nil {
 		return
 	}
@@ -106,7 +106,7 @@ func (d *CloudProvidersDataSource) Read(ctx context.Context, req datasource.Read
 	}
 
 	for _, cp := range cloudProviders {
-		state.CloudProviders = append(state.CloudProviders, CloudProviderItem{CloudId: types.StringValue(cp.CloudId), Description: types.StringValue(cp.Description)})
+		state.CloudProviders = append(state.CloudProviders, CloudProviderItem{CloudId: types.StringValue(string(cp.CloudId)), Description: types.StringValue(cp.Description)})
 	}
 
 	diags := resp.State.Set(ctx, &state)

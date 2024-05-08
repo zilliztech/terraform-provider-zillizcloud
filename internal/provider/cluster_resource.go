@@ -48,7 +48,7 @@ func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataReq
 
 func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Cluster resource. If 'plan', 'cu_size' and 'cu-type' are not specified, then a serverless cluster is created.",
+		MarkdownDescription: "Cluster resource. If 'plan', 'cu_size' and 'cu_type' are not specified, then a free cluster is created.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Cluster identifier",
@@ -96,7 +96,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"cu_type": schema.StringAttribute{
-				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.",
+				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -127,6 +127,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			},
 			"region_id": schema.StringAttribute{
 				MarkdownDescription: "The ID of the region where the cluster exists.",
+				Optional:            true,
 				Computed:            true,
 			},
 			"cluster_type": schema.StringAttribute{
@@ -186,6 +187,16 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 	r.client = client
 }
 
+func CloneClient(client *zilliz.Client, data *ClusterResourceModel) (*zilliz.Client, error) {
+	var id = client.RegionId
+
+	if data.RegionId.ValueString() != "" {
+		id = data.RegionId.ValueString()
+	}
+
+	return client.Clone(zilliz.WithCloudRegionId(id))
+}
+
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data ClusterResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -193,17 +204,45 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	checkPlan := func(data ClusterResourceModel) (bool, error) {
+
+		if data.Plan.IsNull() {
+			return true, nil
+		}
+
+		switch zilliz.Plan(data.Plan.ValueString()) {
+		case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan:
+			return true, nil
+		default:
+			return false, fmt.Errorf("Invalid plan: %s", data.Plan.ValueString())
+		}
+
+	}
+
+	if _, err := checkPlan(data); err != nil {
+		resp.Diagnostics.AddError("Invalid plan", err.Error())
+		return
+	}
+
 	var response *zilliz.CreateClusterResponse
 	var err error
 
-	if data.Plan.IsNull() && data.CuSize.IsUnknown() && data.CuType.IsNull() {
-		response, err = r.client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
+	client, err := CloneClient(r.client, &data)
+	if err != nil {
+		resp.Diagnostics.AddError("client error", err.Error())
+		return
+	}
+
+	if (data.Plan.IsNull() || zilliz.Plan(data.Plan.ValueString()) == zilliz.FreePlan) && data.CuSize.IsUnknown() && data.CuType.IsNull() {
+
+		response, err = client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
+			// Plan:        zilliz.Plan(data.Plan.ValueString()),
 			ClusterName: data.ClusterName.ValueString(),
 			ProjectId:   data.ProjectId.ValueString(),
 		})
 	} else {
-		response, err = r.client.CreateCluster(zilliz.CreateClusterParams{
-			Plan:        data.Plan.ValueString(),
+		response, err = client.CreateCluster(zilliz.CreateClusterParams{
+			Plan:        zilliz.Plan(data.Plan.ValueString()),
 			ClusterName: data.ClusterName.ValueString(),
 			CUSize:      int(data.CuSize.ValueInt64()),
 			CUType:      data.CuType.ValueString(),
@@ -229,12 +268,12 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	resp.Diagnostics.Append(data.waitForStatus(ctx, createTimeout, r.client, "RUNNING")...)
+	resp.Diagnostics.Append(data.waitForStatus(ctx, createTimeout, client, "RUNNING")...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(data.refresh(r.client)...)
+	resp.Diagnostics.Append(data.refresh(client)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -245,7 +284,12 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	resp.Diagnostics.Append(data.refresh(r.client)...)
+	client, err := CloneClient(r.client, &data)
+	if err != nil {
+		resp.Diagnostics.AddError("client error", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(data.refresh(client)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -265,8 +309,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	client, err := CloneClient(r.client, &state)
+	if err != nil {
+		resp.Diagnostics.AddError("client error", err.Error())
+		return
+	}
 	// Only support changes of cuSize - all other attributes are set to ForceNew
-	_, err := r.client.ModifyCluster(state.ClusterId.ValueString(), &zilliz.ModifyClusterParams{
+	_, err = client.ModifyCluster(state.ClusterId.ValueString(), &zilliz.ModifyClusterParams{
 		CuSize: int(plan.CuSize.ValueInt64()),
 	})
 	if err != nil {
@@ -283,7 +332,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	resp.Diagnostics.Append(state.waitForStatus(ctx, updateTimeout, r.client, "RUNNING")...)
+	resp.Diagnostics.Append(state.waitForStatus(ctx, updateTimeout, client, "RUNNING")...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -300,7 +349,12 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	_, err := r.client.DropCluster(data.ClusterId.ValueString())
+	client, err := CloneClient(r.client, &data)
+	if err != nil {
+		resp.Diagnostics.AddError("client error", err.Error())
+		return
+	}
+	_, err = client.DropCluster(data.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to drop cluster", err.Error())
 		return
@@ -334,6 +388,7 @@ type ClusterResourceModel struct {
 
 func (data *ClusterResourceModel) refresh(client *zilliz.Client) diag.Diagnostics {
 	var diags diag.Diagnostics
+	var err error
 
 	c, err := client.DescribeCluster(data.ClusterId.ValueString())
 	if err != nil {
