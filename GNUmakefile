@@ -10,3 +10,9 @@ unit-test:
 
 install:
 	sudo go install -v ./...
+
+doc:
+	go generate ./...
+
+lint:
+	golangci-lint run
