@@ -1,90 +1,49 @@
 package client
 
 import (
-	"flag"
+	"errors"
 	"testing"
 )
 
-var (
-	apiKey string
-)
+func TestClient_ListProject(t *testing.T) {
 
-func init() {
-	flag.StringVar(&apiKey, "key", "", "Your TEST secret key for the zilliz cloud API. If present, integration tests will be run using this key.")
-}
+	t.Run("ListProjects", func(t *testing.T) {
+		c, teardown := zillizClient[[]Project](t)
+		defer teardown()
 
-func TestClient_ListProjects(t *testing.T) {
-	if apiKey == "" {
-		t.Skip("No API key provided")
-	}
-
-	type checkFn func(*testing.T, []Project, error)
-	check := func(fns ...checkFn) []checkFn { return fns }
-
-	hasNoErr := func() checkFn {
-		return func(t *testing.T, _ []Project, err error) {
-			if err != nil {
-				t.Fatalf("err = %v; want nil", err)
-			}
+		got, err := c.ListProjects()
+		if err != nil {
+			t.Fatalf("failed to list projects: %v", err)
 		}
-	}
 
-	hasErrCode := func(code int) checkFn {
-		return func(t *testing.T, _ []Project, err error) {
-			se, ok := err.(Error)
-			if !ok {
-				t.Fatalf("err isn't a Error")
-			}
-			if se.Code != code {
-				t.Errorf("err.Code = %d; want %d", se.Code, code)
-			}
+		var want string = "Default Project"
+
+		if len(got) == 0 || got[0].ProjectName != want {
+			t.Errorf("want = %s, got = %v", want, got)
 		}
-	}
 
-	hasProject := func(Name string) checkFn {
-		return func(t *testing.T, p []Project, err error) {
-			for _, project := range p {
-				if project.ProjectName == Name {
-					return
-				}
-			}
-			t.Errorf("project not found: %s", Name)
+	})
+
+	t.Run("get project list with wrong api key", func(t *testing.T) {
+		var tmp string
+		if apiKey != "" {
+			tmp = apiKey
 		}
-	}
+		defer func() {
+			apiKey = tmp
+		}()
 
-	type fields struct {
-		CloudRegionId string
-		apiKey        string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		checks []checkFn
-	}{
-		{
-			"postive 1",
-			fields{CloudRegionId: "gcp-us-west1", apiKey: apiKey},
-			check(
-				hasNoErr(),
-				hasProject("Default Project")),
-		},
-		{
-			"none exist region",
-			fields{CloudRegionId: "gcp-us-west1", apiKey: "fake"},
-			check(hasErrCode(80001)),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := NewClient(
-				tt.fields.apiKey,
-				tt.fields.CloudRegionId,
-			)
+		apiKey = "gibberish_api_key"
+		c, teardown := zillizClient[[]Project](t)
+		defer teardown()
 
-			got, err := c.ListProjects()
-			for _, check := range tt.checks {
-				check(t, got, err)
-			}
-		})
-	}
+		_, err := c.ListProjects()
+		var apierr = Error{
+			Code: 80001,
+		}
+		if !errors.Is(err, apierr) {
+			t.Errorf("want = %v, got = %v", apierr, err)
+		}
+	})
+
 }

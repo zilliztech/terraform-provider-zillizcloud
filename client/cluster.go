@@ -1,5 +1,14 @@
 package client
 
+type Plan string
+
+var (
+	FreePlan       Plan = "Free"
+	ServerlessPlan Plan = "Serverless"
+	StandardPlan   Plan = "Standard"
+	EnterprisePlan Plan = "Enterprise"
+)
+
 type ModifyClusterParams struct {
 	CuSize int `json:"cuSize"`
 }
@@ -41,6 +50,7 @@ type Cluster struct {
 	Description        string `json:"description"`
 	RegionId           string `json:"regionId"`
 	ClusterType        string `json:"clusterType"`
+	Plan               Plan   `json:"plan"`
 	CuSize             int64  `json:"cuSize"`
 	Status             string `json:"status"`
 	ConnectAddress     string `json:"connectAddress"`
@@ -61,16 +71,19 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 }
 
 type CreateClusterParams struct {
-	Plan        string `json:"plan"`
+	Plan        Plan   `json:"plan"`
 	ClusterName string `json:"clusterName"`
 	CUSize      int    `json:"cuSize"`
 	CUType      string `json:"cuType"`
 	ProjectId   string `json:"projectId"`
+	RegionId    string
 }
 
 type CreateServerlessClusterParams struct {
 	ClusterName string `json:"clusterName"`
 	ProjectId   string `json:"projectId"`
+	Plan        Plan   `json:"plan,omitempty"`
+	RegionId    string
 }
 
 type CreateClusterResponse struct {
@@ -81,6 +94,9 @@ type CreateClusterResponse struct {
 }
 
 func (c *Client) CreateCluster(params CreateClusterParams) (*CreateClusterResponse, error) {
+	if params.RegionId == "" && c.RegionId == "" {
+		return nil, errRegionIdRequired
+	}
 	var clusterResponse zillizResponse[CreateClusterResponse]
 	err := c.do("POST", "clusters/create", params, &clusterResponse)
 	return &clusterResponse.Data, err

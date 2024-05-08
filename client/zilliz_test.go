@@ -1,47 +1,79 @@
 package client
 
 import (
-	"net/http"
-	"reflect"
 	"testing"
 )
 
-func TestClient_CreateCluster(t *testing.T) {
-	type fields struct {
-		CloudRegionId string
-		HTTPClient    *http.Client
-		baseUrl       string
-		apiKey        string
-		userAgent     string
+func TestClone(t *testing.T) {
+	origin, err := NewClient(WithCloudRegionId("gibberish_id"), WithApiKey("giberishkey"))
+	if err != nil {
+		t.Errorf("got %v, want nil", err)
 	}
-	type args struct {
-		params CreateClusterParams
+	client, err := origin.Clone(WithCloudRegionId("aws-west2"))
+	if err != nil {
+		t.Errorf("got %v, want nil", err)
 	}
-	tests := []struct {
+
+	expected := "https://controller.api.aws-west2.zillizcloud.com/v1/"
+	if client.baseUrl != expected {
+		t.Errorf("got %s, want %s", client.baseUrl, expected)
+	}
+
+}
+
+func TestNewClient(t *testing.T) {
+	type expect struct {
+		baseUrl string
+		err     error
+	}
+
+	testCases := []struct {
 		name    string
-		fields  fields
-		args    args
-		want    *CreateClusterResponse
-		wantErr bool
+		options []Option
+		expect  expect
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Valid options",
+			options: []Option{
+				WithCloudRegionId("gibberish_id"),
+				WithApiKey("gibberish_key"),
+			},
+			expect: expect{
+				baseUrl: "https://controller.api.gibberish_id.zillizcloud.com/v1/",
+				err:     nil,
+			},
+		},
+		{
+			name: "Missing API key",
+			options: []Option{
+				WithCloudRegionId("id"),
+			},
+			expect: expect{
+				err: errApiKeyRequired,
+			},
+		},
+		{
+			name: "Missing cloud region ID",
+			options: []Option{
+				WithApiKey("key"),
+			},
+			expect: expect{
+				baseUrl: "https://controller.api.gcp-us-west1.zillizcloud.com/v1/",
+				err:     nil,
+			},
+		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{
-				CloudRegionId: tt.fields.CloudRegionId,
-				HTTPClient:    tt.fields.HTTPClient,
-				baseUrl:       tt.fields.baseUrl,
-				apiKey:        tt.fields.apiKey,
-				userAgent:     tt.fields.userAgent,
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := NewClient(tc.options...)
+			_ = c
+			if err != tc.expect.err {
+				t.Errorf("got = %v, want %v", err, tc.expect.err)
 			}
-			got, err := c.CreateCluster(tt.args.params)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Client.CreateCluster() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Client.CreateCluster() = %v, want %v", got, tt.want)
+
+			if c != nil && c.baseUrl != tc.expect.baseUrl {
+				t.Errorf("got = %s, want %s", c.baseUrl, tc.expect.baseUrl)
 			}
 		})
 	}
