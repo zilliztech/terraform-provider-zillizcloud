@@ -8,3 +8,9 @@ terraform {
 
 provider "zillizcloud" {
 }
+
+data "zillizcloud_clusters" "example" {}
+
+output "clusters" {
+  value = data.zillizcloud_clusters.example.clusters
+}

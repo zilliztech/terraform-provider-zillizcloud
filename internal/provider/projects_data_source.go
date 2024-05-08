@@ -127,7 +127,6 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	state.InstanceCount = types.Int64Value(p.InstanceCount)
 	state.CreatedAt = types.Int64Value(p.CreateTimeMilli)
 
-
 	// Set state
 	diags := resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
