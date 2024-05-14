@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -15,10 +16,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
@@ -88,6 +91,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The size of the CU to be used for the created cluster. It is an integer from 1 to 256.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.Int64{
 					int64validator.AlsoRequires(
 						path.MatchRelative().AtParent().AtName("plan"),
@@ -99,7 +105,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
 					stringvalidator.AlsoRequires(
@@ -133,6 +139,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"cluster_type": schema.StringAttribute{
 				MarkdownDescription: "The type of CU associated with the cluster. Possible values are Performance-optimized and Capacity-optimized.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"status": schema.StringAttribute{
 				MarkdownDescription: "The current status of the cluster. Possible values are INITIALIZING, RUNNING, SUSPENDING, and RESUMING.",
@@ -141,6 +150,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"connect_address": schema.StringAttribute{
 				MarkdownDescription: "The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"private_link_address": schema.StringAttribute{
 				MarkdownDescription: "The private endpoint of the cluster. You can set up a private link to allow your VPS in the same cloud region to access your cluster.",
@@ -187,17 +199,21 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 	r.client = client
 }
 
-func CloneClient(client *zilliz.Client, data *ClusterResourceModel) (*zilliz.Client, error) {
-	var id = client.RegionId
+func CloneClient(ctx context.Context, client *zilliz.Client, data *ClusterResourceModel) (*zilliz.Client, error) {
+	var regionId = client.RegionId
 
 	if data.RegionId.ValueString() != "" {
-		id = data.RegionId.ValueString()
+		regionId = data.RegionId.ValueString()
 	}
 
-	return client.Clone(zilliz.WithCloudRegionId(id))
+	ctx = tflog.SetField(ctx, "RegionID", regionId)
+	tflog.Info(ctx, "Clone Client...")
+
+	return client.Clone(zilliz.WithCloudRegionId(regionId))
 }
 
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	tflog.Info(ctx, "Create Cluster...")
 	var data ClusterResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -227,7 +243,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	var response *zilliz.CreateClusterResponse
 	var err error
 
-	client, err := CloneClient(r.client, &data)
+	client, err := CloneClient(ctx, r.client, &data)
 	if err != nil {
 		resp.Diagnostics.AddError("client error", err.Error())
 		return
@@ -278,22 +294,25 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 }
 
 func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data ClusterResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	tflog.Info(ctx, "Read Cluster...")
+	var state ClusterResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	client, err := CloneClient(r.client, &data)
+	client, err := CloneClient(ctx, r.client, &state)
 	if err != nil {
 		resp.Diagnostics.AddError("client error", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(data.refresh(client)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(state.refresh(client)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	tflog.Info(ctx, "Update Cluster...")
+
 	var plan ClusterResourceModel
 	var state ClusterResourceModel
 
@@ -309,7 +328,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	client, err := CloneClient(r.client, &state)
+	client, err := CloneClient(ctx, r.client, &state)
 	if err != nil {
 		resp.Diagnostics.AddError("client error", err.Error())
 		return
@@ -318,6 +337,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	_, err = client.ModifyCluster(state.ClusterId.ValueString(), &zilliz.ModifyClusterParams{
 		CuSize: int(plan.CuSize.ValueInt64()),
 	})
+
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to modify cluster", err.Error())
 		return
@@ -338,18 +358,19 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// Save updated data into Terraform state
-	resp.Diagnostics.Append(state.refresh(r.client)...)
+	resp.Diagnostics.Append(state.refresh(client)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	tflog.Info(ctx, "Delete Cluster...")
 	var data ClusterResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	client, err := CloneClient(r.client, &data)
+	client, err := CloneClient(ctx, r.client, &data)
 	if err != nil {
 		resp.Diagnostics.AddError("client error", err.Error())
 		return
@@ -362,7 +383,18 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 }
 
 func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: clusterId,regionId. Got: %q", req.ID),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), idParts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("region_id"), idParts[1])...)
 }
 
 // ClusterResourceModel describes the resource data model.
@@ -408,6 +440,7 @@ func (data *ClusterResourceModel) refresh(client *zilliz.Client) diag.Diagnostic
 	data.ConnectAddress = types.StringValue(c.ConnectAddress)
 	data.PrivateLinkAddress = types.StringValue(c.PrivateLinkAddress)
 	data.CreateTime = types.StringValue(c.CreateTime)
+	data.ProjectId = types.StringValue(c.ProjectId)
 
 	return diags
 }

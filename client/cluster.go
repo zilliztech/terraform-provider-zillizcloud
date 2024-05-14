@@ -56,6 +56,7 @@ type Cluster struct {
 	ConnectAddress     string `json:"connectAddress"`
 	PrivateLinkAddress string `json:"privateLinkAddress"`
 	CreateTime         string `json:"createTime"`
+	ProjectId          string `json:"projectId"`
 }
 
 func (c *Client) ListClusters() (Clusters, error) {
