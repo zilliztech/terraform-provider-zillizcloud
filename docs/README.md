@@ -11,8 +11,8 @@ This guide provides a comprehensive overview of using Terraform with Zilliz Clou
 
 * **Installation**: Learn how to install the Zilliz Cloud Terraform provider and configure it within your Terraform project. Refer to the tutorial: [Getting Started with Zilliz Cloud Terraform Provider](./get-start.md)
 * **Cluster Management:** Discover how to define, provision, and manage Zilliz Cloud clusters using Terraform configurations. 
-    * Create Starter Clusters for initial testing or small-scale applications: [Creating a Starter Cluster](./create-a-starter-cluster.md)
-    * Create Standard Clusters with more resources for production workloads: [Creating a Standard Cluster](./create-a-standard-cluster.md)
+    * Create Free Plan Clusters for learning, experimenting, and prototype;: [Creating a Free Plan Cluster](./create-a-free-cluster.md)
+    * Create Standard Plan Clusters with more resources for production workloads: [Creating a Standard Plan Cluster](./create-a-standard-cluster.md)
 * **Scaling Clusters**: Learn how to leverage Terraform to upgrade the compute unit size of your Zilliz Cloud clusters to meet changing workload demands: [Upgrading Zilliz Cloud Cluster Compute Unit Size with Terraform](./scale-cluster.md)
 * **Importing Existing Clusters**: Utilize Terraform to import existing Zilliz Cloud clusters into your Terraform state, enabling them to be managed alongside other infrastructure using Terraform configurations: [Import Existing Zilliz Cloud Cluster With Terraform](./import-cluster.md)
 

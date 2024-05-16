@@ -1,10 +1,12 @@
-## Tutorial: Creating a Starter Cluster with Terraform
+## Tutorial: Creating a Free Plan Cluster with Terraform
 
-This tutorial guides you through creating a basic **Starter cluster** in Zilliz Cloud using the `zillizcloud_cluster` resource within Terraform. Starter clusters are suitable for initial testing or small-scale applications.
+This tutorial guides you through creating a basic **Free Plan cluster** in Zilliz Cloud using the `zillizcloud_cluster` resource within Terraform. Free Plan clusters are suitable for for learning experimenting, and prototype purposes.
+
+Check out the [Select the Right Cluster Plan](https://docs.zilliz.com/docs/select-zilliz-cloud-service-plans) for more information on the available plans.
 
 **You'll learn how to:**
 
-- Define a **Starter cluster** in Terraform configuration.
+- Define a **Free Plan cluster** in Terraform configuration.
 - Review and apply changes to provision the cluster in Zilliz Cloud.
 - Verify the creation of your Zilliz Cloud cluster.
 
@@ -23,7 +25,7 @@ data "zillizcloud_project" "default" {
   # Fetching the default project information to be used in cluster provisioning
 }
 
-resource "zillizcloud_cluster" "starter_cluster" {
+resource "zillizcloud_cluster" "free_plan_cluster" {
   # Name for your cluster
   cluster_name = "Cluster-01"
   # ID of the default project retrieved from data source
@@ -31,21 +33,21 @@ resource "zillizcloud_cluster" "starter_cluster" {
 }
 
 output "cluster_connect_address" {
-  value = zillizcloud_cluster.starter_cluster.connect_address
+  value = zillizcloud_cluster.free_plan_cluster.connect_address
 }
 output "cluster_username" {
-  value = zillizcloud_cluster.starter_cluster.username
+  value = zillizcloud_cluster.free_plan_cluster.username
 }
 output "cluster_password" {
   sensitive = true
-  value = zillizcloud_cluster.starter_cluster.password
+  value = zillizcloud_cluster.free_plan_cluster.password
 }
 ```
 
 
 **Explanation:**
 
-- This configuration defines a `zillizcloud_cluster` resource named `starter_cluster`.
+- This configuration defines a `zillizcloud_cluster` resource named `free_plan_cluster`.
 - * `cluster_name`: Sets the name of your cluster (here, "Cluster-01").
   * `project_id`: Retrieves the ID of the default project using the `data.zillizcloud_project.default.id` attribute.
 
@@ -78,5 +80,5 @@ $ terraform destroy
 ```
 
 ## Next Steps
-- Explore creating a Standard Cluster with more resources using the guide: [Creating a Standard Cluster](./create-a-standard-cluster.md)
+- Explore creating a Standard Plan Cluster with more resources using the guide: [Creating a Standard Plan Cluster](./create-a-standard-cluster.md)
 

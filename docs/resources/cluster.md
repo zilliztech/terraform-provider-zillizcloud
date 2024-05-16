@@ -28,7 +28,7 @@ data "zillizcloud_project" "default" {
   # Fetching the default project information to be used in cluster provisioning
 }
 
-resource "zillizcloud_cluster" "starter_cluster" {
+resource "zillizcloud_cluster" "free_plan_cluster" {
   # Defining a basic starter cluster
   cluster_name = "Cluster-01"                        # The name of the cluster
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier

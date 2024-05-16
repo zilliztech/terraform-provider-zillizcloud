@@ -1,7 +1,10 @@
-# Tutorial: Creating a Standard Cluster
+## Tutorial: Creating a Standard Plan Cluster with Terraform
 
-This tutorial guides you through managing Zilliz Cloud clusters using the `zillizcloud_cluster` resource within Terraform. You'll learn how to:
+This tutorial guides you through managing a **Standard Plan** Cluster using the `zillizcloud_cluster` resource within Terraform.  Standard Plan Cluster have more resources, compared to Free Plan Cluster and are suitable for production workloads.
 
+Check out the [Select the Right Cluster Plan](https://docs.zilliz.com/docs/select-zilliz-cloud-service-plans) for more information on the available plans.
+
+**You'll learn how to:**
 - Retrieve project and region IDs for cluster creation.
 - Define clusters with various configurations in Terraform.
 - Plan and apply changes to provision clusters in Zilliz Cloud.
