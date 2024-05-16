@@ -18,6 +18,10 @@ DataSource
 - regions
 - clusters
 
+## Documentation
+
+Documentation can be found on the [Terraform Registry](https://registry.terraform.io/providers/zilliztech/zillizcloud/latest).
+
 ## User Guide
 
 See [Zilliz Cloud Terraform Integration Overview](./docs/README.md) for more information.
