@@ -10,7 +10,7 @@ Before you begin, ensure you have the following:
 
 2. **Zilliz Cloud Account**: Access to Zilliz Cloud and your API Key are essential. Refer to the [documentation](https://docs.zilliz.com/docs/manage-api-keys) to obtain your API key.
 
-## 2. Configure Terraform Provider
+## 2. Download Zilliz Cloud Terraform Provider
 
 Start by configuring the Zilliz Cloud provider within your Terraform configuration file (`main.tf`). Follow these steps:
 
@@ -22,18 +22,6 @@ terraform {
     }
   }
 }
-
-provider "zillizcloud" {
-  api_key = "<your-api-key>"
-}
-```
-
-Replace `<your-api-key>` with your Zilliz Cloud API Key.
-
-Alternatively, you can use the environment variable `ZILLIZCLOUD_API_KEY` instead of specifying it in the provider block.
-
-```bash
-$ export ZILLIZCLOUD_API_KEY="<your-api-key>"
 ```
 
 ## 3. Initialize Terraform Configuration
@@ -45,3 +33,36 @@ terraform init
 ```
 
 Terraform will download the `zillizcloud` provider and install it in a hidden subdirectory of your current working directory, named `.terraform`.
+
+### 4. Authenticate Zilliz Cloud Terraform Provider
+
+Your Zilliz Cloud API Key is required to use the Terraform Provider. There are two ways to configure this.
+
+#### Option 1: Specify API Key in Provider Block
+
+Append the following code to your `main.tf` file:
+
+```hcl
+provider "zillizcloud" {
+  api_key = "<your-api-key>"
+}
+```
+
+Replace `<your-api-key>` with your Zilliz Cloud API Key.
+
+#### Option 2: Use Environment Variable
+
+Set the API key as an environment variable:
+
+```bash
+export ZILLIZCLOUD_API_KEY="<your-api-key>"
+```
+
+Then the provider declaration in your `main.tf` file is simply:
+
+```hcl
+provider "zillizcloud" {
+}
+```
+
+By following these steps, you should have the Zilliz Cloud Terraform provider configured and ready to use in your Terraform projects.
