@@ -1,14 +1,14 @@
-# Getting Started with Zilliz Cloud Terraform Provider
+## Getting Started with Zilliz Cloud Terraform Provider
 
 This guide walks you through the process of installing and configuring the Zilliz Cloud provider.
 
-## 1. Prerequisites
+### 1.Prerequisites
 
-Before you begin, make sure you have the following:
+Before you begin, ensure you have the following:
 
-1. **Terraform Installed**: Download and install Terraform from [here](https://www.terraform.io/downloads.html), following the provided instructions.
+1. **Terraform Installed**: Download and install Terraform from [here](https://www.terraform.io/downloads.html) by following the provided instructions.
 
-2. **Zilliz Cloud Account**: Access to Zilliz Cloud and your API Key are essential prerequisites.
+2. **Zilliz Cloud Account**: Access to Zilliz Cloud and your API Key are essential. Refer to the [documentation](https://docs.zilliz.com/docs/manage-api-keys) to obtain your API key.
 
 ## 2. Configure Terraform Provider
 

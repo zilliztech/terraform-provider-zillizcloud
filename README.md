@@ -4,6 +4,24 @@ This is the repository for the terraform-provider-zillizcloud, which allows one 
 
 For general information about Terraform, visit the [official website](https://www.terraform.io) and the [GitHub project page](https://github.com/hashicorp/terraform).
 
+## Support
+Resources
+
+- cluster
+    - create
+    - scale
+    - import
+
+DataSource
+
+- projects
+- regions
+- clusters
+
+## User Guide
+
+See [Zilliz Cloud Terraform Integration Overview](./docs/README.md) for more information.
+
 
 ## Requirements
 
