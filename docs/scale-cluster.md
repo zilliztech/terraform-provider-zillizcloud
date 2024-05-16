@@ -64,6 +64,12 @@ resource "zillizcloud_cluster" "standard_plan_cluster" {
 Terraform will now initiate the upgrade process, scaling your Zilliz Cloud cluster to the specified CU size.
 
 
+## Destroying the Cluster(Optional)
+if you want to destroy the cluster, you can run the following command:
+```
+$ terraform destroy
+```
+
 ### Verifying the Upgrade
 
 Once Terraform finishes applying the changes, you can verify that the CU size of your cluster has been upgraded successfully via the Zilliz Cloud dashboard. Log in to your Zilliz Cloud account and navigate to the Clusters section in the dashboard. Select the upgraded cluster and view its details. The CU size should now reflect the value you specified in your Terraform configuration.
