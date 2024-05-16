@@ -1,4 +1,4 @@
-# Tutorial: Creating Zilliz a Standard Cloud Cluster Resources with Terraform
+# Tutorial: Creating a Standard Cluster
 
 This tutorial guides you through managing Zilliz Cloud clusters using the `zillizcloud_cluster` resource within Terraform. You'll learn how to:
 
@@ -12,23 +12,29 @@ This tutorial guides you through managing Zilliz Cloud clusters using the `zilli
 Before you begin, make sure you have completed the initial setup steps outlined in the [Getting Started with Zilliz Cloud Terraform Provider](./get-start.md) guide. Additionally, ensure that you have the necessary permissions and access credentials to interact with the Zilliz Cloud API.
 
 
-## Retrieving Project IDs in Your Zilliz Cloud Account
+## Retrieving Your Zilliz Cloud Project ID
 
-[How Can I Obtain the Project ID ?](https://support.zilliz.com/hc/en-us/articles/22048954409755-How-Can-I-Obtain-the-Project-ID)
+There are two ways to find your Zilliz Cloud project ID:
 
-For convenience, you can use the `zillizcloud_project` data source to retrieve the ID of default project for your Zilliz Cloud account. 
+**1. Zilliz Cloud Console:**
 
+Refer to the Zilliz Cloud documentation for details on obtaining your project ID through the console: [How Can I Obtain the Project ID?](https://support.zilliz.com/hc/en-us/articles/22048954409755-How-Can-I-Obtain-the-Project-ID)
 
-## Acquiring Region IDs for Zilliz Cloud Cluster
+**2. Zilliz Cloud Data Source (Optional):**
 
-[Cloud Providers & Regions](https://docs.zilliz.com/docs/cloud-providers-and-regions)
+For convenience, you can use the `zillizcloud_project` data source to retrieve the ID of the default project associated with your Zilliz Cloud account.
 
-In this tutorial, we will use the `aws-us-east-2` region.
+## Selecting a Zilliz Cloud Region
 
+This tutorial will use the `aws-us-east-2` region.  However, you can choose a different region based on your needs.
+
+For a full list of available cloud providers and regions, refer to the Zilliz Cloud documentation: [Cloud Providers & Regions](https://docs.zilliz.com/docs/cloud-providers-and-regions)
+ 
 ### Creating a Cluster
 
 With the `project ID` and `region ID` at hand, creating Zilliz Cloud clusters is straightforward. Below is an illustrative example defining zillizcloud_cluster resources within Terraform configuration:
 
+Append the following code to your `main.tf` file mentioned in the [Getting Started with Zilliz Cloud Terraform Provider](./get-start.md) guide.
 
 ```hcl
 
@@ -45,8 +51,10 @@ resource "zillizcloud_cluster" "standard_plan_cluster" {
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
 }
 ```
-This example will create a Zilliz Cloud cluster:
-- **Standard Plan Cluster**: This configuration creates a more advanced cluster named "Cluster-02" in the `aws-us-east-2` region. It uses the "Standard" service plan with a compute unit size of 1, optimized for performance, making it suitable for more demanding workloads.
+**Explanation of the Configuration:**
+
+This code creates a Zilliz Cloud cluster named "Cluster-02" in the "aws-us-east-2" region. It serves the "Standard" plan with a single, performance-optimized compute unit, making it suitable for workloads requiring more processing power.
+
 
 ### Planning and Applying Changes
 
