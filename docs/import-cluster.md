@@ -5,6 +5,7 @@ This tutorial guides you through importing existing Zilliz Cloud clusters into y
 ### Prerequisites
 
 Before you begin, make sure you have completed the initial setup steps outlined in the [Getting Started with Zilliz Cloud Terraform Provider](./get-start.md) guide. Additionally, ensure that you have the necessary permissions and access credentials to interact with the Zilliz Cloud API.
+
 ### Understanding Cluster Importing
 
 Importing allows you to bring existing Zilliz Cloud clusters under Terraform's management. This means Terraform will track the cluster's configuration and resources within its state file. By managing your clusters through Terraform, you can leverage infrastructure as code (IaC) practices for consistent and automated cluster provisioning and management.
