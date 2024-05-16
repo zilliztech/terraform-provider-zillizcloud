@@ -6,17 +6,20 @@ For general information about Terraform, visit the [official website](https://ww
 
 ## Support
 Resources
-
-- cluster
+- [cluster](./docs/resources/cluster.md)
     - create
     - scale
     - import
 
 DataSource
 
-- projects
-- regions
-- clusters
+- [project](./docs/data-sources/project.md)
+- [region](./docs/data-sources/regions.md)
+    - AWS
+    - GCP
+    - Azure
+    - Alibaba Cloud
+    - Tecent Cloud
 
 ## User Guide
 
