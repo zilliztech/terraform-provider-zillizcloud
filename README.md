@@ -21,9 +21,9 @@ DataSource
     - Alibaba Cloud
     - Tecent Cloud
 
-## Documentation
+## API Documentation
 
-Documentation can be found on the [Terraform Registry](https://registry.terraform.io/providers/zilliztech/zillizcloud/latest).
+API Documentation can be found on the [Terraform Registry](https://registry.terraform.io/providers/zilliztech/zillizcloud/latest/docs).
 
 ## User Guide
 
