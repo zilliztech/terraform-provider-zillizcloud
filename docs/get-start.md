@@ -65,4 +65,8 @@ provider "zillizcloud" {
 }
 ```
 
-By following these steps, you should have the Zilliz Cloud Terraform provider configured and ready to use in your Terraform projects.
+By following these steps, you should have the Zilliz Cloud Terraform provider configured and ready to move on to the next steps.
+
+## Next Steps
+- Explore creating a **Free Plan** Cluster: [Creating a Free Plan Cluster](./create-a-free-cluster.md)
+- Explore creating a **Standard Plan** Cluster: [Creating a Standard Plan Cluster](./create-a-standard-cluster.md)
