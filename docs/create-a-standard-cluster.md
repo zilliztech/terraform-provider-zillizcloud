@@ -75,7 +75,7 @@ Terraform will orchestrate the creation of the specified clusters based on your 
 After applying the changes, you can verify the provisioned Zilliz Cloud clusters either through the Zilliz Cloud dashboard. Ensure that the clusters are created with the desired configurations and are functioning as expected.
 
 ## Destroying the Cluster(Optional)
-if you want to destroy the cluster, you can run the following command:
+If you want to destroy the cluster, you can run the following command:
 ```
 $ terraform destroy
 ```
