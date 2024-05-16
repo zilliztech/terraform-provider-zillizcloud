@@ -65,7 +65,7 @@ Terraform will now initiate the upgrade process, scaling your Zilliz Cloud clust
 
 
 ## Destroying the Cluster(Optional)
-if you want to destroy the cluster, you can run the following command:
+If you want to destroy the cluster, you can run the following command:
 ```
 $ terraform destroy
 ```
