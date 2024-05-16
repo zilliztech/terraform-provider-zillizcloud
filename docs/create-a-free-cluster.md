@@ -1,12 +1,12 @@
 ## Tutorial: Creating a Free Plan Cluster with Terraform
 
-This tutorial guides you through creating a basic **Free Plan cluster** in Zilliz Cloud using the `zillizcloud_cluster` resource within Terraform. Free Plan clusters are suitable for for learning experimenting, and prototype purposes.
+This tutorial guides you through creating a basic **Free Plan** cluster in Zilliz Cloud using the `zillizcloud_cluster` resource within Terraform. Free Plan cluster is suitable for for learning experimenting, and prototype purposes.
 
 Check out the [Select the Right Cluster Plan](https://docs.zilliz.com/docs/select-zilliz-cloud-service-plans) for more information on the available plans.
 
 **You'll learn how to:**
 
-- Define a **Free Plan cluster** in Terraform configuration.
+- Define a Free Plan cluster in Terraform configuration.
 - Review and apply changes to provision the cluster in Zilliz Cloud.
 - Verify the creation of your Zilliz Cloud cluster.
 
@@ -61,8 +61,8 @@ terraform apply -auto-approve
 Outputs:
 
 cluster_connect_address = "https://in03-559dde3b4b6de3a.api.gcp-us-west1.zillizcloud.com"
-cluster_password = <sensitive>
 cluster_username = "db_559dde3b4b6de3a"
+cluster_password = <sensitive>
 ```
 
 **Note**: The `-auto-approve` flag avoids prompting for confirmation before applying the changes. Use caution, especially in production environments. It's recommended to thoroughly review the plan before applying.
@@ -80,5 +80,4 @@ $ terraform destroy
 ```
 
 ## Next Steps
-- Explore creating a Standard Plan Cluster with more resources using the guide: [Creating a Standard Plan Cluster](./create-a-standard-cluster.md)
-
+- Explore creating a **Standard Plan** Cluster: [Creating a Standard Plan Cluster](./create-a-standard-cluster.md)
