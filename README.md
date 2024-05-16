@@ -4,31 +4,24 @@ This is the repository for the terraform-provider-zillizcloud, which allows one 
 
 For general information about Terraform, visit the [official website](https://www.terraform.io) and the [GitHub project page](https://github.com/hashicorp/terraform).
 
-## Support
-Resources
-- [cluster](./docs/resources/cluster.md)
-    - create
-    - scale
-    - import
+## Table of Contents
+<!-- toc -->
 
-DataSource
+- [User Guide](#user-guide)
+- [API Documentation](#api-documentation)
+- [Requirements](#requirements)
+- [Building The Provider](#building-the-provider)
 
-- [project](./docs/data-sources/project.md)
-- [region](./docs/data-sources/regions.md)
-    - AWS
-    - GCP
-    - Azure
-    - Alibaba Cloud
-    - Tecent Cloud
+<!-- tocstop -->
 
-## API Documentation
-
-API Documentation can be found on the [Terraform Registry](https://registry.terraform.io/providers/zilliztech/zillizcloud/latest/docs).
 
 ## User Guide
 
 See [Zilliz Cloud Terraform Integration Overview](./docs/README.md) for more information.
 
+## API Documentation
+
+API Documentation can be found on the [Terraform Registry](https://registry.terraform.io/providers/zilliztech/zillizcloud/latest/docs).
 
 ## Requirements
 
