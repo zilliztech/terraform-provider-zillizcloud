@@ -70,3 +70,6 @@ Here's a step-by-step guide on importing an existing Zilliz Cloud cluster into y
    This command will display the attributes and current configuration of the imported cluster.
 
 
+## Next Steps
+- [Tutorial: Creating Zilliz Cloud Cluster Resources with Terraform](./create-cluster.md)
+
