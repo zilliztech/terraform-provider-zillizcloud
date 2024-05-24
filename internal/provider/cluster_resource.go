@@ -75,7 +75,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"plan": schema.StringAttribute{
-				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Standard and Enterprise.",
+				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Free, Serverless, Standard and Enterprise.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

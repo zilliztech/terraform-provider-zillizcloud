@@ -14,14 +14,12 @@ data "zillizcloud_project" "default" {
 }
 
 resource "zillizcloud_cluster" "free_plan_cluster" {
-  # Defining a basic starter cluster
   cluster_name = "Cluster-01"                        # The name of the cluster
   plan         = "Free"                              # The service plan for the cluster The name of the cluster
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
 }
 
 resource "zillizcloud_cluster" "serverless_plan_cluster" {
-  # Defining a basic starter cluster
   cluster_name = "Cluster-02"                        # The name of the cluster
   plan         = "Serverless"                        # The service plan for the cluster# The name of the cluster
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
