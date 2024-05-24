@@ -80,12 +80,12 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
-				Validators: []validator.String{
-					stringvalidator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("cu_size"),
-						path.MatchRelative().AtParent().AtName("cu_type"),
-					),
-				},
+				// Validators: []validator.String{
+				// 	stringvalidator.AlsoRequires(
+				// 		path.MatchRelative().AtParent().AtName("cu_size"),
+				// 		path.MatchRelative().AtParent().AtName("cu_type"),
+				// 	),
+				// },
 			},
 			"cu_size": schema.Int64Attribute{
 				MarkdownDescription: "The size of the CU to be used for the created cluster. It is an integer from 1 to 256.",
@@ -249,10 +249,10 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	if (data.Plan.IsNull() || zilliz.Plan(data.Plan.ValueString()) == zilliz.FreePlan) && data.CuSize.IsUnknown() && data.CuType.IsNull() {
+	if (data.Plan.IsNull() || zilliz.Plan(data.Plan.ValueString()) == zilliz.FreePlan || zilliz.Plan(data.Plan.ValueString()) == zilliz.ServerlessPlan) && data.CuSize.IsUnknown() && data.CuType.IsNull() {
 
 		response, err = client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
-			// Plan:        zilliz.Plan(data.Plan.ValueString()),
+			Plan:        zilliz.Plan(data.Plan.ValueString()),
 			ClusterName: data.ClusterName.ValueString(),
 			ProjectId:   data.ProjectId.ValueString(),
 		})
