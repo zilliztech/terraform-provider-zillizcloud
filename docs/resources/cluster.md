@@ -29,14 +29,12 @@ data "zillizcloud_project" "default" {
 }
 
 resource "zillizcloud_cluster" "free_plan_cluster" {
-  # Defining a basic starter cluster
   cluster_name = "Cluster-01"                        # The name of the cluster
   plan         = "Free"                              # The service plan for the cluster The name of the cluster
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
 }
 
 resource "zillizcloud_cluster" "serverless_plan_cluster" {
-  # Defining a basic starter cluster
   cluster_name = "Cluster-02"                        # The name of the cluster
   plan         = "Serverless"                        # The service plan for the cluster# The name of the cluster
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
@@ -65,7 +63,7 @@ resource "zillizcloud_cluster" "standard_plan_cluster" {
 
 - `cu_size` (Number) The size of the CU to be used for the created cluster. It is an integer from 1 to 256.
 - `cu_type` (String) The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.
-- `plan` (String) The plan tier of the Zilliz Cloud service. Available options are Standard and Enterprise.
+- `plan` (String) The plan tier of the Zilliz Cloud service. Available options are Free, Serverless, Standard and Enterprise.
 - `region_id` (String) The ID of the region where the cluster exists.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
