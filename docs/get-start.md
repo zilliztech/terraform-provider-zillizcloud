@@ -69,4 +69,5 @@ By following these steps, you should have the Zilliz Cloud Terraform provider co
 
 ## Next Steps
 - Explore creating a **Free Plan** Cluster: [Creating a Free Plan Cluster](./create-a-free-cluster.md)
+- Explore creating a **Serverless Plan** Cluster: [Creating a Serverless Plan Cluster](./create-a-serverless-cluster.md)
 - Explore creating a **Standard Plan** Cluster: [Creating a Standard Plan Cluster](./create-a-standard-cluster.md)
