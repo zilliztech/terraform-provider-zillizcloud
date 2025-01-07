@@ -17,7 +17,7 @@ For general information about Terraform, visit the [official website](https://ww
 
 ## User Guide
 
-See [Zilliz Cloud Terraform Integration Overview](./docs/README.md) for more information.
+See [Zilliz Cloud Terraform Integration Overview](./docs/guides/README.md) for more information.
 
 ## API Documentation
 
