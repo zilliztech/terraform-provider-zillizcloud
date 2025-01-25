@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	byoc "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc"
 )
 
 // Ensure ZillizProvider satisfies various provider interfaces.
@@ -93,6 +94,7 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewClusterResource,
+		byoc.NewBYOCProjectResource,
 	}
 }
 
