@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	byoc "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc"
 )
 
 // Ensure ZillizProvider satisfies various provider interfaces.
@@ -31,6 +31,7 @@ type ZillizProvider struct {
 type zillizProviderModel struct {
 	ApiKey   types.String `tfsdk:"api_key"`
 	RegionId types.String `tfsdk:"region_id"`
+	BYOCMode types.Bool   `tfsdk:"byoc_mode"`
 }
 
 func (p *ZillizProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -50,13 +51,15 @@ func (p *ZillizProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 				MarkdownDescription: "Zilliz Cloud Region Id",
 				Optional:            true,
 			},
+			"byoc_mode": schema.BoolAttribute{
+				MarkdownDescription: "BYOC Mode",
+				Optional:            true,
+			},
 		},
 	}
 }
 
 func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-
-	tflog.Info(ctx, "Configuring client...")
 
 	var data zillizProviderModel
 
@@ -76,6 +79,7 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	client, err := zilliz.NewClient(
 		zilliz.WithApiKey(apiKey),
 		zilliz.WithCloudRegionId(data.RegionId.ValueString()),
+		zilliz.WithUseV2Api(data.BYOCMode.ValueBool()),
 	)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to create client: %v", err.Error())
@@ -90,6 +94,7 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewClusterResource,
+		byoc.NewBYOCProjectResource,
 	}
 }
 

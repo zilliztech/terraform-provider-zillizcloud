@@ -3,7 +3,7 @@
 page_title: "zillizcloud_cluster Resource - zillizcloud"
 subcategory: ""
 description: |-
-  Cluster resource. If 'plan', 'cusize' and 'cutype' are not specified, then a free cluster is created.
+  Cluster resource. If 'plan', 'cu_size' and 'cu_type' are not specified, then a free cluster is created.
 ---
 
 # zillizcloud_cluster (Resource)

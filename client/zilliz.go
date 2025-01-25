@@ -7,11 +7,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 const (
-	globalApiTemplateUrl string = "https://controller.api.%s.zillizcloud.com/v1/"
-	cnApiTemplateUrl     string = "https://controller.api.%s.cloud.zilliz.com.cn/v1/"
+	globalApiTemplateUrl   string = "https://controller.api.%s.zillizcloud.com/v1/"
+	cnApiTemplateUrl       string = "https://controller.api.%s.cloud.zilliz.com.cn/v1/"
+	globalApiTemplateUrlV2 string = "https://api.cloud.zilliz.com/v2/"
 )
 
 type HttpClient interface {
@@ -24,6 +26,7 @@ type Client struct {
 	baseUrl    string
 	userAgent  string
 	HttpClient HttpClient
+	useV2Api   bool
 }
 
 var (
@@ -149,6 +152,20 @@ func WithCloudRegionId(cloudRegionId string) Option {
 func WithApiKey(apiKey string) Option {
 	return func(c *Client) {
 		c.apiKey = apiKey
+	}
+}
+
+func WithUseV2Api(useV2Api bool) Option {
+	return func(c *Client) {
+		c.useV2Api = useV2Api
+		if c.useV2Api {
+			hostAddress := os.Getenv("ZILLIZCLOUD_HOST_ADDRESS")
+			if hostAddress != "" {
+				c.baseUrl = hostAddress + "/v2"
+			} else {
+				c.baseUrl = globalApiTemplateUrlV2
+			}
+		}
 	}
 }
 
@@ -281,7 +298,9 @@ func decodeResponse(body io.Reader, v any) error {
 
 	var apierr Error
 	err = json.Unmarshal(b, &apierr)
-	if err == nil && apierr.Code != 200 {
+	// if the error code is 0 or 200, it means the request is successful
+	// otherwise, it means the request is failed
+	if err == nil && apierr.Code != 200 && apierr.Code != 0 {
 		return &apierr
 	}
 	err = json.Unmarshal(b, v)
