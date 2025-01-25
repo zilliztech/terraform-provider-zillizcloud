@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	globalApiTemplateUrl string = "https://controller.api.%s.zillizcloud.com/v1/"
-	cnApiTemplateUrl     string = "https://controller.api.%s.cloud.zilliz.com.cn/v1/"
+	globalApiTemplateUrl   string = "https://controller.api.%s.zillizcloud.com/v1/"
+	cnApiTemplateUrl       string = "https://controller.api.%s.cloud.zilliz.com.cn/v1/"
 	globalApiTemplateUrlV2 string = "https://api.cloud.zilliz.com/v2/"
 )
 
