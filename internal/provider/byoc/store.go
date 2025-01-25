@@ -127,7 +127,7 @@ func (s *byocProjectStore) waitForStatus(ctx context.Context, timeout time.Durat
 	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
 		project, diags := s.Describe(ctx, projectID, dataPlaneID)
 		if diags.HasError() {
-			return retry.NonRetryableError(fmt.Errorf("failed to describe BYOC project: %w", diags))
+			return retry.NonRetryableError(fmt.Errorf("failed to describe BYOC project"))
 		}
 
 		tflog.Info(ctx, fmt.Sprintf("Describe BYOC Project response: %+v", project))
@@ -136,7 +136,7 @@ func (s *byocProjectStore) waitForStatus(ctx context.Context, timeout time.Durat
 			return retry.NonRetryableError(fmt.Errorf("BYOC project failed to create..."))
 		}
 
-		if BYOCProjectStatus(project.Status.ValueInt64()) != BYOCProjectStatus(status) {
+		if BYOCProjectStatus(project.Status.ValueInt64()) != status {
 			return retry.RetryableError(fmt.Errorf("BYOC project not yet in the %s state. Current state: %d", status, project.Status))
 		}
 		return nil

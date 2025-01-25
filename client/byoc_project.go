@@ -22,7 +22,6 @@ type AWSParam struct {
 	SecurityGroupIDs []string `json:"securityGroupIds"`
 }
 
-// create byoc project
 func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYOCProjectResponse, error) {
 	var response zillizResponse[CreateBYOCProjectResponse]
 	err := c.do("POST", "byoc/dataplane/create", params, &response)
@@ -32,7 +31,6 @@ func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYO
 	return &response.Data, err
 }
 
-// get byoc project
 func (c *Client) DescribeBYOCProject(params *DescribeBYOCProjectRequest) (*GetBYOCProjectResponse, error) {
 	var response zillizResponse[GetBYOCProjectResponse]
 	err := c.do("POST", "byoc/dataplane/describe", params, &response)

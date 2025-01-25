@@ -46,7 +46,6 @@ type InstancesConfig struct {
 	SearchVM      types.String `tfsdk:"search_vm"`
 }
 
-// refresh
 func (data *BYOCProjectResourceModel) refresh(input BYOCProjectResourceModel) {
 
 	data.AWS.Network.SubnetIDs = input.AWS.Network.SubnetIDs

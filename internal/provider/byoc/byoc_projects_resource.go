@@ -294,7 +294,7 @@ func (r *BYOCProjectResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 }
 
-// Convert Go slice to Terraform Set
+// Convert Go slice to Terraform Set.
 func sliceToTerraformSet(input []string) (types.Set, diag.Diagnostics) {
 	// Create a slice of `attr.Value` for each string
 	elements := make([]attr.Value, len(input))
