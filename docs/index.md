@@ -31,4 +31,5 @@ provider "zillizcloud" {
 ### Optional
 
 - `api_key` (String, Sensitive) Zilliz Cloud API Key
+- `byoc_mode` (Boolean) BYOC Mode
 - `region_id` (String) Zilliz Cloud Region Id
