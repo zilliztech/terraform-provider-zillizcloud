@@ -75,17 +75,8 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"plan": schema.StringAttribute{
-				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Free, Serverless, Standard and Enterprise.",
-				Optional:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-				// Validators: []validator.String{
-				// 	stringvalidator.AlsoRequires(
-				// 		path.MatchRelative().AtParent().AtName("cu_size"),
-				// 		path.MatchRelative().AtParent().AtName("cu_type"),
-				// 	),
-				// },
+				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.",
+				Required:            true,
 			},
 			"cu_size": schema.Int64Attribute{
 				MarkdownDescription: "The size of the CU to be used for the created cluster. It is an integer from 1 to 256.",
@@ -137,8 +128,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Computed:            true,
 			},
 			"cluster_type": schema.StringAttribute{
-				MarkdownDescription: "The type of CU associated with the cluster. Possible values are Performance-optimized and Capacity-optimized.",
+				MarkdownDescription: "[Deprecated] The type of CU associated with the cluster. Use 'cu_type' instead. Possible values are Performance-optimized and Capacity-optimized.",
 				Computed:            true,
+				DeprecationMessage:  "This attribute is deprecated and will be removed in a future version. Please use 'cu_type' instead.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -441,6 +433,8 @@ func (data *ClusterResourceModel) refresh(client *zilliz.Client) diag.Diagnostic
 	data.PrivateLinkAddress = types.StringValue(c.PrivateLinkAddress)
 	data.CreateTime = types.StringValue(c.CreateTime)
 	data.ProjectId = types.StringValue(c.ProjectId)
+	data.Plan = types.StringValue(string(c.Plan))
+	data.CuType = types.StringValue(c.ClusterType)
 
 	return diags
 }
