@@ -54,6 +54,7 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 			VPCID:            types.StringValue(project.AWSConfig.VPCID),
 			SubnetIDs:        subnetIDs,
 			SecurityGroupIDs: securityGroupIDs,
+			VPCEndpointID:    types.StringPointerValue(project.AWSConfig.EndpointID),
 		},
 		RoleARN: RoleARNConfig{
 			Storage:      types.StringValue(project.AWSConfig.ARN.StorageRoleArn),

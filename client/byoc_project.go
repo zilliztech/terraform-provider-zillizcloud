@@ -20,6 +20,7 @@ type AWSParam struct {
 	UserVpcID        string   `json:"userVpcId"`
 	SubnetIDs        []string `json:"subnetIds"`
 	SecurityGroupIDs []string `json:"securityGroupIds"`
+	VPCEndpointID    *string  `json:"endpointId"`
 }
 
 func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYOCProjectResponse, error) {
