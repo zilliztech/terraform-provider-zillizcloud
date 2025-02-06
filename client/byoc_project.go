@@ -40,6 +40,22 @@ func (c *Client) DescribeBYOCProject(params *DescribeBYOCProjectRequest) (*GetBY
 	return &response.Data, err
 }
 
+func (c *Client) GetExternalId() (string, error) {
+	var response zillizResponse[GetExternalIdResponse]
+	err := c.do("GET", "byoc/describe", nil, &response)
+	if err != nil {
+		return "", err
+	}
+	return response.Data.ExternalId, err
+}
+
+type GetExternalIdResponse struct {
+	OrgId          string   `json:"orgId"`
+	ExternalId     string   `json:"externalId"`
+	ServiceAccount string   `json:"serviceAccount"`
+	Clouds         []string `json:"clouds"`
+}
+
 type DescribeBYOCProjectRequest struct {
 	ProjectId   string `json:"projectId"`
 	DataPlaneID string `json:"dataPlaneId"`

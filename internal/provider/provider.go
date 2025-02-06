@@ -105,6 +105,7 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewProjectDataSource,
 		NewClustersDataSource,
 		NewClusterDataSource,
+		byoc.NewExternalIdDataSource,
 	}
 }
 
