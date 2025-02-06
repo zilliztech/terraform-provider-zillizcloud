@@ -1,15 +1,15 @@
 package client
 
 type CreateBYOCProjectRequest struct {
-	AWSParam      AWSParam `json:"awsParam"`
-	ProjectName   string   `json:"projectName"`
-	RegionID      string   `json:"regionId"`
-	CloudID       CloudId  `json:"cloudId"`
-	BYOCID        *string  `json:"byocId"`
-	FundamentalVM string   `json:"fundamentalVm"`
-	SearchVM      string   `json:"searchVm"`
-	CoreVM        string   `json:"coreVm"`
-	DeployType    int      `json:"deployType"`
+	AWSParam      *AWSParam `json:"awsParam"`
+	ProjectName   string    `json:"projectName"`
+	RegionID      string    `json:"regionId"`
+	CloudID       CloudId   `json:"cloudId"`
+	BYOCID        *string   `json:"byocId"`
+	FundamentalVM string    `json:"fundamentalVm"`
+	SearchVM      string    `json:"searchVm"`
+	CoreVM        string    `json:"coreVm"`
+	DeployType    int       `json:"deployType"`
 }
 
 type AWSParam struct {
