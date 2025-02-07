@@ -155,7 +155,7 @@ func WithApiKey(apiKey string) Option {
 }
 
 func WithHostAddress(address string) Option {
-	return func(c *Client) {	
+	return func(c *Client) {
 		c.baseUrl = address
 	}
 }

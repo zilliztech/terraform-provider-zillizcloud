@@ -92,6 +92,7 @@ type GetBYOCProjectResponse struct {
 	LastUpdateMilli int64       `json:"lastUpdateMilli"`
 	Message         string      `json:"message"`
 	ProjectID       string      `json:"projectId"`
+	ProjectName     string      `json:"projectName"`
 	RegionID        string      `json:"regionId"`
 	Status          int         `json:"status"`
 }

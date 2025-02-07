@@ -7,8 +7,6 @@ terraform {
 }
 
 provider "zillizcloud" {
-  api_key   = "xxx"
-  byoc_mode = true
 }
 
 resource "zillizcloud_byoc_project" "this" {
@@ -39,4 +37,5 @@ resource "zillizcloud_byoc_project" "this" {
       search_vm      = "m6id.2xlarge"
     }
   }
+
 }
