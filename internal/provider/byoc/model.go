@@ -16,11 +16,11 @@ type BYOCProjectResourceModel struct {
 }
 
 type AWSConfig struct {
-	Region    types.String     `tfsdk:"region"`
-	Network   *NetworkConfig   `tfsdk:"network"`
-	RoleARN   *RoleARNConfig   `tfsdk:"role_arn"`
-	Storage   *StorageConfig   `tfsdk:"storage"`
-	Instances *InstancesConfig `tfsdk:"instances"`
+	Region    types.String    `tfsdk:"region"`
+	Network   NetworkConfig   `tfsdk:"network"`
+	RoleARN   RoleARNConfig   `tfsdk:"role_arn"`
+	Storage   StorageConfig   `tfsdk:"storage"`
+	Instances InstancesConfig `tfsdk:"instances"`
 }
 
 type NetworkConfig struct {
@@ -47,21 +47,21 @@ type InstancesConfig struct {
 }
 
 func (data *BYOCProjectResourceModel) refresh(input BYOCProjectResourceModel) {
+	if data.AWS != nil {
+		data.AWS.Network.SubnetIDs = input.AWS.Network.SubnetIDs
+		data.AWS.Network.SecurityGroupIDs = input.AWS.Network.SecurityGroupIDs
+		data.AWS.Network.VPCEndpointID = input.AWS.Network.VPCEndpointID
 
-	data.AWS.Network.SubnetIDs = input.AWS.Network.SubnetIDs
-	data.AWS.Network.SecurityGroupIDs = input.AWS.Network.SecurityGroupIDs
-	data.AWS.Network.VPCEndpointID = input.AWS.Network.VPCEndpointID
+		data.AWS.RoleARN.Storage = input.AWS.RoleARN.Storage
+		data.AWS.RoleARN.EKS = input.AWS.RoleARN.EKS
+		data.AWS.RoleARN.CrossAccount = input.AWS.RoleARN.CrossAccount
 
-	data.AWS.RoleARN.Storage = input.AWS.RoleARN.Storage
-	data.AWS.RoleARN.EKS = input.AWS.RoleARN.EKS
-	data.AWS.RoleARN.CrossAccount = input.AWS.RoleARN.CrossAccount
+		data.AWS.Storage.BucketID = input.AWS.Storage.BucketID
 
-	data.AWS.Storage.BucketID = input.AWS.Storage.BucketID
-
-	data.AWS.Instances.CoreVM = input.AWS.Instances.CoreVM
-	data.AWS.Instances.FundamentalVM = input.AWS.Instances.FundamentalVM
-	data.AWS.Instances.SearchVM = input.AWS.Instances.SearchVM
-
+		data.AWS.Instances.CoreVM = input.AWS.Instances.CoreVM
+		data.AWS.Instances.FundamentalVM = input.AWS.Instances.FundamentalVM
+		data.AWS.Instances.SearchVM = input.AWS.Instances.SearchVM
+	}
 	data.Status = input.Status
 }
 

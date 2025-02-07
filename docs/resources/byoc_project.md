@@ -62,11 +62,11 @@ resource "zillizcloud_byoc_project" "this" {
 
 ### Required
 
-- `aws` (Attributes) AWS configuration for the BYOC project (see [below for nested schema](#nestedatt--aws))
 - `name` (String) The name of the BYOC project
 
 ### Optional
 
+- `aws` (Attributes) AWS configuration for the BYOC project (see [below for nested schema](#nestedatt--aws))
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

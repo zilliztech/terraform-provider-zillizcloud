@@ -81,7 +81,7 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"aws": schema.SingleNestedAttribute{
 				MarkdownDescription: "AWS configuration for the BYOC project",
-				Required:            true,
+				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"region": schema.StringAttribute{
 						MarkdownDescription: "AWS region",
