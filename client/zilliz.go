@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 )
 
 const (
@@ -155,16 +154,18 @@ func WithApiKey(apiKey string) Option {
 	}
 }
 
+func WithHostAddress(address string) Option {
+	return func(c *Client) {
+		c.baseUrl = address
+	}
+}
+
 func WithUseV2Api(useV2Api bool) Option {
 	return func(c *Client) {
 		c.useV2Api = useV2Api
-		if c.useV2Api {
-			hostAddress := os.Getenv("ZILLIZCLOUD_HOST_ADDRESS")
-			if hostAddress != "" {
-				c.baseUrl = hostAddress + "/v2"
-			} else {
-				c.baseUrl = globalApiTemplateUrlV2
-			}
+		// if base url is not set, use the default base url for v2 api
+		if c.baseUrl == "" {
+			c.baseUrl = globalApiTemplateUrlV2
 		}
 	}
 }

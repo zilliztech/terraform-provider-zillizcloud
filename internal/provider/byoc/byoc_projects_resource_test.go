@@ -62,6 +62,12 @@ resource "zillizcloud_byoc_project" "test" {
 				),
 				PreventPostDestroyRefresh: true,
 			},
+			// Import testing
+			{
+				ResourceName:      "zillizcloud_byoc_project.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }

@@ -29,9 +29,10 @@ type ZillizProvider struct {
 
 // zillizProviderModel describes the provider data model.
 type zillizProviderModel struct {
-	ApiKey   types.String `tfsdk:"api_key"`
-	RegionId types.String `tfsdk:"region_id"`
-	BYOCMode types.Bool   `tfsdk:"byoc_mode"`
+	ApiKey      types.String `tfsdk:"api_key"`
+	RegionId    types.String `tfsdk:"region_id"`
+	BYOCMode    types.Bool   `tfsdk:"byoc_mode"`
+	HostAddress types.String `tfsdk:"host_address"`
 }
 
 func (p *ZillizProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -55,6 +56,10 @@ func (p *ZillizProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 				MarkdownDescription: "BYOC Mode",
 				Optional:            true,
 			},
+			"host_address": schema.StringAttribute{
+				MarkdownDescription: "Zilliz Cloud Host Address",
+				Optional:            true,
+			},
 		},
 	}
 }
@@ -76,9 +81,15 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		apiKey = data.ApiKey.ValueString()
 	}
 
+	hostAddress := os.Getenv("ZILLIZCLOUD_HOST_ADDRESS")
+	if !data.HostAddress.IsNull() {
+		hostAddress = data.HostAddress.ValueString()
+	}
+
 	client, err := zilliz.NewClient(
 		zilliz.WithApiKey(apiKey),
 		zilliz.WithCloudRegionId(data.RegionId.ValueString()),
+		zilliz.WithHostAddress(hostAddress),
 		zilliz.WithUseV2Api(data.BYOCMode.ValueBool()),
 	)
 	if err != nil {
