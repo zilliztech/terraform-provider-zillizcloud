@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	defaultBYOCProjectCreateTimeout time.Duration = 60 * time.Minute
+	defaultBYOCProjectCreateTimeout time.Duration = 120 * time.Minute
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
