@@ -1,5 +1,7 @@
 package client
 
+import "strings"
+
 type Plan string
 
 var (
@@ -50,6 +52,7 @@ type Cluster struct {
 	Description        string `json:"description"`
 	RegionId           string `json:"regionId"`
 	ClusterType        string `json:"clusterType"`
+	CuType             string `json:"cuType"`
 	Plan               Plan   `json:"plan"`
 	CuSize             int64  `json:"cuSize"`
 	Status             string `json:"status"`
@@ -66,9 +69,20 @@ func (c *Client) ListClusters() (Clusters, error) {
 }
 
 func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
-	var cluster zillizResponse[Cluster]
-	err := c.do("GET", "clusters/"+clusterId, nil, &cluster)
-	return cluster.Data, err
+	var response zillizResponse[Cluster]
+	err := c.do("GET", "clusters/"+clusterId, nil, &response)
+	if err != nil {
+		return Cluster{}, err
+	}
+	cluster := response.Data
+
+	// TODO: remove this once we have a better way to determine the plan
+	// in03- is a free cluster
+	if strings.HasPrefix(cluster.ClusterId, "in03-") {
+		cluster.Plan = FreePlan
+	}
+
+	return cluster, err
 }
 
 type CreateClusterParams struct {
@@ -77,14 +91,13 @@ type CreateClusterParams struct {
 	CUSize      int    `json:"cuSize"`
 	CUType      string `json:"cuType"`
 	ProjectId   string `json:"projectId"`
-	RegionId    string
+	RegionId    string `json:"regionId"`
 }
 
 type CreateServerlessClusterParams struct {
 	ClusterName string `json:"clusterName"`
 	ProjectId   string `json:"projectId"`
-	Plan        Plan   `json:"plan,omitempty"`
-	RegionId    string
+	RegionId    string `json:"regionId"`
 }
 
 type CreateClusterResponse struct {
@@ -100,6 +113,24 @@ func (c *Client) CreateCluster(params CreateClusterParams) (*CreateClusterRespon
 	}
 	var clusterResponse zillizResponse[CreateClusterResponse]
 	err := c.do("POST", "clusters/create", params, &clusterResponse)
+	return &clusterResponse.Data, err
+}
+
+func (c *Client) CreateDedicatedCluster(params CreateClusterParams) (*CreateClusterResponse, error) {
+	if params.RegionId == "" && c.RegionId == "" {
+		return nil, errRegionIdRequired
+	}
+	var clusterResponse zillizResponse[CreateClusterResponse]
+	err := c.do("POST", "clusters/createDedicated", params, &clusterResponse)
+	return &clusterResponse.Data, err
+}
+
+func (c *Client) CreateFreeCluster(params CreateServerlessClusterParams) (*CreateClusterResponse, error) {
+	if params.RegionId == "" && c.RegionId == "" {
+		return nil, errRegionIdRequired
+	}
+	var clusterResponse zillizResponse[CreateClusterResponse]
+	err := c.do("POST", "clusters/createFree", params, &clusterResponse)
 	return &clusterResponse.Data, err
 }
 

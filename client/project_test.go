@@ -39,7 +39,7 @@ func TestClient_ListProject(t *testing.T) {
 
 		_, err := c.ListProjects()
 		var apierr = Error{
-			Code: 80001,
+			Code: 21119,
 		}
 		if !errors.Is(err, apierr) {
 			t.Errorf("want = %v, got = %v", apierr, err)

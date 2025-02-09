@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -31,5 +30,5 @@ func BaseUrlFrom(cloudRegionId string) string {
 
 	}
 
-	return fmt.Sprintf(template, cloudRegionId)
+	return template
 }

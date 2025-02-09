@@ -58,13 +58,14 @@ func TestClient_Cluster(t *testing.T) {
 		ClusterName: "a-standard-type-cluster",
 		CUSize:      1,
 		CUType:      "Performance-optimized",
+		RegionId:    "gcp-us-west1",
 	}
 
 	t.Run("CreateCluster", func(t *testing.T) {
 		c, teardown := zillizClient[Clusters](t)
 		defer teardown()
 
-		resp, err := c.CreateCluster(params)
+		resp, err := c.CreateDedicatedCluster(params)
 		if err != nil {
 			t.Fatalf("failed to create cluster: %v", err)
 		}
@@ -80,10 +81,10 @@ func TestClient_Cluster(t *testing.T) {
 
 		c, teardown := zillizClient[Clusters](t)
 		defer teardown()
-		_, err := c.CreateCluster(params)
+		_, err := c.CreateDedicatedCluster(params)
 
 		var e = Error{
-			Code: 80010,
+			Code: 40013,
 		}
 
 		if !errors.Is(err, e) {
@@ -191,6 +192,7 @@ func TestClient_ServerlessCluster(t *testing.T) {
 	params := CreateServerlessClusterParams{
 		ProjectId:   projectID,
 		ClusterName: "a-starter-type-cluster",
+		RegionId:    "gcp-us-west1",
 	}
 
 	t.Run("create serverless cluster", func(t *testing.T) {
@@ -261,6 +263,114 @@ func TestClient_ServerlessCluster(t *testing.T) {
 	})
 }
 
+func TestClient_FreeCluster(t *testing.T) {
+	var clusterId string
+	var projectID string
+	if update {
+		pollInterval = 60
+	}
+
+	checkClusterId := func(clusterId string) func(resp *Cluster) bool {
+		return func(resp *Cluster) bool {
+			return resp.ClusterId == clusterId
+		}
+	}
+
+	c, teardown := zillizClient[Clusters](t)
+	defer teardown()
+
+	getProject := func() string {
+
+		projects, err := c.ListProjects()
+		if err != nil {
+			t.Fatalf("failed to list projects: %v", err)
+		}
+
+		var want string = "Default Project"
+
+		if len(projects) == 0 || projects[0].ProjectName != want {
+			t.Errorf("want = %s, got = %v", want, projects)
+		}
+
+		return projects[0].ProjectId
+	}
+
+	projectID = getProject()
+	params := CreateServerlessClusterParams{
+		ProjectId:   projectID,
+		ClusterName: "a-starter-type-cluster",
+		RegionId:    "gcp-us-west1",
+	}
+
+	t.Run("create free cluster", func(t *testing.T) {
+		c, teardown := zillizClient[Clusters](t)
+		defer teardown()
+
+		resp, err := c.CreateFreeCluster(params)
+		if err != nil {
+			t.Fatalf("failed to create cluster: %v", err)
+		}
+
+		if resp.ClusterId == "" {
+			t.Fatalf("failed to create cluster: %v", resp)
+		}
+
+		clusterId = resp.ClusterId
+	})
+
+	t.Run("duplicately create cluster", func(t *testing.T) {
+
+		c, teardown := zillizClient[Clusters](t)
+		defer teardown()
+
+		_, err := c.CreateFreeCluster(params)
+		var e = Error{
+			Code: 80010,
+		}
+
+		if !errors.Is(err, e) {
+			t.Fatalf("want = %v, but got = %v", e, err)
+		}
+
+	})
+
+	t.Run("DescribeCluster", func(t *testing.T) {
+
+		c, teardown := zillizClient[Clusters](t)
+		defer teardown()
+		// checkfn:=make([]func(resp *Cluster) bool,0)
+		checkfn := []func(resp *Cluster) bool{
+			checkClusterId(clusterId),
+		}
+
+		ctx, cancelfn := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancelfn()
+		got := pollClusterStatus(ctx, t, c, clusterId, "RUNNING", pollInterval)
+
+		for _, fn := range checkfn {
+			if !fn(got) {
+				t.Errorf("check failed")
+			}
+		}
+
+	})
+
+	t.Run("DeleteCluster", func(t *testing.T) {
+
+		c, teardown := zillizClient[Clusters](t)
+		defer teardown()
+		got, err := c.DropCluster(clusterId)
+		if err != nil {
+			t.Fatalf("failed to delete cluster: %v", err)
+		}
+
+		if got == nil || *got != clusterId {
+			t.Fatalf("want = %s, got = %v", clusterId, got)
+		}
+	})
+}
+
+// nolint:unparam
 func pollClusterStatus(ctx context.Context, t *testing.T, c *Client, clusterId string, status string, pollingInterval int) *Cluster {
 
 	var (
