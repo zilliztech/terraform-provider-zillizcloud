@@ -62,6 +62,7 @@ resource "zillizcloud_cluster" "standard_plan_cluster" {
 
 ### Optional
 
+- `cluster_type` (String, Deprecated) [Deprecated] The type of CU associated with the cluster. Use 'cu_type' instead. Possible values are Performance-optimized and Capacity-optimized.
 - `cu_size` (Number) The size of the CU to be used for the created cluster. It is an integer from 1 to 256.
 - `cu_type` (String) The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.
 - `region_id` (String) The ID of the region where the cluster exists.
@@ -69,7 +70,6 @@ resource "zillizcloud_cluster" "standard_plan_cluster" {
 
 ### Read-Only
 
-- `cluster_type` (String, Deprecated) [Deprecated] The type of CU associated with the cluster. Use 'cu_type' instead. Possible values are Performance-optimized and Capacity-optimized.
 - `connect_address` (String) The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.
 - `create_time` (String) The time at which the cluster has been created.
 - `description` (String) An optional description about the cluster.
