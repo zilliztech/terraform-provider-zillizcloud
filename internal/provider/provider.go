@@ -31,7 +31,6 @@ type ZillizProvider struct {
 type zillizProviderModel struct {
 	ApiKey      types.String `tfsdk:"api_key"`
 	RegionId    types.String `tfsdk:"region_id"`
-	BYOCMode    types.Bool   `tfsdk:"byoc_mode"`
 	HostAddress types.String `tfsdk:"host_address"`
 }
 
@@ -50,10 +49,6 @@ func (p *ZillizProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 			},
 			"region_id": schema.StringAttribute{
 				MarkdownDescription: "Zilliz Cloud Region Id",
-				Optional:            true,
-			},
-			"byoc_mode": schema.BoolAttribute{
-				MarkdownDescription: "BYOC Mode",
 				Optional:            true,
 			},
 			"host_address": schema.StringAttribute{
@@ -90,7 +85,6 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		zilliz.WithApiKey(apiKey),
 		zilliz.WithCloudRegionId(data.RegionId.ValueString()),
 		zilliz.WithHostAddress(hostAddress),
-		zilliz.WithUseV2Api(data.BYOCMode.ValueBool()),
 	)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to create client: %v", err.Error())

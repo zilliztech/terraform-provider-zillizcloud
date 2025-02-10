@@ -12,8 +12,6 @@ const (
 	// such as updating the Makefile and running the testing through that tool.
 	ProviderConfig = `
 provider "zillizcloud" {
-
-byoc_mode = true
 }
 `
 )
