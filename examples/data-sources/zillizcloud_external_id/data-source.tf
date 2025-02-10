@@ -7,7 +7,6 @@ terraform {
 }
 
 provider "zillizcloud" {
-  byoc_mode = true
 }
 
 data "zillizcloud_external_id" "current" {

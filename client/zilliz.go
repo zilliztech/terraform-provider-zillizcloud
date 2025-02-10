@@ -10,9 +10,8 @@ import (
 )
 
 const (
-	globalApiTemplateUrl   string = "https://controller.api.%s.zillizcloud.com/v1/"
-	cnApiTemplateUrl       string = "https://controller.api.%s.cloud.zilliz.com.cn/v1/"
-	globalApiTemplateUrlV2 string = "https://api.cloud.zilliz.com/v2/"
+	globalApiTemplateUrl string = "https://api.cloud.zilliz.com/v2"
+	cnApiTemplateUrl     string = "https://api.cloud.zilliz.com.cn/v2"
 )
 
 type HttpClient interface {
@@ -25,7 +24,6 @@ type Client struct {
 	baseUrl    string
 	userAgent  string
 	HttpClient HttpClient
-	useV2Api   bool
 }
 
 var (
@@ -157,16 +155,6 @@ func WithApiKey(apiKey string) Option {
 func WithHostAddress(address string) Option {
 	return func(c *Client) {
 		c.baseUrl = address
-	}
-}
-
-func WithUseV2Api(useV2Api bool) Option {
-	return func(c *Client) {
-		c.useV2Api = useV2Api
-		// if base url is not set, use the default base url for v2 api
-		if c.baseUrl == "" {
-			c.baseUrl = globalApiTemplateUrlV2
-		}
 	}
 }
 

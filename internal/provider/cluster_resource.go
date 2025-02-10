@@ -43,6 +43,7 @@ func NewClusterResource() resource.Resource {
 // ClusterResource defines the resource implementation.
 type ClusterResource struct {
 	client *zilliz.Client
+	store  ClusterStore
 }
 
 func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -95,6 +96,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"cu_type": schema.StringAttribute{
 				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.",
 				Optional:            true,
+				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -130,6 +132,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"cluster_type": schema.StringAttribute{
 				MarkdownDescription: "[Deprecated] The type of CU associated with the cluster. Use 'cu_type' instead. Possible values are Performance-optimized and Capacity-optimized.",
 				Computed:            true,
+				Optional:            true,
 				DeprecationMessage:  "This attribute is deprecated and will be removed in a future version. Please use 'cu_type' instead.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -189,6 +192,7 @@ func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureR
 	}
 
 	r.client = client
+	r.store = &ClusterStoreImpl{client: client}
 }
 
 func CloneClient(ctx context.Context, client *zilliz.Client, data *ClusterResourceModel) (*zilliz.Client, error) {
@@ -232,40 +236,17 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	var response *zilliz.CreateClusterResponse
 	var err error
 
-	client, err := CloneClient(ctx, r.client, &data)
-	if err != nil {
-		resp.Diagnostics.AddError("client error", err.Error())
-		return
-	}
-
-	if (data.Plan.IsNull() || zilliz.Plan(data.Plan.ValueString()) == zilliz.FreePlan || zilliz.Plan(data.Plan.ValueString()) == zilliz.ServerlessPlan) && data.CuSize.IsUnknown() && data.CuType.IsNull() {
-
-		response, err = client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
-			Plan:        zilliz.Plan(data.Plan.ValueString()),
-			ClusterName: data.ClusterName.ValueString(),
-			ProjectId:   data.ProjectId.ValueString(),
-		})
-	} else {
-		response, err = client.CreateCluster(zilliz.CreateClusterParams{
-			Plan:        zilliz.Plan(data.Plan.ValueString()),
-			ClusterName: data.ClusterName.ValueString(),
-			CUSize:      int(data.CuSize.ValueInt64()),
-			CUType:      data.CuType.ValueString(),
-			ProjectId:   data.ProjectId.ValueString(),
-		})
-	}
+	cluster, err := r.store.Create(ctx, &data)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create cluster", err.Error())
 		return
 	}
 
-	data.ClusterId = types.StringValue(response.ClusterId)
-	data.Username = types.StringValue(response.Username)
-	data.Password = types.StringValue(response.Password)
-	data.Prompt = types.StringValue(response.Prompt)
+	data.Username = cluster.Username
+	data.Password = cluster.Password
+	data.Prompt = cluster.Prompt
 
 	// Wait for cluster to be RUNNING
 	// Create() is passed a default timeout to use if no value
@@ -276,12 +257,19 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	resp.Diagnostics.Append(data.waitForStatus(ctx, createTimeout, client, "RUNNING")...)
+	resp.Diagnostics.Append(r.waitForStatus(ctx, createTimeout, cluster.ClusterId.ValueString(), "RUNNING")...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(data.refresh(client)...)
+	cluster, err = r.store.Get(ctx, cluster.ClusterId.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
+		return
+	}
+
+	data.populate(cluster)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -293,12 +281,13 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	client, err := CloneClient(ctx, r.client, &state)
+	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("client error", err.Error())
+		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(state.refresh(client)...)
+
+	state.populate(cluster)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -320,19 +309,12 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	client, err := CloneClient(ctx, r.client, &state)
-	if err != nil {
-		resp.Diagnostics.AddError("client error", err.Error())
-		return
-	}
-	// Only support changes of cuSize - all other attributes are set to ForceNew
-	_, err = client.ModifyCluster(state.ClusterId.ValueString(), &zilliz.ModifyClusterParams{
-		CuSize: int(plan.CuSize.ValueInt64()),
-	})
-
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to modify cluster", err.Error())
-		return
+	if plan.CuSize.ValueInt64() != state.CuSize.ValueInt64() {
+		err := r.store.UpgradeCuSize(ctx, state.ClusterId.ValueString(), int(plan.CuSize.ValueInt64()))
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to modify cluster", err.Error())
+			return
+		}
 	}
 
 	// Wait for cluster to be RUNNING
@@ -344,13 +326,20 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	resp.Diagnostics.Append(state.waitForStatus(ctx, updateTimeout, client, "RUNNING")...)
+	resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
+		return
+	}
+
+	state.populate(cluster)
+
 	// Save updated data into Terraform state
-	resp.Diagnostics.Append(state.refresh(client)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -362,12 +351,7 @@ func (r *ClusterResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	client, err := CloneClient(ctx, r.client, &data)
-	if err != nil {
-		resp.Diagnostics.AddError("client error", err.Error())
-		return
-	}
-	_, err = client.DropCluster(data.ClusterId.ValueString())
+	err := r.store.Delete(ctx, data.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to drop cluster", err.Error())
 		return
@@ -389,7 +373,116 @@ func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportSt
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("region_id"), idParts[1])...)
 }
 
-// ClusterResourceModel describes the resource data model.
+func (r *ClusterResource) waitForStatus(ctx context.Context, timeout time.Duration, clusterId string, status string) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
+		cluster, err := r.client.DescribeCluster(clusterId)
+		if err != nil {
+			return retry.NonRetryableError(err)
+		}
+		if cluster.Status != status {
+			return retry.RetryableError(fmt.Errorf("cluster not yet in the %s state. Current state: %s", status, cluster.Status))
+		}
+		return nil
+	})
+	if err != nil {
+		diags.AddError("Failed to wait for cluster to enter the RUNNING state.", err.Error())
+	}
+
+	return diags
+}
+
+type ClusterStoreImpl struct {
+	client *zilliz.Client
+}
+
+type ClusterStore interface {
+	Get(ctx context.Context, clusterId string) (*ClusterResourceModel, error)
+	Create(ctx context.Context, cluster *ClusterResourceModel) (*ClusterResourceModel, error)
+	Delete(ctx context.Context, clusterId string) error
+	UpgradeCuSize(ctx context.Context, clusterId string, cuSize int) error
+}
+
+func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterResourceModel, error) {
+	cluster, err := c.client.DescribeCluster(clusterId)
+	if err != nil {
+		return nil, err
+	}
+	return &ClusterResourceModel{
+		ClusterId:   types.StringValue(cluster.ClusterId),
+		Plan:        types.StringValue(string(cluster.Plan)),
+		ClusterName: types.StringValue(cluster.ClusterName),
+		CuSize:      types.Int64Value(cluster.CuSize),
+		CuType:      types.StringValue(cluster.CuType),
+		ProjectId:   types.StringValue(cluster.ProjectId),
+		// Username:           types.StringValue(cluster.Username),
+		// Password:           types.StringValue(cluster.Password),
+		// Prompt:             types.StringValue(cluster.Prompt),
+		Description:        types.StringValue(cluster.Description),
+		RegionId:           types.StringValue(cluster.RegionId),
+		Status:             types.StringValue(cluster.Status),
+		ConnectAddress:     types.StringValue(cluster.ConnectAddress),
+		PrivateLinkAddress: types.StringValue(cluster.PrivateLinkAddress),
+	}, nil
+}
+
+func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceModel) (ret *ClusterResourceModel, err error) {
+	var response *zilliz.CreateClusterResponse
+
+	regionId := cluster.RegionId.ValueString()
+	if cluster.RegionId.IsNull() || cluster.RegionId.ValueString() == "" {
+		regionId = c.client.RegionId
+	}
+
+	if cluster.Plan.IsNull() || zilliz.Plan(cluster.Plan.ValueString()) == zilliz.FreePlan {
+		response, err = c.client.CreateFreeCluster(zilliz.CreateServerlessClusterParams{
+			RegionId:    regionId,
+			ClusterName: cluster.ClusterName.ValueString(),
+			ProjectId:   cluster.ProjectId.ValueString(),
+		})
+	} else if zilliz.Plan(cluster.Plan.ValueString()) == zilliz.ServerlessPlan {
+		response, err = c.client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
+			RegionId:    regionId,
+			ClusterName: cluster.ClusterName.ValueString(),
+			ProjectId:   cluster.ProjectId.ValueString(),
+		})
+	} else if zilliz.Plan(cluster.Plan.ValueString()) == zilliz.StandardPlan || zilliz.Plan(cluster.Plan.ValueString()) == zilliz.EnterprisePlan {
+		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
+			RegionId:    regionId,
+			Plan:        zilliz.Plan(cluster.Plan.ValueString()),
+			ClusterName: cluster.ClusterName.ValueString(),
+			CUSize:      int(cluster.CuSize.ValueInt64()),
+			CUType:      cluster.CuType.ValueString(),
+			ProjectId:   cluster.ProjectId.ValueString(),
+		})
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret = &ClusterResourceModel{
+		ClusterId: types.StringValue(response.ClusterId),
+		Username:  types.StringValue(response.Username),
+		Password:  types.StringValue(response.Password),
+		Prompt:    types.StringValue(response.Prompt),
+	}
+	return ret, nil
+}
+
+func (c *ClusterStoreImpl) Delete(ctx context.Context, clusterId string) error {
+	_, err := c.client.DropCluster(clusterId)
+	return err
+}
+
+func (c *ClusterStoreImpl) UpgradeCuSize(ctx context.Context, clusterId string, cuSize int) error {
+	_, err := c.client.ModifyCluster(clusterId, &zilliz.ModifyClusterParams{
+		CuSize: cuSize,
+	})
+	return err
+}
+
 type ClusterResourceModel struct {
 	ClusterId          types.String   `tfsdk:"id"`
 	Plan               types.String   `tfsdk:"plan"`
@@ -410,51 +503,22 @@ type ClusterResourceModel struct {
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
-func (data *ClusterResourceModel) refresh(client *zilliz.Client) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var err error
-
-	c, err := client.DescribeCluster(data.ClusterId.ValueString())
-	if err != nil {
-		diags.AddError("Client Error", fmt.Sprintf("Unable to DescribeCluster, got error: %s", err))
-		return diags
-	}
-
-	// Save data into Terraform state
-	data.ClusterId = types.StringValue(c.ClusterId)
-	data.ClusterName = types.StringValue(c.ClusterName)
-	data.CuSize = types.Int64Value(c.CuSize)
-
-	data.Description = types.StringValue(c.Description)
-	data.RegionId = types.StringValue(c.RegionId)
-	data.ClusterType = types.StringValue(c.ClusterType)
-	data.Status = types.StringValue(c.Status)
-	data.ConnectAddress = types.StringValue(c.ConnectAddress)
-	data.PrivateLinkAddress = types.StringValue(c.PrivateLinkAddress)
-	data.CreateTime = types.StringValue(c.CreateTime)
-	data.ProjectId = types.StringValue(c.ProjectId)
-	data.Plan = types.StringValue(string(c.Plan))
-	data.CuType = types.StringValue(c.ClusterType)
-
-	return diags
-}
-
-func (data *ClusterResourceModel) waitForStatus(ctx context.Context, timeout time.Duration, client *zilliz.Client, status string) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
-		cluster, err := client.DescribeCluster(data.ClusterId.ValueString())
-		if err != nil {
-			return retry.NonRetryableError(err)
-		}
-		if cluster.Status != status {
-			return retry.RetryableError(fmt.Errorf("cluster not yet in the %s state. Current state: %s", status, cluster.Status))
-		}
-		return nil
-	})
-	if err != nil {
-		diags.AddError("Failed to wait for cluster to enter the RUNNING state.", err.Error())
-	}
-
-	return diags
+// populate the ClusterResourceModel with the input which is the response from the API.
+func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
+	data.ClusterId = input.ClusterId
+	data.Plan = input.Plan
+	data.ClusterName = input.ClusterName
+	data.CuSize = input.CuSize
+	data.CuType = input.CuType
+	data.ClusterType = input.CuType
+	data.ProjectId = input.ProjectId
+	// data.Username = input.Username
+	// data.Password = input.Password
+	// data.Prompt = input.Prompt
+	data.Description = input.Description
+	data.RegionId = input.RegionId
+	data.Status = input.Status
+	data.ConnectAddress = input.ConnectAddress
+	data.PrivateLinkAddress = input.PrivateLinkAddress
+	data.CreateTime = input.CreateTime
 }
