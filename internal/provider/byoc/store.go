@@ -37,7 +37,7 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 
 	data.Status = types.Int64Value(int64(project.Status))
 	data.ID = types.StringValue(project.ProjectID)
-	data.Name = types.StringValue(project.ProjectName)
+	// data.Name = types.StringValue(project.ProjectName)
 	data.DataPlaneID = types.StringValue(project.DataPlaneID)
 	subnetIDs, diags := sliceToTerraformSet(project.AWSConfig.SubnetIDs)
 
