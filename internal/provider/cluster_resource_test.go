@@ -74,8 +74,8 @@ resource "zillizcloud_cluster" "test" {
   cu_type      = "Performance-optimized"             # The type of compute unit, optimized for performance
   project_id   = data.zillizcloud_project.default.id
   timeouts {
-    create = "10m"
-	update = "10m"
+	create = "20m"
+	update = "20m"
   }
 }
 `,
@@ -113,6 +113,9 @@ resource "zillizcloud_cluster" "test" {
 			// Test update
 			{
 				Config: provider.ProviderConfig + `
+				data "zillizcloud_project" "default" {
+				}
+
 				resource "zillizcloud_cluster" "test" {
 					cluster_name = "a-standard-cluster"
 					plan         = "Standard"
@@ -120,8 +123,8 @@ resource "zillizcloud_cluster" "test" {
 					cu_type      = "Performance-optimized"             # The type of compute unit, optimized for performance
 					project_id   = data.zillizcloud_project.default.id
 					timeouts {
-						create = "10m"
-						update = "10m"
+						create = "20m"
+						update = "20m"
 					}
 				}
 				`,
