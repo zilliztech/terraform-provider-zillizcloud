@@ -52,7 +52,7 @@ func Poll[T any](pctx context.Context, timeout time.Duration, fn func() (*T, *Er
 	}
 }
 
-// Err represents a retriable error
+// Err represents a retriable error.
 type Err struct {
 	Err  error
 	Halt bool

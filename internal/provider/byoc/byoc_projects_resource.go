@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
@@ -34,7 +33,6 @@ const (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BYOCProjectResource{}
 var _ resource.ResourceWithConfigure = &BYOCProjectResource{}
-var _ resource.ResourceWithImportState = &BYOCProjectResource{}
 
 func NewBYOCProjectResource() resource.Resource {
 	return &BYOCProjectResource{}
@@ -343,9 +341,4 @@ func (r *BYOCProjectResource) Delete(ctx context.Context, req resource.DeleteReq
 		resp.Diagnostics.AddError("Failed to delete BYOC project", err.Error())
 		return
 	}
-}
-
-func (r *BYOCProjectResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Retrieve import ID and save to id attribute
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
