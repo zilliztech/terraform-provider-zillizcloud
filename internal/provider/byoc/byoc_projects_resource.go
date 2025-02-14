@@ -338,8 +338,11 @@ func (r *BYOCProjectResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 	// throw error for now
-	resp.Diagnostics.AddError("Failed to delete BYOC project", "Not implemented yet")
-
+	err := r.store.Delete(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to delete BYOC project", err.Error())
+		return
+	}
 }
 
 func (r *BYOCProjectResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
