@@ -15,6 +15,7 @@ import (
 
 type ByocProjectStore interface {
 	Create(ctx context.Context, model *BYOCProjectResourceModel) (projectID string, dataPlaneID string, err error)
+	Delete(ctx context.Context, projectID string, dataPlaneID string) (err error)
 	Describe(ctx context.Context, projectID string, dataPlaneID string) (model BYOCProjectResourceModel, diags diag.Diagnostics)
 	waitForStatus(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string, status BYOCProjectStatus) (diags diag.Diagnostics)
 }
@@ -115,6 +116,17 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 		return "", "", fmt.Errorf("failed to create BYOC project: %w", err)
 	}
 	return response.ProjectId, response.DataPlaneId, nil
+}
+
+func (s *byocProjectStore) Delete(ctx context.Context, projectID string, dataPlaneID string) (err error) {
+	_, err = s.client.DeleteBYOCProject(&zilliz.DeleteBYOCProjectRequest{
+		ProjectId:   projectID,
+		DataPlaneID: dataPlaneID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete BYOC project: %w", err)
+	}
+	return nil
 }
 
 func (s *byocProjectStore) waitForStatus(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string, status BYOCProjectStatus) (diags diag.Diagnostics) {

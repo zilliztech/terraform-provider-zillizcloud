@@ -32,6 +32,24 @@ func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYO
 	return &response.Data, err
 }
 
+func (c *Client) DeleteBYOCProject(params *DeleteBYOCProjectRequest) (*DeleteBYOCProjectResponse, error) {
+	var response zillizResponse[DeleteBYOCProjectResponse]
+	err := c.do("DELETE", "byoc/dataplane/delete", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data, err
+}
+
+type DeleteBYOCProjectRequest struct {
+	ProjectId   string `json:"projectId"`
+	DataPlaneID string `json:"dataPlaneId"`
+}
+type DeleteBYOCProjectResponse struct {
+	ProjectId   string `json:"projectId"`
+	DataPlaneID string `json:"dataPlaneId"`
+}
+
 func (c *Client) DescribeBYOCProject(params *DescribeBYOCProjectRequest) (*GetBYOCProjectResponse, error) {
 	var response zillizResponse[GetBYOCProjectResponse]
 	err := c.do("POST", "byoc/dataplane/describe", params, &response)

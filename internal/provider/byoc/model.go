@@ -50,7 +50,7 @@ func (data *BYOCProjectResourceModel) refresh(input BYOCProjectResourceModel) {
 	data.AWS = input.AWS
 	data.Status = input.Status
 	data.DataPlaneID = input.DataPlaneID
-	data.Name = input.Name
+	// data.Name = input.Name
 }
 
 type BYOCProjectStatus int
