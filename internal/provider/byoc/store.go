@@ -3,7 +3,6 @@ package byoc
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -12,8 +11,8 @@ import (
 )
 
 type ByocProjectStore interface {
-	Create(ctx context.Context, timeout time.Duration, data *BYOCProjectResourceModel, updateStatusFunc func(project *BYOCProjectResourceModel) error) (err error)
-	Delete(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string) (err error)
+	Create(ctx context.Context, data *BYOCProjectResourceModel, updateStatusFunc func(project *BYOCProjectResourceModel) error) (err error)
+	Delete(ctx context.Context, data *BYOCProjectResourceModel) (err error)
 	Describe(ctx context.Context, projectID string, dataPlaneID string) (model BYOCProjectResourceModel, err error)
 }
 
@@ -73,7 +72,7 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 	return data, nil
 }
 
-func (s *byocProjectStore) Create(ctx context.Context, timeout time.Duration, data *BYOCProjectResourceModel, updateStateFunc func(project *BYOCProjectResourceModel) error) (err error) {
+func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResourceModel, updateStateFunc func(project *BYOCProjectResourceModel) error) (err error) {
 	var request zilliz.CreateBYOCProjectRequest
 	if data.AWS == nil {
 		request = zilliz.CreateBYOCProjectRequest{
@@ -122,6 +121,11 @@ func (s *byocProjectStore) Create(ctx context.Context, timeout time.Duration, da
 		return err
 	}
 
+	timeout, diags := data.Timeouts.Create(ctx, defaultBYOCProjectCreateTimeout)
+	if diags.HasError() {
+		return fmt.Errorf("failed to get create timeout")
+	}
+
 	ret, err := util.Poll[BYOCProjectResourceModel](ctx, timeout, func() (*BYOCProjectResourceModel, *util.Err) {
 
 		project, err := s.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
@@ -157,13 +161,19 @@ func (s *byocProjectStore) Create(ctx context.Context, timeout time.Duration, da
 
 }
 
-func (s *byocProjectStore) Delete(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string) (err error) {
+func (s *byocProjectStore) Delete(ctx context.Context, data *BYOCProjectResourceModel) (err error) {
+	projectID := data.ID.ValueString()
+	dataPlaneID := data.DataPlaneID.ValueString()
 	_, err = s.client.DeleteBYOCProject(&zilliz.DeleteBYOCProjectRequest{
 		ProjectId:   projectID,
 		DataPlaneID: dataPlaneID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to delete BYOC project: %w", err)
+	}
+	timeout, diags := data.Timeouts.Delete(ctx, defaultBYOCProjectDeleteTimeout)
+	if diags.HasError() {
+		return fmt.Errorf("failed to get delete timeout")
 	}
 
 	_, err = util.Poll[any](ctx, timeout, func() (*any, *util.Err) {

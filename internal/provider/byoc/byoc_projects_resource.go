@@ -245,13 +245,8 @@ func (r *BYOCProjectResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 	tflog.Info(ctx, fmt.Sprintf("Create BYOC Project request: %+v", data))
-	createTimeout, diags := data.Timeouts.Create(ctx, defaultBYOCProjectCreateTimeout)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
-	err := r.store.Create(ctx, createTimeout, &data, func(project *BYOCProjectResourceModel) error {
+	err := r.store.Create(ctx, &data, func(project *BYOCProjectResourceModel) error {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		if resp.Diagnostics.HasError() {
 			return fmt.Errorf("failed to set state")
@@ -322,14 +317,7 @@ func (r *BYOCProjectResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	deleteTimeout, diags := data.Timeouts.Delete(ctx, defaultBYOCProjectDeleteTimeout)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// throw error for now
-	err := r.store.Delete(ctx, deleteTimeout, data.ID.ValueString(), data.DataPlaneID.ValueString())
+	err := r.store.Delete(ctx, &data)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete BYOC project", err.Error())
 		return
