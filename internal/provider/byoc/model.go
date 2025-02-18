@@ -66,6 +66,11 @@ const (
 	BYOCProjectStatusStopped
 	BYOCProjectStatusResuming
 )
+// Additional statuses with explicit values
+const (
+	BYOCProjectStatusInit      BYOCProjectStatus = 99
+	BYOCProjectStatusConnected BYOCProjectStatus = 90
+)
 
 func (s BYOCProjectStatus) String() string {
 	switch s {
@@ -87,6 +92,10 @@ func (s BYOCProjectStatus) String() string {
 		return "STOPPED"
 	case BYOCProjectStatusResuming:
 		return "RESUMING"
+	case BYOCProjectStatusInit:
+		return "INIT"
+	case BYOCProjectStatusConnected:
+		return "CONNECTED"
 	default:
 		return "UNKNOWN"
 	}
