@@ -28,6 +28,8 @@ const (
 
 const (
 	defaultBYOCProjectCreateTimeout time.Duration = 120 * time.Minute
+	defaultBYOCProjectDeleteTimeout time.Duration = 120 * time.Minute
+	defaultBYOCProjectUpdateTimeout time.Duration = 60 * time.Minute
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -201,6 +203,17 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 			"timeouts": timeouts.Block(ctx,
 				timeouts.Opts{
 					Create: true,
+					CreateDescription: `Timeout defaults to 120 mins. Accepts a string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) ` +
+						`consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are ` +
+						`"s" (seconds), "m" (minutes), "h" (hours).`,
+					Update: true,
+					UpdateDescription: `Timeout defaults to 60 mins. Accepts a string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) ` +
+						`consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are ` +
+						`"s" (seconds), "m" (minutes), "h" (hours).`,
+					Delete: true,
+					DeleteDescription: `Timeout defaults to 120 mins. Accepts a string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) ` +
+						`consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are ` +
+						`"s" (seconds), "m" (minutes), "h" (hours).`,
 				},
 			),
 		},
@@ -231,44 +244,21 @@ func (r *BYOCProjectResource) Create(ctx context.Context, req resource.CreateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Info(ctx, fmt.Sprintf("Create BYOC Project request: %+v", data))
 
-	projectID, dataPlaneID, err := r.store.Create(ctx, &data)
+	err := r.store.Create(ctx, &data, func(project *BYOCProjectResourceModel) error {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+		if resp.Diagnostics.HasError() {
+			return fmt.Errorf("failed to set state")
+		}
+		return nil
+	})
+
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create BYOC project", err.Error())
 		return
 	}
 
-	data.ID = types.StringValue(projectID)
-	data.DataPlaneID = types.StringValue(dataPlaneID)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-
-	createTimeout, diags := data.Timeouts.Create(ctx, defaultBYOCProjectCreateTimeout)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(r.store.waitForStatus(ctx, createTimeout, projectID, dataPlaneID, BYOCProjectStatusRunning)...)
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	model, diags := r.store.Describe(ctx, projectID, dataPlaneID)
-	if diags.HasError() {
-		return
-	}
-	tflog.Info(ctx, fmt.Sprintf("after describe: %+v", model))
-	tflog.Info(ctx, fmt.Sprintf("before refresh: %+v", data))
-
-	data.refresh(model)
-
-	tflog.Info(ctx, fmt.Sprintf("Create BYOC Project response: %+v", data))
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 }
 
 func (r *BYOCProjectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -279,8 +269,9 @@ func (r *BYOCProjectResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	model, diags := r.store.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
-	if diags.HasError() {
+	model, err := r.store.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to read BYOC project", err.Error())
 		return
 	}
 
@@ -315,16 +306,6 @@ func (r *BYOCProjectResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	// throw error for now
-	resp.Diagnostics.AddError("Failed to update BYOC project", "Not implemented yet")
-
-	// TODO: Implement update logic using client
-	// response, err := r.client.UpdateBYOCProject(...)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Failed to update BYOC project", err.Error())
-	//     return
-	// }
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -335,8 +316,8 @@ func (r *BYOCProjectResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// throw error for now
-	err := r.store.Delete(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
+
+	err := r.store.Delete(ctx, &data)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete BYOC project", err.Error())
 		return
