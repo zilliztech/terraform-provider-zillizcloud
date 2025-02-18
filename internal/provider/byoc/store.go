@@ -5,26 +5,25 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
+	util "github.com/zilliztech/terraform-provider-zillizcloud/client/retry"
 )
 
 type ByocProjectStore interface {
-	Create(ctx context.Context, model *BYOCProjectResourceModel) (projectID string, dataPlaneID string, err error)
-	Delete(ctx context.Context, projectID string, dataPlaneID string) (err error)
-	Describe(ctx context.Context, projectID string, dataPlaneID string) (model BYOCProjectResourceModel, diags diag.Diagnostics)
-	waitForStatus(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string, status BYOCProjectStatus) (diags diag.Diagnostics)
+	Create(ctx context.Context, timeout time.Duration, data *BYOCProjectResourceModel, updateStatusFunc func(project *BYOCProjectResourceModel) error) (err error)
+	Delete(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string) (err error)
+	Describe(ctx context.Context, projectID string, dataPlaneID string) (model BYOCProjectResourceModel, err error)
 }
 
 type byocProjectStore struct {
 	client *zilliz.Client
 }
 
-func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataPlaneID string) (data BYOCProjectResourceModel, diags diag.Diagnostics) {
+var _ ByocProjectStore = &byocProjectStore{}
+
+func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataPlaneID string) (data BYOCProjectResourceModel, _ error) {
 	var err error
 
 	project, err := s.client.DescribeBYOCProject(&zilliz.DescribeBYOCProjectRequest{
@@ -32,8 +31,7 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 		DataPlaneID: dataPlaneID,
 	})
 	if err != nil {
-		diags.AddError("Client Error", fmt.Sprintf("Unable to DescribeBYOCProject, got error: %s", err))
-		return data, diags
+		return data, fmt.Errorf("failed to describe BYOC project: %w", err)
 	}
 
 	data.Status = types.Int64Value(int64(project.Status))
@@ -43,11 +41,11 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 	subnetIDs, diags := sliceToTerraformSet(project.AWSConfig.SubnetIDs)
 
 	if diags.HasError() {
-		return data, diags
+		return data, fmt.Errorf("failed to convert subnet IDs to Terraform set: %+v", project.AWSConfig.SubnetIDs)
 	}
 	securityGroupIDs, diags := sliceToTerraformSet(project.AWSConfig.SecurityGroupIDs)
 	if diags.HasError() {
-		return data, diags
+		return data, fmt.Errorf("failed to convert security group IDs to Terraform set: %+v", project.AWSConfig.SecurityGroupIDs)
 	}
 
 	data.AWS = &AWSConfig{
@@ -75,7 +73,7 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 	return data, nil
 }
 
-func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResourceModel) (projectID string, dataPlaneID string, err error) {
+func (s *byocProjectStore) Create(ctx context.Context, timeout time.Duration, data *BYOCProjectResourceModel, updateStateFunc func(project *BYOCProjectResourceModel) error) (err error) {
 	var request zilliz.CreateBYOCProjectRequest
 	if data.AWS == nil {
 		request = zilliz.CreateBYOCProjectRequest{
@@ -113,12 +111,53 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 	// TODO: Implement create logic using client
 	response, err := s.client.CreateBYOCProject(&request)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create BYOC project: %w", err)
+		return fmt.Errorf("failed to create BYOC project: %w", err)
 	}
-	return response.ProjectId, response.DataPlaneId, nil
+
+	data.ID = types.StringValue(response.ProjectId)
+	data.DataPlaneID = types.StringValue(response.DataPlaneId)
+	data.Status = types.Int64Value(int64(BYOCProjectStatusPending))
+
+	if err = updateStateFunc(data); err != nil {
+		return err
+	}
+
+	ret, err := util.Poll[BYOCProjectResourceModel](ctx, timeout, func() (*BYOCProjectResourceModel, *util.Err) {
+
+		project, err := s.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
+		if err != nil {
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC project status")}
+		}
+
+		if project.Status.ValueInt64() == int64(BYOCProjectStatusPending) {
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending...")}
+		}
+
+		if project.Status.ValueInt64() == int64(BYOCProjectStatusFailed) {
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project failed to create...")}
+		}
+
+		if project.Status.ValueInt64() == int64(BYOCProjectStatusRunning) {
+			return &project, nil
+		}
+
+		return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %d", project.Status.ValueInt64())}
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to create BYOC project: %w", err)
+	}
+
+	data.Status = ret.Status
+	if err = updateStateFunc(data); err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
-func (s *byocProjectStore) Delete(ctx context.Context, projectID string, dataPlaneID string) (err error) {
+func (s *byocProjectStore) Delete(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string) (err error) {
 	_, err = s.client.DeleteBYOCProject(&zilliz.DeleteBYOCProjectRequest{
 		ProjectId:   projectID,
 		DataPlaneID: dataPlaneID,
@@ -126,32 +165,27 @@ func (s *byocProjectStore) Delete(ctx context.Context, projectID string, dataPla
 	if err != nil {
 		return fmt.Errorf("failed to delete BYOC project: %w", err)
 	}
-	return nil
-}
 
-func (s *byocProjectStore) waitForStatus(ctx context.Context, timeout time.Duration, projectID string, dataPlaneID string, status BYOCProjectStatus) (diags diag.Diagnostics) {
-	tflog.Info(ctx, fmt.Sprintf("Waiting for BYOC project to enter the %s state...", status))
-	tflog.Info(ctx, fmt.Sprintf("Project ID: %s, Data Plane ID: %s", projectID, dataPlaneID))
+	_, err = util.Poll[any](ctx, timeout, func() (*any, *util.Err) {
 
-	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
-		project, diags := s.Describe(ctx, projectID, dataPlaneID)
-		if diags.HasError() {
-			return retry.NonRetryableError(fmt.Errorf("failed to describe BYOC project"))
+		project, err := s.Describe(ctx, projectID, dataPlaneID)
+		if err != nil {
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC project status")}
 		}
 
-		tflog.Info(ctx, fmt.Sprintf("Describe BYOC Project response: %+v", project))
-
-		if BYOCProjectStatus(project.Status.ValueInt64()) == BYOCProjectStatusFailed {
-			return retry.NonRetryableError(fmt.Errorf("BYOC project failed to create..."))
+		if project.Status.ValueInt64() == int64(BYOCProjectStatusDeleting) {
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is still deleting...")}
 		}
 
-		if BYOCProjectStatus(project.Status.ValueInt64()) != status {
-			return retry.RetryableError(fmt.Errorf("BYOC project not yet in the %s state. Current state: %d", status, project.Status))
+		if project.Status.ValueInt64() == int64(BYOCProjectStatusDeleted) {
+			return nil, nil
 		}
-		return nil
+
+		return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %d", project.Status.ValueInt64())}
 	})
+
 	if err != nil {
-		diags.AddError("Failed to wait for BYOC project to enter the RUNNING state.", err.Error())
+		return fmt.Errorf("failed to delete BYOC project: %w", err)
 	}
-	return diags
+	return nil
 }
