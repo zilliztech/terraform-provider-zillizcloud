@@ -255,7 +255,7 @@ func (c *Client) doRequest(req *http.Request, v any) error {
 	defer res.Body.Close()
 
 	if res.StatusCode >= http.StatusBadRequest {
-		return parseError(res.Body)
+		return fmt.Errorf("http status code: %d, error: %w", res.StatusCode, parseError(res.Body))
 	}
 
 	return decodeResponse(res.Body, v)
