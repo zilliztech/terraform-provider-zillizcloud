@@ -4,6 +4,13 @@ This guide explains how to configure a Bring-Your-Own-Cloud (BYOC) environment u
 
 ## Table of Contents
 
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+  - [1. Clone the script repository](#1-clone-the-script-repository)
+  - [2. Prepare the Credentials](#2-prepare-the-credentials)
+  - [3. Bootstrap Infrastructure](#3-bootstrap-infrastructure)
+  - [4. Fill in the form on the Zilliz Cloud Console](#4-fill-in-the-form-on-the-zilliz-cloud-console)
+
 
 ## Prerequisites <a name="prerequisites"></a>
 
@@ -22,7 +29,7 @@ This guide explains how to configure a Bring-Your-Own-Cloud (BYOC) environment u
 
 ## Quick Start <a name="quick-start"></a>
 
-### 1. Clone the script repository
+### Step 1. Clone the script repository <a name="1-clone-the-script-repository"></a>
 
 In this step, you will use the following command to clone and pull the script repository.
 
@@ -30,7 +37,7 @@ In this step, you will use the following command to clone and pull the script re
 git clone https://github.com/zilliztech/terraform-zilliz-examples.git
 ```
 
-### 2. Prepare the Credentials
+### Step 2. Prepare the Credentials <a name="2-prepare-the-credentials"></a>
 
 In this step, you are going to edit the `terraform.tfvars.json` file located within the `client_init` folder.
 
@@ -57,7 +64,7 @@ The file is similar to the following:
 | `name` | The name of the BYOC project. <br/> Please align the value with the one you have entered in the form below.<br/>![Project name](./images/create-a-byoc-project-on-console-01.png)  |
 | `ExternalId` | The **External ID** of the BYOC project to create.<br/>![External ID](./images/create-a-byoc-project-on-console-02.png) |
 
-### 3. Bootstrap Infrastructure
+### Step 3. Bootstrap Infrastructure <a name="3-bootstrap-infrastructure"></a>
 
 Once you have prepared the credentials described above, bootstrap the infrastructure for the project as follows:
 
@@ -82,30 +89,30 @@ Once you have prepared the credentials described above, bootstrap the infrastruc
     vpc_id = "vpc-xxxxxxxxxxxxxxxxx"
     ```
 
-4. Collection the following information and fill it back in on the Zilliz Cloud console
+### Step 4. Fill in the Form on the Zilliz Cloud Console <a name="4-fill-in-the-form-on-the-zilliz-cloud-console"></a>
 
-    - **Storage settings**
+- **Storage settings**
 
-        | Paramter | Description |
-        | --- | --- |
-        | Bucket name | Use the value of the `bucket_name` variable in the command output.<br/>Zilliz Cloud uses the bucket as data plane storage. |
-        | IAM role ARN | Use the value of the `storage_role_arn` variable in the command output.<br/>Zilliz Cloud uses the role to access the bucket. |
+    | Paramter | Description |
+    | --- | --- |
+    | Bucket name | Use the value of the `bucket_name` variable in the command output.<br/>Zilliz Cloud uses the bucket as data plane storage. |
+    | IAM role ARN | Use the value of the `storage_role_arn` variable in the command output.<br/>Zilliz Cloud uses the role to access the bucket. |
 
-    - **EKS settings**
+- **EKS settings**
 
-        | Paramter | Description |
-        | --- | --- |
-        | IAM role ARN | Use the value of the `eks-role-arn` variable in the command output.<br/>Zilliz Cloud uses the role t create and manage the EKS cluster. |
+    | Paramter | Description |
+    | --- | --- |
+    | IAM role ARN | Use the value of the `eks-role-arn` variable in the command output.<br/>Zilliz Cloud uses the role t create and manage the EKS cluster. |
 
-    - **Cross-account settings**
+- **Cross-account settings**
 
-        | Paramter | Description |
-        | --- | --- |
-        | IAM role ARN | Use the value of the `bootstrap_role_arn` variable in the command output.<br/>By assuming the role, Zilliz Cloud can provision the data plane on your behalf. |
+    | Paramter | Description |
+    | --- | --- |
+    | IAM role ARN | Use the value of the `bootstrap_role_arn` variable in the command output.<br/>By assuming the role, Zilliz Cloud can provision the data plane on your behalf. |
 
-    - **Network settings**
+- **Network settings**
 
-        | Paramter | Description |
-        | --- | --- |
-        | VPC ID | Use the value of the `vpc_id` variable in the command output.<br/>Zilliz Cloud provisions the data plane and clusters of the BYOC project in this VPC. |
-        | Subnet IDs | Use the values of the `subnet_id` variable in the command output.<br/>Zilliz Cloud requires a public subnet and three private subnets and deploys the NAT gateway in the public subnet to route the network traffic of the private subnets in each availability zone.<br/>You need to concatenate the three subnet IDs with commas as in `subnet_xxxxxxxxxxxxxxxxx,subnet_xxxxxxxxxxxxxxxxx,subnet_xxxxxxxxxxxxxxxxx`. |
+    | Paramter | Description |
+    | --- | --- |
+    | VPC ID | Use the value of the `vpc_id` variable in the command output.<br/>Zilliz Cloud provisions the data plane and clusters of the BYOC project in this VPC. |
+    | Subnet IDs | Use the values of the `subnet_id` variable in the command output.<br/>Zilliz Cloud requires a public subnet and three private subnets and deploys the NAT gateway in the public subnet to route the network traffic of the private subnets in each availability zone.<br/>You need to concatenate the three subnet IDs with commas as in `subnet_xxxxxxxxxxxxxxxxx,subnet_xxxxxxxxxxxxxxxxx,subnet_xxxxxxxxxxxxxxxxx`. |
