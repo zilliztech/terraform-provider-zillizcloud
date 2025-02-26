@@ -52,7 +52,7 @@ type DeleteBYOCProjectResponse struct {
 
 func (c *Client) DescribeBYOCProject(params *DescribeBYOCProjectRequest) (*GetBYOCProjectResponse, error) {
 	var response zillizResponse[GetBYOCProjectResponse]
-	err := c.do("POST", "byoc/dataplane/describe", params, &response)
+	err := c.do("GET", "byoc/dataplane/describe?projectId="+params.ProjectId+"&dataPlaneId="+params.DataPlaneID, nil, &response)
 	if err != nil {
 		return nil, err
 	}
