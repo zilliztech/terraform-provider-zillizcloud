@@ -14,6 +14,8 @@ type ByocProjectStore interface {
 	Create(ctx context.Context, data *BYOCProjectResourceModel, updateStatusFunc func(project *BYOCProjectResourceModel) error) (err error)
 	Delete(ctx context.Context, data *BYOCProjectResourceModel) (err error)
 	Describe(ctx context.Context, projectID string, dataPlaneID string) (model BYOCProjectResourceModel, err error)
+	Suspend(ctx context.Context, data *BYOCProjectResourceModel) (err error)
+	Resume(ctx context.Context, data *BYOCProjectResourceModel) (err error)
 }
 
 type byocProjectStore struct {
@@ -21,6 +23,79 @@ type byocProjectStore struct {
 }
 
 var _ ByocProjectStore = &byocProjectStore{}
+
+func (s *byocProjectStore) Suspend(ctx context.Context, data *BYOCProjectResourceModel) (err error) {
+	_, err = s.client.SuspendBYOCProject(&zilliz.SuspendBYOCProjectRequest{
+		ProjectId:   data.ID.ValueString(),
+		DataPlaneID: data.DataPlaneID.ValueString(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to suspend BYOC project: %w", err)
+	}
+	timeout, diags := data.Timeouts.Update(ctx, defaultBYOCProjectUpdateTimeout)
+	if diags.HasError() {
+		return fmt.Errorf("failed to get update timeout")
+	}
+	_, err = util.Poll[any](ctx, timeout, func() (*any, *util.Err) {
+
+		project, err := s.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
+		if err != nil {
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC project status")}
+		}
+
+		status := project.Status.ValueString()
+		switch status {
+		case BYOCProjectStatusStopping.String():
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is stopping...")}
+		case BYOCProjectStatusStopped.String():
+			// achieved the target status
+			return nil, nil
+		default:
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %s", status)}
+		}
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to create BYOC project: %w", err)
+	}
+	return
+}
+
+func (s *byocProjectStore) Resume(ctx context.Context, data *BYOCProjectResourceModel) (err error) {
+	_, err = s.client.ResumeBYOCProject(&zilliz.ResumeBYOCProjectRequest{
+		ProjectId:   data.ID.ValueString(),
+		DataPlaneID: data.DataPlaneID.ValueString(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to resume BYOC project: %w", err)
+	}
+	timeout, diags := data.Timeouts.Update(ctx, defaultBYOCProjectUpdateTimeout)
+	if diags.HasError() {
+		return fmt.Errorf("failed to get update timeout")
+	}
+	_, err = util.Poll[any](ctx, timeout, func() (*any, *util.Err) {
+		project, err := s.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
+		if err != nil {
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC project status")}
+		}
+
+		status := project.Status.ValueString()
+		switch status {
+		case BYOCProjectStatusResuming.String():
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is resuming...")}
+		case BYOCProjectStatusRunning.String():
+			// achieved the target status
+			return nil, nil
+		default:
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %s", status)}
+		}
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to resume BYOC project: %w", err)
+	}
+	return
+}
 
 func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataPlaneID string) (data BYOCProjectResourceModel, _ error) {
 	var err error
@@ -33,7 +108,7 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 		return data, fmt.Errorf("failed to describe BYOC project: %w", err)
 	}
 
-	data.Status = types.Int64Value(int64(project.Status))
+	data.Status = types.StringValue(BYOCProjectStatus(project.Status).String())
 	data.ID = types.StringValue(project.ProjectID)
 	// data.Name = types.StringValue(project.ProjectName)
 	data.DataPlaneID = types.StringValue(project.DataPlaneID)
@@ -85,10 +160,9 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 		data.AWS.Network.SecurityGroupIDs.ElementsAs(ctx, &securityGroupIDs, false)
 
 		request = zilliz.CreateBYOCProjectRequest{
-			ProjectName: data.Name.ValueString(),
-			RegionID:    data.AWS.Region.ValueString(),
-			CloudID:     zilliz.CloudId("aws"),
-			// BYOCID:        data.AWS.Storage.BucketID.ValueString(),
+			ProjectName:   data.Name.ValueString(),
+			RegionID:      data.AWS.Region.ValueString(),
+			CloudID:       zilliz.CloudId("aws"),
 			FundamentalVM: data.AWS.Instances.FundamentalVM.ValueString(),
 			SearchVM:      data.AWS.Instances.SearchVM.ValueString(),
 			CoreVM:        data.AWS.Instances.CoreVM.ValueString(),
@@ -107,7 +181,6 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 	}
 	tflog.Info(ctx, fmt.Sprintf("Create BYOC Project request: %+v", request))
 
-	// TODO: Implement create logic using client
 	response, err := s.client.CreateBYOCProject(&request)
 	if err != nil {
 		return fmt.Errorf("failed to create BYOC project: %w", err)
@@ -115,7 +188,6 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 
 	data.ID = types.StringValue(response.ProjectId)
 	data.DataPlaneID = types.StringValue(response.DataPlaneId)
-	data.Status = types.Int64Value(int64(BYOCProjectStatusPending))
 
 	if err = updateStateFunc(data); err != nil {
 		return err
@@ -126,35 +198,28 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 		return fmt.Errorf("failed to get create timeout")
 	}
 
-	ret, err := util.Poll[BYOCProjectResourceModel](ctx, timeout, func() (*BYOCProjectResourceModel, *util.Err) {
+	_, err = util.Poll[BYOCProjectResourceModel](ctx, timeout, func() (*BYOCProjectResourceModel, *util.Err) {
 
 		project, err := s.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
 		if err != nil {
 			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC project status")}
 		}
 
-		if project.Status.ValueInt64() == int64(BYOCProjectStatusPending) {
+		switch project.Status.ValueString() {
+		case BYOCProjectStatusPending.String():
 			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending...")}
-		}
-
-		if project.Status.ValueInt64() == int64(BYOCProjectStatusFailed) {
+		case BYOCProjectStatusFailed.String():
 			return nil, &util.Err{Err: fmt.Errorf("BYOC project failed to create...")}
-		}
-
-		if project.Status.ValueInt64() == int64(BYOCProjectStatusRunning) {
+		case BYOCProjectStatusRunning.String():
+			// achieved the target status
 			return &project, nil
+		default:
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %s", project.Status.ValueString())}
 		}
-
-		return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %d", project.Status.ValueInt64())}
 	})
 
 	if err != nil {
 		return fmt.Errorf("failed to create BYOC project: %w", err)
-	}
-
-	data.Status = ret.Status
-	if err = updateStateFunc(data); err != nil {
-		return err
 	}
 
 	return nil
@@ -183,15 +248,15 @@ func (s *byocProjectStore) Delete(ctx context.Context, data *BYOCProjectResource
 			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC project status")}
 		}
 
-		if project.Status.ValueInt64() == int64(BYOCProjectStatusDeleting) {
+		if project.Status.ValueString() == BYOCProjectStatusDeleting.String() {
 			return nil, &util.Err{Err: fmt.Errorf("BYOC project is still deleting...")}
 		}
 
-		if project.Status.ValueInt64() == int64(BYOCProjectStatusDeleted) {
+		if project.Status.ValueString() == BYOCProjectStatusDeleted.String() {
 			return nil, nil
 		}
 
-		return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %d", project.Status.ValueInt64())}
+		return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %s", project.Status.ValueString())}
 	})
 
 	if err != nil {
