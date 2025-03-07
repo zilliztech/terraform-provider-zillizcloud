@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -74,12 +73,9 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"status": schema.Int64Attribute{
-				MarkdownDescription: "The status of the BYOC project",
-				Computed:            true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
+			"status": schema.StringAttribute{
+				MarkdownDescription: "The status of the BYOC project, possible values are RUNNING, STOPPED",
+				Required:            true,
 			},
 			"aws": schema.SingleNestedAttribute{
 				MarkdownDescription: "AWS configuration for the BYOC project",
@@ -303,6 +299,33 @@ func (r *BYOCProjectResource) Update(ctx context.Context, req resource.UpdateReq
 	var data BYOCProjectResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	tflog.Info(ctx, fmt.Sprintf("Update BYOC Project request: %+v", data))
+
+	switch data.Status.ValueString() {
+	case BYOCProjectStatusRunning.String():
+		tflog.Info(ctx, "Resume BYOC Project...")
+		err := r.store.Resume(ctx, &data)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to resume BYOC project", err.Error())
+			return
+		}
+	case BYOCProjectStatusStopped.String():
+		tflog.Info(ctx, "Suspend BYOC Project...")
+		err := r.store.Suspend(ctx, &data)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to suspend BYOC project", err.Error())
+			return
+		}
+	default:
+		resp.Diagnostics.AddError(
+			"Invalid BYOC Project Status",
+			fmt.Sprintf("Unknown status: %s. Expected values are %s or %s",
+				data.Status.ValueString(),
+				BYOCProjectStatusRunning.String(),
+				BYOCProjectStatusStopped.String()),
+		)
 		return
 	}
 

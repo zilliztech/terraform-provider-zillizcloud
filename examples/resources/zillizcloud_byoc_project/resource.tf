@@ -10,7 +10,8 @@ provider "zillizcloud" {
 }
 
 resource "zillizcloud_byoc_project" "this" {
-  name = "MyProject"
+  name   = "MyProject"
+  status = "RUNNING"
 
   aws = {
     region = "aws-us-west-2"

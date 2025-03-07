@@ -12,7 +12,7 @@ type BYOCProjectResourceModel struct {
 	DataPlaneID types.String   `tfsdk:"data_plane_id"`
 	AWS         *AWSConfig     `tfsdk:"aws"`
 	Timeouts    timeouts.Value `tfsdk:"timeouts"`
-	Status      types.Int64    `tfsdk:"status"`
+	Status      types.String   `tfsdk:"status"`
 }
 
 type AWSConfig struct {
@@ -67,6 +67,12 @@ const (
 	BYOCProjectStatusResuming
 )
 
+// Additional statuses with explicit values.
+const (
+	BYOCProjectStatusInit      BYOCProjectStatus = 99
+	BYOCProjectStatusConnected BYOCProjectStatus = 90
+)
+
 func (s BYOCProjectStatus) String() string {
 	switch s {
 	case BYOCProjectStatusPending:
@@ -87,6 +93,10 @@ func (s BYOCProjectStatus) String() string {
 		return "STOPPED"
 	case BYOCProjectStatusResuming:
 		return "RESUMING"
+	case BYOCProjectStatusInit:
+		return "INIT"
+	case BYOCProjectStatusConnected:
+		return "CONNECTED"
 	default:
 		return "UNKNOWN"
 	}

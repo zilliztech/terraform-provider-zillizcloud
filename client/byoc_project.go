@@ -32,6 +32,44 @@ func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYO
 	return &response.Data, err
 }
 
+func (c *Client) SuspendBYOCProject(params *SuspendBYOCProjectRequest) (*SuspendBYOCProjectResponse, error) {
+	var response zillizResponse[SuspendBYOCProjectResponse]
+	err := c.do("POST", "byoc/dataplane/suspend", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data, err
+}
+
+type SuspendBYOCProjectRequest struct {
+	ProjectId   string `json:"projectId"`
+	DataPlaneID string `json:"dataPlaneId"`
+}
+
+type SuspendBYOCProjectResponse struct {
+	ProjectId   string `json:"projectId"`
+	DataPlaneID string `json:"dataPlaneId"`
+}
+
+func (c *Client) ResumeBYOCProject(params *ResumeBYOCProjectRequest) (*ResumeBYOCProjectResponse, error) {
+	var response zillizResponse[ResumeBYOCProjectResponse]
+	err := c.do("POST", "byoc/dataplane/resume", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data, err
+}
+
+type ResumeBYOCProjectRequest struct {
+	ProjectId   string `json:"projectId"`
+	DataPlaneID string `json:"dataPlaneId"`
+}
+
+type ResumeBYOCProjectResponse struct {
+	ProjectId   string `json:"projectId"`
+	DataPlaneID string `json:"dataPlaneId"`
+}
+
 func (c *Client) DeleteBYOCProject(params *DeleteBYOCProjectRequest) (*DeleteBYOCProjectResponse, error) {
 	var response zillizResponse[DeleteBYOCProjectResponse]
 	err := c.do("DELETE", "byoc/dataplane/delete", params, &response)

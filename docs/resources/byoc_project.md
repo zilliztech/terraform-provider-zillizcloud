@@ -25,7 +25,8 @@ provider "zillizcloud" {
 }
 
 resource "zillizcloud_byoc_project" "this" {
-  name = "MyProject"
+  name   = "MyProject"
+  status = "RUNNING"
 
   aws = {
     region = "aws-us-west-2"
@@ -62,6 +63,7 @@ resource "zillizcloud_byoc_project" "this" {
 ### Required
 
 - `name` (String) The name of the BYOC project
+- `status` (String) The status of the BYOC project, possible values are RUNNING, STOPPED
 
 ### Optional
 
@@ -72,7 +74,6 @@ resource "zillizcloud_byoc_project" "this" {
 
 - `data_plane_id` (String) The ID of the data plane
 - `id` (String) Project identifier
-- `status` (Number) The status of the BYOC project
 
 <a id="nestedatt--aws"></a>
 ### Nested Schema for `aws`
