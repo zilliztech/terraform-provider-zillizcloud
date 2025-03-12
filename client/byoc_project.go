@@ -34,7 +34,7 @@ func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYO
 
 func (c *Client) SuspendBYOCProject(params *SuspendBYOCProjectRequest) (*SuspendBYOCProjectResponse, error) {
 	var response zillizResponse[SuspendBYOCProjectResponse]
-	err := c.do("POST", "byoc/dataplane/suspend", params, &response)
+	err := c.do("POST", "byoc/dataplane/stop", params, &response)
 	if err != nil {
 		return nil, err
 	}
