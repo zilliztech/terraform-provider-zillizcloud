@@ -229,12 +229,23 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 func (s *byocProjectStore) Delete(ctx context.Context, data *BYOCProjectResourceModel) (err error) {
 	projectID := data.ID.ValueString()
 	dataPlaneID := data.DataPlaneID.ValueString()
-	_, err = s.client.DeleteBYOCProject(&zilliz.DeleteBYOCProjectRequest{
-		ProjectId:   projectID,
-		DataPlaneID: dataPlaneID,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete BYOC project: %w", err)
+	{
+		project, err := s.Describe(ctx, projectID, dataPlaneID)
+		if err != nil {
+			return fmt.Errorf("failed to describe BYOC project: %w", err)
+		}
+
+		if !(project.Status.ValueString() == BYOCProjectStatusDeleted.String() || project.Status.ValueString() == BYOCProjectStatusDeleting.String()) {
+			_, err = s.client.DeleteBYOCProject(&zilliz.DeleteBYOCProjectRequest{
+				ProjectId:   projectID,
+				DataPlaneID: dataPlaneID,
+			})
+
+			if err != nil {
+				return fmt.Errorf("failed to delete BYOC project: %w", err)
+			}
+		}
+
 	}
 	timeout, diags := data.Timeouts.Delete(ctx, defaultBYOCProjectDeleteTimeout)
 	if diags.HasError() {
