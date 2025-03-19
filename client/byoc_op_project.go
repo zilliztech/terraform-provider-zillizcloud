@@ -6,15 +6,17 @@ type CreateByocOpProjectRequest struct {
 	RegionID string  `json:"regionId"`
 	CloudID  CloudId `json:"cloudId"`
 
-	FundamentalVM string `json:"fundamentalVm"`
-	SearchVM      string `json:"searchVm"`
-	CoreVM        string `json:"coreVm"`
-
 	DataPlaneId string `json:"dataPlaneId"`
 	ProjectId   string `json:"projectId"`
-	ExtConfig   string `json:"extConfig"`
 
 	DeployType int `json:"deployType"`
+
+	// optional
+	ExtConfig *string `json:"extConfig"`
+	// no need to set
+	FundamentalVM *string `json:"fundamentalVm"`
+	SearchVM      *string `json:"searchVm"`
+	CoreVM        *string `json:"coreVm"`
 }
 
 func (c *Client) CreateByocOpProject(params *CreateByocOpProjectRequest) (*CreateByocOpProjectResponse, error) {
