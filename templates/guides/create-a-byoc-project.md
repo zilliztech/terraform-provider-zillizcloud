@@ -18,9 +18,10 @@ This guide explains how to configure a Bring-Your-Own-Cloud (BYOC) environment u
 
 ### What is BYOC?
 Zilliz Cloud BYOC enables you to:
+
 - Maintain data sovereignty with storage in your AWS account
 - Deploy Milvus clusters in your private VPC
-- Leverage Zilliz's managed service while controlling infrastructure
+- Leverage Zilliz's managed service and grant cross-account permissions to Zilliz for infrastructure management
 - Comply with enterprise security requirements
 
 
@@ -69,7 +70,7 @@ terraform apply
 ## Architecture Overview <a name="architecture-overview"></a>
 
 
-![BYOC Architecture Diagram](./images/byoc-architecture.png)
+![BYOC Architecture Diagram](https://assets.zilliz.com/docs/byoc-architecture.png)
 
 
 
