@@ -19,10 +19,6 @@ func TestAccByocOpProjectResource(t *testing.T) {
 					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "cloud_provider", "aws"),
 					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "region", "aws-us-west-2"),
 					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "project_name", "byoc-zilliz-test"),
-					// resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.core_vm", "m6i.2xlarge"),
-					// resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.fundamental_vm", "m6i.2xlarge"),
-					// resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.search_vm", "m6id.2xlarge"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project.test", "ext_config"),
 					// asert status
 					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project.test", "status", "1"),
 
@@ -62,7 +58,6 @@ resource "zillizcloud_byoc_op_project" "test" {
 
     data_plane_id = zillizcloud_byoc_op_project_settings.test.data_plane_id
     project_id = zillizcloud_byoc_op_project_settings.test.project_id
-    ext_config = "xxx"
    
     aws = {
         region = "aws-us-west-2"

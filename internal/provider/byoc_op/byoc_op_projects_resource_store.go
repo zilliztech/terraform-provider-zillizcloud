@@ -39,7 +39,7 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 
 			CloudID: zilliz.CloudId("aws"),
 
-			ExtConfig: data.ExtConfig.ValueString(),
+			// ExtConfig: data.ExtConfig.ValueString(),
 
 			DeployType: TERRAFORM_DEPLOY_TYPE,
 			AWSParam: &zilliz.AWSParam{
@@ -54,10 +54,15 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 			},
 		}
 
+		// if data.ExtConfig.ValueString() is set, set it to ExtConfig
+		if !data.ExtConfig.IsNull() {
+			request.ExtConfig = data.ExtConfig.ValueStringPointer()
+		}
+
 		if data.AWS.Instances != nil {
-			request.FundamentalVM = data.AWS.Instances.FundamentalVM.ValueString()
-			request.SearchVM = data.AWS.Instances.SearchVM.ValueString()
-			request.CoreVM = data.AWS.Instances.CoreVM.ValueString()
+			request.FundamentalVM = data.AWS.Instances.FundamentalVM.ValueStringPointer()
+			request.SearchVM = data.AWS.Instances.SearchVM.ValueStringPointer()
+			request.CoreVM = data.AWS.Instances.CoreVM.ValueStringPointer()
 		}
 
 	}

@@ -18,12 +18,12 @@ BYOC Op Project resource for managing bring-your-own-cloud operator projects.
 ### Required
 
 - `data_plane_id` (String) The ID of the data plane
-- `ext_config` (String) External configuration
 - `project_id` (String) The ID of the project
 
 ### Optional
 
 - `aws` (Attributes) AWS configuration for the BYOC project (see [below for nested schema](#nestedatt--aws))
+- `ext_config` (String) External configuration
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
