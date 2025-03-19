@@ -61,8 +61,8 @@ The file is similar to the following:
 | --- | --- |
 | `aws_region` | The cloud region in which you will deploy Zilliz BYOC. <br/> Currently, you can deploy your BYOC project in `us-west-2`. If you need to deploy your BYOC project in other cloud regions, please [contact us](https://zilliz.com/contact-sales).|
 | `vpc_cidr` | The CIDR block to be allocated within the customer-managed VPC. For example, 10.0.0.0/16. |
-| `name` | The name of the BYOC project. <br/> Please align the value with the one you have entered in the form below.<br/>![Project name](./images/create-a-byoc-project-on-console-01.png)  |
-| `ExternalId` | The **External ID** of the BYOC project to create.<br/>![External ID](./images/create-a-byoc-project-on-console-02.png) |
+| `name` | The name of the BYOC project. <br/> Please align the value with the one you have entered in the form below.<br/>![Project name](https://assets.zilliz.com/docs/create-a-byoc-project-on-console-01.png)  |
+| `ExternalId` | The **External ID** of the BYOC project to create.<br/>![External ID](https://assets.zilliz.com/docs/create-a-byoc-project-on-console-02.png) |
 
 ### Step 3. Bootstrap Infrastructure <a name="3-bootstrap-infrastructure"></a>
 
