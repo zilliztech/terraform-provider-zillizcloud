@@ -55,14 +55,15 @@ cd examples/aws-project-byoc-standard
   "aws_region": "us-west-2",
   "vpc_cidr": "10.1.0.0/16",
   "core_instance_type": "m6i.2xlarge",
-  "fundamental_instance_type": "m6i.4xlarge",
-  "search_instance_type": "g4dn.2xlarge",
+  "fundamental_instance_type": "m6i.2xlarge",
+  "search_instance_type": "m6id.4xlarge",
   "enable_private_link": true
 }
 ```
 
 ### 3. Deploy Infrastructure
 ```bash
+export ZILLIZ_API_KEY=<your_api_key> 
 terraform init
 terraform apply
 ```
@@ -185,9 +186,9 @@ role_arn = {
 ### 3. Instance Configuration
 ```hcl
 instances = {
+  search_vm      = "m6id.4xlarge"
+  fundamental_vm = "m6i.2xlarge" 
   core_vm        = "m6i.2xlarge"
-  fundamental_vm = "r5.4xlarge" 
-  search_vm      = "g4dn.4xlarge"
 }
 ```
 
