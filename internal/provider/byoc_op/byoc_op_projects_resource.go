@@ -65,7 +65,7 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 			},
 			"ext_config": schema.StringAttribute{
 				MarkdownDescription: "External configuration",
-				Required:            true,
+				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
