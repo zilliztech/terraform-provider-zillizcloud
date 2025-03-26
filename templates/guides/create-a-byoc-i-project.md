@@ -39,7 +39,7 @@ Zilliz Cloud BYOC-I enables you to:
 
 ```bash
 git clone https://github.com/zilliztech/terraform-zilliz-examples.git
-cd examples/aws-project-byoc-I
+cd terraform-zilliz-examples/examples/aws-project-byoc-I
 ```
 
 ### 2. Initialize the Terraform project
