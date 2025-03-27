@@ -63,7 +63,7 @@ cd examples/aws-project-byoc-standard
 
 ### 3. Deploy Infrastructure
 ```bash
-export ZILLIZ_API_KEY=<your_api_key> 
+export ZILLIZCLOUD_API_KEY=<your_api_key> 
 terraform init
 terraform apply
 ```
