@@ -26,6 +26,7 @@ BYOC Op Project Settings resource for managing project configurations.
 - `id` (String) Settings identifier
 - `node_quotas` (Attributes) (see [below for nested schema](#nestedatt--node_quotas))
 - `op_config` (Attributes) Operation configuration settings (see [below for nested schema](#nestedatt--op_config))
+- `private_link_enabled` (Boolean) Private link enabled
 - `project_name` (String) The name of the project
 - `region` (String) AWS region
 

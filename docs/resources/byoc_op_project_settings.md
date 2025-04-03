@@ -22,6 +22,10 @@ BYOC Op Project Settings resource for managing project configurations.
 - `project_name` (String) The name of the project
 - `region` (String) AWS region
 
+### Optional
+
+- `private_link_enabled` (Boolean) Private link enabled
+
 ### Read-Only
 
 - `data_plane_id` (String) The ID of the data plane
@@ -37,7 +41,13 @@ Required:
 
 - `core_vm` (String) Core VM instance type
 - `fundamental_vm` (String) Fundamental VM instance type
-- `search_vm` (String) Search VM instance type
+- `search_vm` (String)
+
+Optional:
+
+- `core_vm_min_count` (Number) Core VM instance type
+- `fundamental_vm_min_count` (Number) Fundamental VM instance type
+- `search_vm_min_count` (Number) Search VM instance type
 
 
 <a id="nestedatt--node_quotas"></a>
@@ -45,10 +55,10 @@ Required:
 
 Read-Only:
 
-- `core` (Attributes) Fundamental VM configuration (see [below for nested schema](#nestedatt--node_quotas--core))
-- `fundamental` (Attributes) Fundamental VM configuration (see [below for nested schema](#nestedatt--node_quotas--fundamental))
-- `index` (Attributes) Fundamental VM configuration (see [below for nested schema](#nestedatt--node_quotas--index))
-- `search` (Attributes) Fundamental VM configuration (see [below for nested schema](#nestedatt--node_quotas--search))
+- `core` (Attributes) VM configuration (see [below for nested schema](#nestedatt--node_quotas--core))
+- `fundamental` (Attributes) VM configuration (see [below for nested schema](#nestedatt--node_quotas--fundamental))
+- `index` (Attributes) VM configuration (see [below for nested schema](#nestedatt--node_quotas--index))
+- `search` (Attributes) VM configuration (see [below for nested schema](#nestedatt--node_quotas--search))
 
 <a id="nestedatt--node_quotas--core"></a>
 ### Nested Schema for `node_quotas.core`

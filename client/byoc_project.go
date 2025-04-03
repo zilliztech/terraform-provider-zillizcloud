@@ -1,15 +1,18 @@
 package client
 
 type CreateBYOCProjectRequest struct {
-	AWSParam      *AWSParam `json:"awsParam"`
-	ProjectName   string    `json:"projectName"`
-	RegionID      string    `json:"regionId"`
-	CloudID       CloudId   `json:"cloudId"`
-	BYOCID        *string   `json:"byocId"`
-	FundamentalVM string    `json:"fundamentalVm"`
-	SearchVM      string    `json:"searchVm"`
-	CoreVM        string    `json:"coreVm"`
-	DeployType    int       `json:"deployType"`
+	AWSParam       *AWSParam `json:"awsParam"`
+	ProjectName    string    `json:"projectName"`
+	RegionID       string    `json:"regionId"`
+	CloudID        CloudId   `json:"cloudId"`
+	BYOCID         *string   `json:"byocId"`
+	FundamentalVM  string    `json:"fundamentalVm"`
+	SearchVM       string    `json:"searchVm"`
+	CoreVM         string    `json:"coreVm"`
+	DeployType     int       `json:"deployType"`
+	SearchMin      int64     `json:"searchMin"`
+	FundamentalMin int64     `json:"fundamentalMin"`
+	CoreMin        int64     `json:"coreMin"`
 }
 
 type AWSParam struct {
@@ -135,9 +138,12 @@ type GetBYOCProjectResponse struct {
 		SecurityGroupIDs []string `json:"securityGroupIds"`
 		SubnetIDs        []string `json:"subnetIds"`
 		VMCombine        struct {
-			CoreVM        string `json:"coreVm"`
-			FundamentalVM string `json:"fundamentalVm"`
-			SearchVM      string `json:"searchVm"`
+			CoreVM         string `json:"coreVm"`
+			FundamentalVM  string `json:"fundamentalVm"`
+			SearchVM       string `json:"searchVm"`
+			SearchMin      int64  `json:"searchMin"`
+			FundamentalMin int64  `json:"fundamentalMin"`
+			CoreMin        int64  `json:"coreMin"`
 		} `json:"vmCombine"`
 		VPCID string `json:"vpcId"`
 	} `json:"awsConfig"`

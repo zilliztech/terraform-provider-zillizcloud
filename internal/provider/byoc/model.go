@@ -41,9 +41,12 @@ type StorageConfig struct {
 }
 
 type InstancesConfig struct {
-	CoreVM        types.String `tfsdk:"core_vm"`
-	FundamentalVM types.String `tfsdk:"fundamental_vm"`
-	SearchVM      types.String `tfsdk:"search_vm"`
+	CoreVM             types.String `tfsdk:"core_vm"`
+	FundamentalVM      types.String `tfsdk:"fundamental_vm"`
+	SearchVM           types.String `tfsdk:"search_vm"`
+	CoreVMCount        types.Int64  `tfsdk:"core_vm_min_count"`
+	FundamentalVMCount types.Int64  `tfsdk:"fundamental_vm_min_count"`
+	SearchVMCount      types.Int64  `tfsdk:"search_vm_min_count"`
 }
 
 func (data *BYOCProjectResourceModel) refresh(input BYOCProjectResourceModel) {

@@ -30,7 +30,16 @@ func (s *byocOpProjectSettingsStore) Create(ctx context.Context, data *BYOCOpPro
 		SearchVm:      data.Instances.SearchVM.ValueString(),
 		FundamentalVm: data.Instances.FundamentalVM.ValueString(),
 		CoreVm:        data.Instances.CoreVM.ValueString(),
-		DeployType:    TERRAFORM_DEPLOY_TYPE,
+		PrivateLinkEnabled: func() int {
+			if data.PrivateLinkEnabled.ValueBool() {
+				return 1
+			}
+			return 0
+		}(),
+		SearchMin:      data.Instances.SearchVMCount.ValueInt64(),
+		FundamentalMin: data.Instances.FundamentalVMCount.ValueInt64(),
+		CoreMin:        data.Instances.CoreVMCount.ValueInt64(),
+		DeployType:     TERRAFORM_DEPLOY_TYPE,
 	}
 
 	tflog.Info(ctx, fmt.Sprintf("Create BYOC Op Project Settings request: %+v", request))
@@ -107,6 +116,7 @@ func (s *byocOpProjectSettingsStore) Describe(ctx context.Context, projectID str
 		if err != nil {
 			return data, fmt.Errorf("failed to describe BYOC Op project settings: %w", err)
 		}
+		data.PrivateLinkEnabled = types.BoolValue(response.PrivateLinkEnabled == 1)
 		OpConfig, diag := types.ObjectValue(map[string]attr.Type{
 			"token":           types.StringType,
 			"agent_image_url": types.StringType,

@@ -51,9 +51,12 @@ type Instances struct {
 }
 
 type InstancesOpConfig struct {
-	CoreVM        types.String `tfsdk:"core_vm"`
-	FundamentalVM types.String `tfsdk:"fundamental_vm"`
-	SearchVM      types.String `tfsdk:"search_vm"`
+	CoreVM             types.String `tfsdk:"core_vm"`
+	FundamentalVM      types.String `tfsdk:"fundamental_vm"`
+	SearchVM           types.String `tfsdk:"search_vm"`
+	SearchVMCount      types.Int64  `tfsdk:"search_vm_min_count"`
+	FundamentalVMCount types.Int64  `tfsdk:"fundamental_vm_min_count"`
+	CoreVMCount        types.Int64  `tfsdk:"core_vm_min_count"`
 }
 
 func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel) {
@@ -65,15 +68,16 @@ func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel
 }
 
 type BYOCOpProjectSettingsResourceModel struct {
-	ID            types.String      `tfsdk:"id"`
-	ProjectID     types.String      `tfsdk:"project_id"`
-	ProjectName   types.String      `tfsdk:"project_name"`
-	DataPlaneID   types.String      `tfsdk:"data_plane_id"`
-	Instances     InstancesOpConfig `tfsdk:"instances"`
-	CloudProvider types.String      `tfsdk:"cloud_provider"`
-	Region        types.String      `tfsdk:"region"`
-	OpConfig      types.Object      `tfsdk:"op_config"`
-	NodeQuotas    types.Object      `tfsdk:"node_quotas"`
+	ID                 types.String      `tfsdk:"id"`
+	ProjectID          types.String      `tfsdk:"project_id"`
+	ProjectName        types.String      `tfsdk:"project_name"`
+	DataPlaneID        types.String      `tfsdk:"data_plane_id"`
+	Instances          InstancesOpConfig `tfsdk:"instances"`
+	CloudProvider      types.String      `tfsdk:"cloud_provider"`
+	Region             types.String      `tfsdk:"region"`
+	OpConfig           types.Object      `tfsdk:"op_config"`
+	NodeQuotas         types.Object      `tfsdk:"node_quotas"`
+	PrivateLinkEnabled types.Bool        `tfsdk:"private_link_enabled"`
 }
 
 type OpConfig struct {
@@ -98,14 +102,15 @@ type NodeQuota struct {
 }
 
 type BYOCOpProjectSettingsDataModel struct {
-	ID            types.String `tfsdk:"id"`
-	ProjectID     types.String `tfsdk:"project_id"`
-	DataPlaneID   types.String `tfsdk:"data_plane_id"`
-	ProjectName   types.String `tfsdk:"project_name"`
-	CloudProvider types.String `tfsdk:"cloud_provider"`
-	Region        types.String `tfsdk:"region"`
-	OpConfig      types.Object `tfsdk:"op_config"`
-	NodeQuotas    types.Object `tfsdk:"node_quotas"`
+	ID                 types.String `tfsdk:"id"`
+	ProjectID          types.String `tfsdk:"project_id"`
+	DataPlaneID        types.String `tfsdk:"data_plane_id"`
+	ProjectName        types.String `tfsdk:"project_name"`
+	CloudProvider      types.String `tfsdk:"cloud_provider"`
+	Region             types.String `tfsdk:"region"`
+	OpConfig           types.Object `tfsdk:"op_config"`
+	NodeQuotas         types.Object `tfsdk:"node_quotas"`
+	PrivateLinkEnabled types.Bool   `tfsdk:"private_link_enabled"`
 }
 
 func (data *BYOCOpProjectSettingsDataModel) refresh(input BYOCOpProjectSettingsDataModel) {
@@ -116,6 +121,7 @@ func (data *BYOCOpProjectSettingsDataModel) refresh(input BYOCOpProjectSettingsD
 	data.Region = input.Region
 	data.OpConfig = input.OpConfig
 	data.NodeQuotas = input.NodeQuotas
+	data.PrivateLinkEnabled = input.PrivateLinkEnabled
 }
 
 type BYOCProjectStatus int

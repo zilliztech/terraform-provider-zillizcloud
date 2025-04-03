@@ -95,6 +95,12 @@ Required:
 - `fundamental_vm` (String) Fundamental VM instance type
 - `search_vm` (String) Search VM instance type
 
+Optional:
+
+- `core_vm_min_count` (Number) Core VM instance count. Defaults to 1 if not specified.
+- `fundamental_vm_min_count` (Number) Fundamental VM instance count
+- `search_vm_min_count` (Number) Search VM instance count
+
 
 <a id="nestedatt--aws--network"></a>
 ### Nested Schema for `aws.network`

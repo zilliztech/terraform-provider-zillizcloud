@@ -139,9 +139,12 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 			BucketID: types.StringValue(project.AWSConfig.BucketID),
 		},
 		Instances: InstancesConfig{
-			CoreVM:        types.StringValue(project.AWSConfig.VMCombine.CoreVM),
-			FundamentalVM: types.StringValue(project.AWSConfig.VMCombine.FundamentalVM),
-			SearchVM:      types.StringValue(project.AWSConfig.VMCombine.SearchVM),
+			CoreVM:             types.StringValue(project.AWSConfig.VMCombine.CoreVM),
+			FundamentalVM:      types.StringValue(project.AWSConfig.VMCombine.FundamentalVM),
+			SearchVM:           types.StringValue(project.AWSConfig.VMCombine.SearchVM),
+			CoreVMCount:        types.Int64Value(project.AWSConfig.VMCombine.CoreMin),
+			FundamentalVMCount: types.Int64Value(project.AWSConfig.VMCombine.FundamentalMin),
+			SearchVMCount:      types.Int64Value(project.AWSConfig.VMCombine.SearchMin),
 		},
 	}
 	return data, nil
@@ -160,13 +163,16 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 		data.AWS.Network.SecurityGroupIDs.ElementsAs(ctx, &securityGroupIDs, false)
 
 		request = zilliz.CreateBYOCProjectRequest{
-			ProjectName:   data.Name.ValueString(),
-			RegionID:      data.AWS.Region.ValueString(),
-			CloudID:       zilliz.CloudId("aws"),
-			FundamentalVM: data.AWS.Instances.FundamentalVM.ValueString(),
-			SearchVM:      data.AWS.Instances.SearchVM.ValueString(),
-			CoreVM:        data.AWS.Instances.CoreVM.ValueString(),
-			DeployType:    TERRAFORM_DEPLOY_TYPE,
+			ProjectName:    data.Name.ValueString(),
+			RegionID:       data.AWS.Region.ValueString(),
+			CloudID:        zilliz.CloudId("aws"),
+			FundamentalVM:  data.AWS.Instances.FundamentalVM.ValueString(),
+			SearchVM:       data.AWS.Instances.SearchVM.ValueString(),
+			CoreVM:         data.AWS.Instances.CoreVM.ValueString(),
+			SearchMin:      data.AWS.Instances.SearchVMCount.ValueInt64(),
+			FundamentalMin: data.AWS.Instances.FundamentalVMCount.ValueInt64(),
+			CoreMin:        data.AWS.Instances.CoreVMCount.ValueInt64(),
+			DeployType:     TERRAFORM_DEPLOY_TYPE,
 			AWSParam: &zilliz.AWSParam{
 				BucketID:         data.AWS.Storage.BucketID.ValueString(),
 				StorageRoleArn:   data.AWS.RoleARN.Storage.ValueString(),
