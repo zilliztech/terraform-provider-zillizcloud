@@ -23,9 +23,9 @@ resource "zillizcloud_byoc_op_project_settings" "test" {
     core_vm        = "m6i.2xlarge"
     fundamental_vm = "m6i.2xlarge"
     search_vm      = "m6id.2xlarge"
-	search_vm_min_count = 1
-    fundamental_vm_min_count = 1
-    core_vm_min_count = 1
+	search_vm_min_count = 0
+    fundamental_vm_min_count = 0
+    core_vm_min_count = 3
   }
 	private_link_enabled = true
 } 
@@ -35,9 +35,9 @@ resource "zillizcloud_byoc_op_project_settings" "test" {
 					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "region", "us-west-2"),
 					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "cloud_provider", "aws"),
 					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "private_link_enabled", "true"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.search_vm_min_count", "1"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.fundamental_vm_min_count", "1"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.core_vm_min_count", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.search_vm_min_count", "0"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.fundamental_vm_min_count", "0"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.core_vm_min_count", "3"),
 					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "project_id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "data_plane_id"),
