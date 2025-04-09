@@ -69,17 +69,14 @@ resource "zillizcloud_byoc_op_project_settings" "this" {
 <a id="nestedatt--instances"></a>
 ### Nested Schema for `instances`
 
-Required:
-
-- `core_vm` (String) Core VM instance type
-- `fundamental_vm` (String) Fundamental VM instance type
-- `search_vm` (String)
-
 Optional:
 
-- `core_vm_min_count` (Number) Core VM instance type
-- `fundamental_vm_min_count` (Number) Fundamental VM instance type
-- `search_vm_min_count` (Number) Search VM instance type
+- `core_vm` (String) Instance type used for the core virtual machine, which hosts Milvus Operators, Zilliz Cloud Agent, and Milvus dependencies, such as Prometheus, Etcd, Pulsar, etc.
+- `core_vm_min_count` (Number) Core VM instance count. Defaults to 3 if not specified.
+- `fundamental_vm` (String) Instance type used for the fundamental virtual machine, which hosts Milvus components other than the query nodes, including the proxy, datanode, index pool, and coordinators.
+- `fundamental_vm_min_count` (Number) Fundamental VM instance count
+- `search_vm` (String) Instance type used for the search virtual machine, which hosts the query nodes.
+- `search_vm_min_count` (Number) Search VM instance count
 
 
 <a id="nestedatt--node_quotas"></a>

@@ -9,11 +9,14 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -174,25 +177,39 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 						Attributes: map[string]schema.Attribute{
 							"core_vm": schema.StringAttribute{
 								MarkdownDescription: "Core VM instance type",
-								Required:            true,
+								Optional:            true,
+								Computed:            true,
+								Default:             stringdefault.StaticString("m6i.2xlarge"),
 								PlanModifiers: []planmodifier.String{
 									stringplanmodifier.RequiresReplace(),
 								},
+								Validators: []validator.String{
+									stringvalidator.OneOf(
+										"m6i.2xlarge",
+									),
+								},
 							},
 							"core_vm_min_count": schema.Int64Attribute{
-								MarkdownDescription: "Core VM instance count. Defaults to 1 if not specified.",
+								MarkdownDescription: "Core VM instance count. Defaults to 3 if not specified.",
 								Optional:            true,
 								Computed:            true,
-								Default:             int64default.StaticInt64(1),
+								Default:             int64default.StaticInt64(3),
 								PlanModifiers: []planmodifier.Int64{
 									int64planmodifier.RequiresReplace(),
 								},
 							},
 							"fundamental_vm": schema.StringAttribute{
 								MarkdownDescription: "Fundamental VM instance type",
-								Required:            true,
+								Optional:            true,
+								Computed:            true,
+								Default:             stringdefault.StaticString("m6i.2xlarge"),
 								PlanModifiers: []planmodifier.String{
 									stringplanmodifier.RequiresReplace(),
+								},
+								Validators: []validator.String{
+									stringvalidator.OneOf(
+										"m6i.2xlarge",
+									),
 								},
 							},
 							"fundamental_vm_min_count": schema.Int64Attribute{
@@ -206,9 +223,17 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 							},
 							"search_vm": schema.StringAttribute{
 								MarkdownDescription: "Search VM instance type",
-								Required:            true,
+								Optional:            true,
+								Computed:            true,
+								Default:             stringdefault.StaticString("m6id.2xlarge"),
 								PlanModifiers: []planmodifier.String{
 									stringplanmodifier.RequiresReplace(),
+								},
+								Validators: []validator.String{
+									stringvalidator.OneOf(
+										"m6id.2xlarge",
+										"m6id.4xlarge",
+									),
 								},
 							},
 							"search_vm_min_count": schema.Int64Attribute{
