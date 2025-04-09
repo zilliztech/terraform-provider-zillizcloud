@@ -3,20 +3,16 @@ package byoc_op
 import (
 	"context"
 	"fmt"
-
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	zschema "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/schema"
 )
 
 var _ resource.Resource = &BYOCOpProjectSettingsResource{}
@@ -137,82 +133,7 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 					boolplanmodifier.RequiresReplace(),
 				},
 			},
-			"instances": schema.SingleNestedAttribute{
-				MarkdownDescription: "Instance type configuration",
-				Required:            true,
-				Attributes: map[string]schema.Attribute{
-					"core_vm": schema.StringAttribute{
-						MarkdownDescription: "Core VM instance type",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("m6i.2xlarge"),
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.RequiresReplace(),
-						},
-						Validators: []validator.String{
-							stringvalidator.OneOf(
-								"m6i.2xlarge",
-							),
-						},
-					},
-					"core_vm_min_count": schema.Int64Attribute{
-						MarkdownDescription: "Core VM instance count. Defaults to 3 if not specified.",
-						Optional:            true,
-						Computed:            true,
-						Default:             int64default.StaticInt64(3),
-						PlanModifiers: []planmodifier.Int64{
-							int64planmodifier.RequiresReplace(),
-						},
-					},
-					"fundamental_vm": schema.StringAttribute{
-						MarkdownDescription: "Fundamental VM instance type",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("m6i.2xlarge"),
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.RequiresReplace(),
-						},
-						Validators: []validator.String{
-							stringvalidator.OneOf(
-								"m6i.2xlarge",
-							),
-						},
-					},
-					"fundamental_vm_min_count": schema.Int64Attribute{
-						MarkdownDescription: "Fundamental VM instance count",
-						Optional:            true,
-						Computed:            true,
-						Default:             int64default.StaticInt64(0),
-						PlanModifiers: []planmodifier.Int64{
-							int64planmodifier.RequiresReplace(),
-						},
-					},
-					"search_vm": schema.StringAttribute{
-						MarkdownDescription: "Search VM instance type",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("m6id.2xlarge"),
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.RequiresReplace(),
-						},
-						Validators: []validator.String{
-							stringvalidator.OneOf(
-								"m6id.2xlarge",
-								"m6id.4xlarge",
-							),
-						},
-					},
-					"search_vm_min_count": schema.Int64Attribute{
-						MarkdownDescription: "Search VM instance count",
-						Optional:            true,
-						Computed:            true,
-						Default:             int64default.StaticInt64(0),
-						PlanModifiers: []planmodifier.Int64{
-							int64planmodifier.RequiresReplace(),
-						},
-					},
-				},
-			},
+			"instances": zschema.Instances,
 			"op_config": schema.SingleNestedAttribute{
 				MarkdownDescription: "Operation configuration settings",
 				Computed:            true,
