@@ -43,6 +43,9 @@ resource "zillizcloud_byoc_project" "test" {
       core_vm        = "m6i.2xlarge"
       fundamental_vm = "m6i.2xlarge"
       search_vm      = "m6id.2xlarge"
+      core_vm_min_count = 1
+      fundamental_vm_min_count = 1
+      search_vm_min_count = 1
     }
   }
 }
@@ -56,6 +59,9 @@ resource "zillizcloud_byoc_project" "test" {
 					resource.TestCheckResourceAttr("zillizcloud_byoc_project.test", "aws.instances.core_vm", "m6i.2xlarge"),
 					resource.TestCheckResourceAttr("zillizcloud_byoc_project.test", "aws.instances.fundamental_vm", "m6i.2xlarge"),
 					resource.TestCheckResourceAttr("zillizcloud_byoc_project.test", "aws.instances.search_vm", "m6id.2xlarge"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_project.test", "aws.instances.core_vm_min_count", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_project.test", "aws.instances.fundamental_vm_min_count", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_project.test", "aws.instances.search_vm_min_count", "1"),
 					resource.TestCheckResourceAttrSet("zillizcloud_byoc_project.test", "id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_byoc_project.test", "data_plane_id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_byoc_project.test", "status"),
@@ -94,6 +100,9 @@ resource "zillizcloud_byoc_project" "test" {
       core_vm        = "m6i.2xlarge"
       fundamental_vm = "m6i.2xlarge"
       search_vm      = "m6id.2xlarge"
+      core_vm_min_count = 1
+      fundamental_vm_min_count = 1
+      search_vm_min_count = 1
     }
   }
 }
@@ -135,6 +144,9 @@ resource "zillizcloud_byoc_project" "test" {
       core_vm        = "m6i.2xlarge"
       fundamental_vm = "m6i.2xlarge"
       search_vm      = "m6id.2xlarge"
+      core_vm_min_count = 1
+      fundamental_vm_min_count = 1
+      search_vm_min_count = 1
     }
   }
 }

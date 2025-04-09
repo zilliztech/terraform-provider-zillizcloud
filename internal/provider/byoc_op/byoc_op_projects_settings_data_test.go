@@ -23,7 +23,11 @@ resource "zillizcloud_byoc_op_project_settings" "resource" {
     core_vm        = "m6i.2xlarge"
     fundamental_vm = "m6i.2xlarge"
     search_vm      = "m6id.2xlarge"
+    search_vm_min_count = 1
+    fundamental_vm_min_count = 1
+    core_vm_min_count = 1
   }
+	private_link_enabled = true
 } 
 
 data "zillizcloud_byoc_op_project_settings" "test" {
@@ -48,6 +52,7 @@ data "zillizcloud_byoc_op_project_settings" "test" {
 					// Check op_config
 					resource.TestCheckResourceAttrSet("data.zillizcloud_byoc_op_project_settings.test", "op_config.token"),
 					resource.TestCheckResourceAttrSet("data.zillizcloud_byoc_op_project_settings.test", "op_config.agent_image_url"),
+					resource.TestCheckResourceAttr("data.zillizcloud_byoc_op_project_settings.test", "private_link_enabled", "true"),
 				),
 			},
 		},

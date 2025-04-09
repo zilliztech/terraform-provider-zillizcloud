@@ -13,6 +13,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -176,6 +179,15 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 									stringplanmodifier.RequiresReplace(),
 								},
 							},
+							"core_vm_min_count": schema.Int64Attribute{
+								MarkdownDescription: "Core VM instance count. Defaults to 1 if not specified.",
+								Optional:            true,
+								Computed:            true,
+								Default:             int64default.StaticInt64(1),
+								PlanModifiers: []planmodifier.Int64{
+									int64planmodifier.RequiresReplace(),
+								},
+							},
 							"fundamental_vm": schema.StringAttribute{
 								MarkdownDescription: "Fundamental VM instance type",
 								Required:            true,
@@ -183,11 +195,29 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 									stringplanmodifier.RequiresReplace(),
 								},
 							},
+							"fundamental_vm_min_count": schema.Int64Attribute{
+								MarkdownDescription: "Fundamental VM instance count",
+								Optional:            true,
+								Computed:            true,
+								Default:             int64default.StaticInt64(0),
+								PlanModifiers: []planmodifier.Int64{
+									int64planmodifier.RequiresReplace(),
+								},
+							},
 							"search_vm": schema.StringAttribute{
 								MarkdownDescription: "Search VM instance type",
 								Required:            true,
 								PlanModifiers: []planmodifier.String{
 									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"search_vm_min_count": schema.Int64Attribute{
+								MarkdownDescription: "Search VM instance count",
+								Optional:            true,
+								Computed:            true,
+								Default:             int64default.StaticInt64(0),
+								PlanModifiers: []planmodifier.Int64{
+									int64planmodifier.RequiresReplace(),
 								},
 							},
 						},

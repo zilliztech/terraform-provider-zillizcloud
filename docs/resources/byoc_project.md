@@ -36,21 +36,24 @@ resource "zillizcloud_byoc_project" "this" {
 
       subnet_ids         = ["subnet-0d352e35a68f2f7c7", "subnet-03d0d894d05e0b87b", "subnet-08cf896411a229c8e"]
       security_group_ids = ["sg-02f41431f91303644"]
-      # vpc_endpoint_id    = "vpce-12345678"
+      vpc_endpoint_id    = "vpce-12345678"
     }
     role_arn = {
-      storage       = "arn:aws:iam::306787409409:role/zilliz-stack-17d586-ZillizStorageRole-1jSYHHFWhGkz"
-      eks           = "arn:aws:iam::306787409409:role/zilliz-stack-17d586-ZillizEKSRole-D27XZP0XK5do"
-      cross_account = "arn:aws:iam::306787409409:role/zilliz-stack-17d586-ZillizBootstrapRole-DAyuQSLZEN9g"
+      storage       = "arn:aws:iam::999999999999:role/zilliz-stack-17d586-ZillizStorageRole-1jSYHHFWhGkz"
+      eks           = "arn:aws:iam::999999999999:role/zilliz-stack-17d586-ZillizEKSRole-D27XZP0XK5do"
+      cross_account = "arn:aws:iam::999999999999:role/zilliz-stack-17d586-ZillizBootstrapRole-DAyuQSLZEN9g"
     }
     storage = {
       bucket_id = "zilliz-s3-0af21b"
     }
 
     instances = {
-      core_vm        = "m6i.2xlarge"
-      fundamental_vm = "m6i.2xlarge"
-      search_vm      = "m6id.2xlarge"
+      core_vm                  = "m6i.2xlarge"
+      core_vm_min_count        = 3
+      fundamental_vm           = "m6i.2xlarge"
+      fundamental_vm_min_count = 0
+      search_vm                = "m6id.4xlarge"
+      search_vm_min_count      = 0
     }
   }
 
@@ -94,6 +97,12 @@ Required:
 - `core_vm` (String) Core VM instance type
 - `fundamental_vm` (String) Fundamental VM instance type
 - `search_vm` (String) Search VM instance type
+
+Optional:
+
+- `core_vm_min_count` (Number) Core VM instance count. Defaults to 1 if not specified.
+- `fundamental_vm_min_count` (Number) Fundamental VM instance count
+- `search_vm_min_count` (Number) Search VM instance count
 
 
 <a id="nestedatt--aws--network"></a>

@@ -6,6 +6,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -30,7 +33,7 @@ func (r *BYOCOpProjectSettingsResource) Metadata(ctx context.Context, req resour
 
 func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	nodeSchema := schema.SingleNestedAttribute{
-		MarkdownDescription: "Fundamental VM configuration",
+		MarkdownDescription: "VM configuration",
 		Computed:            true,
 		Attributes: map[string]schema.Attribute{
 			"disk_size": schema.Int64Attribute{
@@ -122,6 +125,15 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"private_link_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Private link enabled",
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
+			},
 			"instances": schema.SingleNestedAttribute{
 				MarkdownDescription: "Instance type configuration",
 				Required:            true,
@@ -133,6 +145,15 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 							stringplanmodifier.RequiresReplace(),
 						},
 					},
+					"core_vm_min_count": schema.Int64Attribute{
+						MarkdownDescription: "Core VM instance type",
+						Optional:            true,
+						Computed:            true,
+						Default:             int64default.StaticInt64(1),
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.RequiresReplace(),
+						},
+					},
 					"fundamental_vm": schema.StringAttribute{
 						MarkdownDescription: "Fundamental VM instance type",
 						Required:            true,
@@ -140,11 +161,28 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 							stringplanmodifier.RequiresReplace(),
 						},
 					},
+					"fundamental_vm_min_count": schema.Int64Attribute{
+						MarkdownDescription: "Fundamental VM instance type",
+						Optional:            true,
+						Computed:            true,
+						Default:             int64default.StaticInt64(0),
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.RequiresReplace(),
+						},
+					},
 					"search_vm": schema.StringAttribute{
-						MarkdownDescription: "Search VM instance type",
-						Required:            true,
+						Required: true,
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.RequiresReplace(),
+						},
+					},
+					"search_vm_min_count": schema.Int64Attribute{
+						MarkdownDescription: "Search VM instance type",
+						Optional:            true,
+						Computed:            true,
+						Default:             int64default.StaticInt64(0),
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.RequiresReplace(),
 						},
 					},
 				},

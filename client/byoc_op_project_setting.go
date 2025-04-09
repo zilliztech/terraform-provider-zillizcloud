@@ -1,13 +1,17 @@
 package client
 
 type CreateByocOpProjectSettingsRequest struct {
-	ProjectName   string `json:"projectName"`
-	CloudId       string `json:"cloudId"`
-	RegionId      string `json:"regionId"`
-	SearchVm      string `json:"searchVm"`
-	FundamentalVm string `json:"fundamentalVm"`
-	CoreVm        string `json:"coreVm"`
-	DeployType    int    `json:"deployType"`
+	ProjectName        string `json:"projectName"`
+	CloudId            string `json:"cloudId"`
+	RegionId           string `json:"regionId"`
+	SearchVm           string `json:"searchVm"`
+	FundamentalVm      string `json:"fundamentalVm"`
+	CoreVm             string `json:"coreVm"`
+	SearchMin          int64  `json:"searchMin"`
+	FundamentalMin     int64  `json:"fundamentalMin"`
+	CoreMin            int64  `json:"coreMin"`
+	DeployType         int    `json:"deployType"`
+	PrivateLinkEnabled int    `json:"openPl"`
 }
 
 func (c *Client) CreateByocOpProjectSetting(params *CreateByocOpProjectSettingsRequest) (*CreateByocOpProjectSettingResponse, error) {
@@ -31,14 +35,15 @@ type DescribeByocOpProjectSettingsRequest struct {
 }
 
 type GetByocOpProjectSettingsResponse struct {
-	ProjectId   string      `json:"projectId"`
-	DataPlaneId string      `json:"dataPlaneId"`
-	ProjectName string      `json:"projectName"`
-	CloudId     string      `json:"cloudId"`
-	RegionId    string      `json:"regionId"`
-	ByocId      string      `json:"byocId"`
-	OpConfig    OpConfig    `json:"opConfig"`
-	NodeQuotas  []NodeQuota `json:"nodeQuotas"`
+	ProjectId          string      `json:"projectId"`
+	DataPlaneId        string      `json:"dataPlaneId"`
+	ProjectName        string      `json:"projectName"`
+	CloudId            string      `json:"cloudId"`
+	RegionId           string      `json:"regionId"`
+	ByocId             string      `json:"byocId"`
+	OpConfig           OpConfig    `json:"opConfig"`
+	NodeQuotas         []NodeQuota `json:"nodeQuotas"`
+	PrivateLinkEnabled int         `json:"openPl"`
 }
 
 type OpConfig struct {

@@ -86,7 +86,10 @@ func (r *BYOCOpProjectSettingsData) Schema(ctx context.Context, req datasource.S
 				MarkdownDescription: "Cloud provider",
 				Computed:            true,
 			},
-
+			"private_link_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Private link enabled",
+				Computed:            true,
+			},
 			"op_config": schema.SingleNestedAttribute{
 				MarkdownDescription: "Operation configuration settings",
 				Computed:            true,
@@ -196,6 +199,8 @@ func (s *byocOpProjectSettingsDataStore) Describe(ctx context.Context, projectID
 		if err != nil {
 			return data, fmt.Errorf("failed to describe BYOC Op project settings: %w", err)
 		}
+
+		data.PrivateLinkEnabled = types.BoolValue(response.PrivateLinkEnabled == 1)
 
 		OpConfig, diag := types.ObjectValue(map[string]attr.Type{
 			"token":           types.StringType,
