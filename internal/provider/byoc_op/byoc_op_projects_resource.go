@@ -165,33 +165,6 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 							},
 						},
 					},
-					"instances": schema.SingleNestedAttribute{
-						MarkdownDescription: "Instance type configuration",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"core_vm": schema.StringAttribute{
-								MarkdownDescription: "Core VM instance type",
-								Required:            true,
-								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.RequiresReplace(),
-								},
-							},
-							"fundamental_vm": schema.StringAttribute{
-								MarkdownDescription: "Fundamental VM instance type",
-								Required:            true,
-								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.RequiresReplace(),
-								},
-							},
-							"search_vm": schema.StringAttribute{
-								MarkdownDescription: "Search VM instance type",
-								Required:            true,
-								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.RequiresReplace(),
-								},
-							},
-						},
-					},
 				},
 			},
 		},

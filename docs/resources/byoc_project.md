@@ -92,16 +92,13 @@ Required:
 <a id="nestedatt--aws--instances"></a>
 ### Nested Schema for `aws.instances`
 
-Required:
-
-- `core_vm` (String) Core VM instance type
-- `fundamental_vm` (String) Fundamental VM instance type
-- `search_vm` (String) Search VM instance type
-
 Optional:
 
-- `core_vm_min_count` (Number) Core VM instance count. Defaults to 1 if not specified.
+- `core_vm` (String) Instance type used for the core virtual machine, which hosts Milvus Operators, Zilliz Cloud Agent, and Milvus dependencies, such as Prometheus, Etcd, Pulsar, etc.
+- `core_vm_min_count` (Number) Core VM instance count. Defaults to 3 if not specified.
+- `fundamental_vm` (String) Instance type used for the fundamental virtual machine, which hosts Milvus components other than the query nodes, including the proxy, datanode, index pool, and coordinators.
 - `fundamental_vm_min_count` (Number) Fundamental VM instance count
+- `search_vm` (String) Instance type used for the search virtual machine, which hosts the query nodes.
 - `search_vm_min_count` (Number) Search VM instance count
 
 

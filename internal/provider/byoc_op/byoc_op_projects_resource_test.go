@@ -67,9 +67,9 @@ resource "zillizcloud_byoc_op_project" "test" {
             security_group_ids = ["sg-02f41431f91303644"]
         }
         role_arn = {
-            storage = "arn:aws:iam::306787409409:role/zilliz-stack-17d586-ZillizStorageRole-1jSYHHFWhGkz"
-            eks = "arn:aws:iam::306787409409:role/zilliz-stack-17d586-ZillizEKSRole-D27XZP0XK5do"
-            cross_account = "arn:aws:iam::306787409409:role/zilliz-stack-17d586-ZillizBootstrapRole-DAyuQSLZEN9g"
+            storage = "arn:aws:iam::999999999999:role/zilliz-stack-17d586-ZillizStorageRole-1jSYHHFWhGkz"
+            eks = "arn:aws:iam::999999999999:role/zilliz-stack-17d586-ZillizEKSRole-D27XZP0XK5do"
+            cross_account = "arn:aws:iam::999999999999:role/zilliz-stack-17d586-ZillizBootstrapRole-DAyuQSLZEN9g"
         }
         storage = {
             bucket_id = "zilliz-s3-0af21b"

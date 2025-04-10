@@ -21,11 +21,10 @@ type BYOCOpProjectResourceModel struct {
 }
 
 type AWSConfig struct {
-	Region    types.String  `tfsdk:"region"`
-	Network   NetworkConfig `tfsdk:"network"`
-	RoleARN   RoleARNConfig `tfsdk:"role_arn"`
-	Storage   StorageConfig `tfsdk:"storage"`
-	Instances *Instances    `tfsdk:"instances"`
+	Region  types.String  `tfsdk:"region"`
+	Network NetworkConfig `tfsdk:"network"`
+	RoleARN RoleARNConfig `tfsdk:"role_arn"`
+	Storage StorageConfig `tfsdk:"storage"`
 }
 type NetworkConfig struct {
 	VPCID            types.String `tfsdk:"vpc_id"`
