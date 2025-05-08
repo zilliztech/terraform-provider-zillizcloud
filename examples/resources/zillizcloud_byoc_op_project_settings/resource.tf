@@ -9,7 +9,7 @@ terraform {
 provider "zillizcloud" {
 }
 
-resource "zillizcloud_byoc_op_project_settings" "this" {
+resource "zillizcloud_byoc_i_project_settings" "this" {
 
   cloud_provider = "aws"
   region         = "aws-us-west-2"
