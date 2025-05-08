@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 	byoc "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc"
-	byoc_op "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc_op"
+	byoc_op "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc_i"
 )
 
 // Ensure ZillizProvider satisfies various provider interfaces.

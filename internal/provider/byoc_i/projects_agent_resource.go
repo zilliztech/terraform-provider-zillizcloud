@@ -42,7 +42,7 @@ type BYOCOpProjectAgentResourceModel struct {
 }
 
 func (r *BYOCOpProjectAgentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_byoc_op_project_agent"
+	resp.TypeName = req.ProviderTypeName + "_byoc_i_project_agent"
 }
 
 func (r *BYOCOpProjectAgentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -27,7 +27,7 @@ type BYOCOpProjectSettingsResource struct {
 }
 
 func (r *BYOCOpProjectSettingsResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_byoc_op_project_settings"
+	resp.TypeName = req.ProviderTypeName + "_byoc_i_project_settings"
 }
 
 func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {

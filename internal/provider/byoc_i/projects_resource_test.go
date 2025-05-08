@@ -14,18 +14,18 @@ func TestAccByocOpProjectResource(t *testing.T) {
 			{
 				Config: testAccByocOpProjectConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "project_id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "data_plane_id"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "cloud_provider", "aws"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "region", "aws-us-west-2"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "project_name", "byoc-zilliz-test"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "project_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "data_plane_id"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "cloud_provider", "aws"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "region", "aws-us-west-2"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "project_name", "byoc-zilliz-test"),
 					// asert status
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project.test", "status", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "status", "1"),
 
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project.test", "project_id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project.test", "data_plane_id"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project.test", "aws.region", "aws-us-west-2"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project.test", "aws.network.vpc_id", "vpc-0a9a08f81e27c2b69"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project.test", "project_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project.test", "data_plane_id"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "aws.region", "aws-us-west-2"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "aws.network.vpc_id", "vpc-0a9a08f81e27c2b69"),
 				),
 			},
 		},
@@ -34,7 +34,7 @@ func TestAccByocOpProjectResource(t *testing.T) {
 
 func testAccByocOpProjectConfig() string {
 	return `
-resource "zillizcloud_byoc_op_project_settings" "test" {
+resource "zillizcloud_byoc_i_project_settings" "test" {
     cloud_provider = "aws"
     region = "aws-us-west-2"
     project_name = "byoc-zilliz-test"
@@ -46,18 +46,18 @@ resource "zillizcloud_byoc_op_project_settings" "test" {
     }
 }
 
-resource "zillizcloud_byoc_op_project_agent" "test" {
-    project_id = zillizcloud_byoc_op_project_settings.test.project_id
-    data_plane_id = zillizcloud_byoc_op_project_settings.test.data_plane_id
+resource "zillizcloud_byoc_i_project_agent" "test" {
+    project_id = zillizcloud_byoc_i_project_settings.test.project_id
+    data_plane_id = zillizcloud_byoc_i_project_settings.test.data_plane_id
 }
 
-resource "zillizcloud_byoc_op_project" "test" {
+resource "zillizcloud_byoc_i_project" "test" {
     lifecycle {
         ignore_changes = [data_plane_id, project_id, aws, ext_config]
     }
 
-    data_plane_id = zillizcloud_byoc_op_project_settings.test.data_plane_id
-    project_id = zillizcloud_byoc_op_project_settings.test.project_id
+    data_plane_id = zillizcloud_byoc_i_project_settings.test.data_plane_id
+    project_id = zillizcloud_byoc_i_project_settings.test.project_id
    
     aws = {
         region = "aws-us-west-2"
@@ -77,7 +77,7 @@ resource "zillizcloud_byoc_op_project" "test" {
 
     }
 
-    depends_on = [zillizcloud_byoc_op_project_settings.test, zillizcloud_byoc_op_project_agent.test]
+    depends_on = [zillizcloud_byoc_i_project_settings.test, zillizcloud_byoc_i_project_agent.test]
 }
 `
 }

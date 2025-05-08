@@ -12,7 +12,7 @@ provider "zillizcloud" {
 
 
 
-resource "zillizcloud_byoc_op_project_settings" "this" {
+resource "zillizcloud_byoc_i_project_settings" "this" {
 
   cloud_provider = "aws"
   region         = "aws-us-west-2"
@@ -30,19 +30,19 @@ resource "zillizcloud_byoc_op_project_settings" "this" {
 }
 
 
-resource "zillizcloud_byoc_op_project_agent" "this" {
-  project_id    = zillizcloud_byoc_op_project_settings.this.project_id
-  data_plane_id = zillizcloud_byoc_op_project_settings.this.data_plane_id
+resource "zillizcloud_byoc_i_project_agent" "this" {
+  project_id    = zillizcloud_byoc_i_project_settings.this.project_id
+  data_plane_id = zillizcloud_byoc_i_project_settings.this.data_plane_id
 }
 
-resource "zillizcloud_byoc_op_project" "this" {
+resource "zillizcloud_byoc_i_project" "this" {
 
   lifecycle {
     ignore_changes = [data_plane_id, project_id, aws, ext_config]
   }
 
-  data_plane_id = zillizcloud_byoc_op_project_settings.this.data_plane_id
-  project_id    = zillizcloud_byoc_op_project_settings.this.project_id
+  data_plane_id = zillizcloud_byoc_i_project_settings.this.data_plane_id
+  project_id    = zillizcloud_byoc_i_project_settings.this.project_id
 
   aws = {
 
@@ -68,5 +68,5 @@ resource "zillizcloud_byoc_op_project" "this" {
 
   }
 
-  depends_on = [zillizcloud_byoc_op_project_settings.this, zillizcloud_byoc_op_project_agent.this]
+  depends_on = [zillizcloud_byoc_i_project_settings.this, zillizcloud_byoc_i_project_agent.this]
 }
