@@ -14,7 +14,7 @@ func TestAccBYOCOpProjectSettingsResource(t *testing.T) {
 			// Create and Read testing
 			{
 				Config: provider.ProviderConfig + `
-resource "zillizcloud_byoc_op_project_settings" "test" {
+resource "zillizcloud_byoc_i_project_settings" "test" {
   project_name    = "TestProject"
   region         = "us-west-2"
   cloud_provider = "aws"
@@ -31,27 +31,27 @@ resource "zillizcloud_byoc_op_project_settings" "test" {
 } 
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "project_name", "TestProject"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "region", "us-west-2"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "cloud_provider", "aws"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "private_link_enabled", "true"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.search_vm_min_count", "0"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.fundamental_vm_min_count", "0"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_settings.test", "instances.core_vm_min_count", "3"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "project_id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "data_plane_id"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "project_name", "TestProject"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "region", "us-west-2"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "cloud_provider", "aws"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "private_link_enabled", "true"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "instances.search_vm_min_count", "0"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "instances.fundamental_vm_min_count", "0"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "instances.core_vm_min_count", "3"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "project_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "data_plane_id"),
 
 					// Check computed node quotas
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "node_quotas.core.disk_size"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "node_quotas.core.min_size"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "node_quotas.core.max_size"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "node_quotas.core.desired_size"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "node_quotas.core.instance_types"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "node_quotas.core.capacity_type"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "node_quotas.core.disk_size"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "node_quotas.core.min_size"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "node_quotas.core.max_size"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "node_quotas.core.desired_size"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "node_quotas.core.instance_types"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "node_quotas.core.capacity_type"),
 					// Check op_config
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "op_config.token"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_settings.test", "op_config.agent_image_url"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "op_config.token"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "op_config.agent_image_url"),
 				),
 			},
 		},

@@ -15,11 +15,11 @@ func TestAccBYOCOpProjectAgentResource(t *testing.T) {
 			{
 				Config: testAccBYOCOpProjectAgentResourceConfig(),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_agent.test", "id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_agent.test", "project_id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_agent.test", "data_plane_id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_byoc_op_project_agent.test", "status"),
-					resource.TestCheckResourceAttr("zillizcloud_byoc_op_project_agent.test", "wait_until_ready", "false"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_agent.test", "id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_agent.test", "project_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_agent.test", "data_plane_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_agent.test", "status"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_agent.test", "wait_until_ready", "false"),
 				),
 				Destroy: false,
 			},
@@ -29,7 +29,7 @@ func TestAccBYOCOpProjectAgentResource(t *testing.T) {
 
 func testAccBYOCOpProjectAgentResourceConfig() string {
 	return `
-resource "zillizcloud_byoc_op_project_settings" "test" {
+resource "zillizcloud_byoc_i_project_settings" "test" {
 	cloud_provider = "aws"
 	region = "aws-us-west-2"
 	project_name = "byoc-zilliz-test-acc"
@@ -40,9 +40,9 @@ resource "zillizcloud_byoc_op_project_settings" "test" {
 	}
 }
 
-resource "zillizcloud_byoc_op_project_agent" "test" {
-	project_id = zillizcloud_byoc_op_project_settings.test.project_id
-	data_plane_id = zillizcloud_byoc_op_project_settings.test.data_plane_id
+resource "zillizcloud_byoc_i_project_agent" "test" {
+	project_id = zillizcloud_byoc_i_project_settings.test.project_id
+	data_plane_id = zillizcloud_byoc_i_project_settings.test.data_plane_id
 	wait_until_ready = false
 }
 `
