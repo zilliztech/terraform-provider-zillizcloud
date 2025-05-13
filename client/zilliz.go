@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 )
 
 const (
@@ -24,6 +27,9 @@ type Client struct {
 	baseUrl    string
 	userAgent  string
 	HttpClient HttpClient
+
+	logger  *LoggerWrapper
+	traceId string
 }
 
 var (
@@ -65,6 +71,28 @@ func (client *Client) Clone(opts ...Option) (*Client, error) {
 	if err := validate(c); err != nil {
 		return nil, err
 	}
+	c.traceId = generateShortID()
+	c.logger.logger.SetPrefix(fmt.Sprintf("[%s] ", c.traceId))
+
+	return c, nil
+}
+
+// Cluster always use the caller's function name as the traceId
+func (client *Client) Cluster(clusterEndpoint string) (*Client, error) {
+	c, err := client.Clone()
+	if err != nil {
+		return nil, err
+	}
+	c.baseUrl = clusterEndpoint
+	c.traceId = generateShortID()
+	fn := getFrame(2)
+	name := fn.Function
+	if strings.Contains(name, "(") {
+		name = strings.Split(name, "(")[1]
+	}
+	name = "(" + name
+	c.logger.logger.SetPrefix(fmt.Sprintf("[%s] ", name))
+	// TODO another validate
 
 	return c, nil
 }
@@ -97,6 +125,8 @@ func applyDefaults(c *Client) {
 		WithDefaultRegion(),
 		WithDefaultBaseUrl(),
 		WithDefaultUserAgent(),
+		WithDefaultTraceID(),
+		WithDefaultLogger(),
 	}
 	for _, opt := range defaultOptions {
 		opt(c)
@@ -158,6 +188,12 @@ func WithHostAddress(address string) Option {
 	}
 }
 
+func WithLogger(logger *log.Logger) Option {
+	return func(c *Client) {
+		c.logger = NewLoggerWrapper(logger)
+	}
+}
+
 func WithDefaultBaseUrl() Option {
 	return func(c *Client) {
 		if c.baseUrl == "" && c.RegionId != "" {
@@ -199,6 +235,32 @@ func WithDefaultUserAgent() Option {
 	}
 }
 
+func WithDefaultLogger() Option {
+	return func(c *Client) {
+		if c.logger == nil {
+			if os.Getenv("ZILLIZ_DEBUG") == "true" {
+				f, err := os.OpenFile("debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					// fallback to stderr
+					c.logger = NewLoggerWrapper(log.New(os.Stderr, fmt.Sprintf("[%s] ", c.traceId), log.LstdFlags))
+				} else {
+					c.logger = NewLoggerWrapper(log.New(f, fmt.Sprintf("[%s] ", c.traceId), log.LstdFlags))
+				}
+			} else {
+				c.logger = NewLoggerWrapper(log.New(io.Discard, "", 0))
+			}
+		}
+	}
+}
+
+func WithDefaultTraceID() Option {
+	return func(c *Client) {
+		if c.traceId == "" {
+			c.traceId = generateShortID()
+		}
+	}
+}
+
 type zillizResponse[T any] struct {
 	Error
 	Data T `json:"data"`
@@ -216,6 +278,8 @@ func (c *Client) do(method string, path string, body interface{}, result interfa
 	if err != nil {
 		return err
 	}
+	c.logger.Debugf("Request URL %s", u.String())
+
 	req, err := c.newRequest(method, u, body)
 	if err != nil {
 		return err
@@ -231,6 +295,7 @@ func (c *Client) newRequest(method string, u *url.URL, body interface{}) (*http.
 		if err != nil {
 			return nil, err
 		}
+		c.logger.logRequestBody(buf)
 	}
 	req, err := http.NewRequest(method, u.String(), buf)
 	if err != nil {
@@ -258,7 +323,7 @@ func (c *Client) doRequest(req *http.Request, v any) error {
 		return fmt.Errorf("http status code: %d, error: %w", res.StatusCode, parseError(res.Body))
 	}
 
-	return decodeResponse(res.Body, v)
+	return c.decodeResponse(res.Body, v)
 }
 
 func parseError(body io.Reader) error {
@@ -276,7 +341,7 @@ func parseError(body io.Reader) error {
 	return e
 }
 
-func decodeResponse(body io.Reader, v any) error {
+func (c *Client) decodeResponse(body io.Reader, v any) error {
 	if v == nil {
 		return nil
 	}
@@ -284,6 +349,7 @@ func decodeResponse(body io.Reader, v any) error {
 	if err != nil {
 		return err
 	}
+	c.logger.logResponseBody(b)
 
 	var apierr Error
 	err = json.Unmarshal(b, &apierr)
@@ -298,4 +364,8 @@ func decodeResponse(body io.Reader, v any) error {
 
 func (c *Client) url(path string) (*url.URL, error) {
 	return url.Parse(fmt.Sprintf("%s/%s", c.baseUrl, path))
+}
+
+func (c *Client) Log() *LoggerWrapper {
+	return c.logger
 }
