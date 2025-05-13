@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultClusterCreateTimeout time.Duration = 5 * time.Minute
+	defaultClusterCreateTimeout time.Duration = 8 * time.Minute
 	defaultClusterUpdateTimeout time.Duration = 5 * time.Minute
 )
 

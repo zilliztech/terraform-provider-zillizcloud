@@ -6,8 +6,8 @@ type ClientUser struct {
 	*Client
 }
 
-func (c *Client) User(conn string) (*ClientUser, error) {
-	cu, err := c.Cluster(conn)
+func (c *Client) User(connectAddress string) (*ClientUser, error) {
+	cu, err := c.Cluster(connectAddress)
 	if err != nil {
 		return nil, err
 	}

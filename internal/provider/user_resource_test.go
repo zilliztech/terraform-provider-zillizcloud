@@ -2,7 +2,6 @@ package provider_test
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -40,11 +39,8 @@ resource "zillizcloud_user" "test" {
 					}
 					connectAddress := rs.Primary.Attributes["connect_address"]
 					username := rs.Primary.Attributes["username"]
-					connectionID := connectAddress
-					if strings.HasPrefix(connectionID, "https://") {
-						connectionID = connectionID[len("https://"):]
-					}
-					return fmt.Sprintf("/connection/%s/user/%s", connectionID, username), nil
+					connectAddress = connectAddress[len("https://"):]
+					return fmt.Sprintf("/connects/%s/users/%s", connectAddress, username), nil
 				},
 			},
 		},

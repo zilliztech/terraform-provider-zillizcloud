@@ -78,12 +78,12 @@ func (client *Client) Clone(opts ...Option) (*Client, error) {
 }
 
 // Cluster always use the caller's function name as the traceId
-func (client *Client) Cluster(clusterEndpoint string) (*Client, error) {
+func (client *Client) Cluster(connectAddress string) (*Client, error) {
 	c, err := client.Clone()
 	if err != nil {
 		return nil, err
 	}
-	c.baseUrl = clusterEndpoint
+	c.baseUrl = connectAddress
 	c.traceId = generateShortID()
 	fn := getFrame(2)
 	name := fn.Function

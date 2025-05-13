@@ -6,8 +6,8 @@ type ClientRole struct {
 	*Client
 }
 
-func (c *Client) Role(conn string) (*ClientRole, error) {
-	cu, err := c.Cluster(conn)
+func (c *Client) Role(connectAddress string) (*ClientRole, error) {
+	cu, err := c.Cluster(connectAddress)
 	if err != nil {
 		return nil, err
 	}
