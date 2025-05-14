@@ -78,7 +78,7 @@ func (client *Client) Clone(opts ...Option) (*Client, error) {
 }
 
 // Cluster always use the caller's function name as the traceId
-func (client *Client) Cluster(connectAddress string) (*Client, error) {
+func (client *Client) cluster(connectAddress string) (*Client, error) {
 	c, err := client.Clone()
 	if err != nil {
 		return nil, err

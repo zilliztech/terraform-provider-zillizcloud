@@ -7,7 +7,7 @@ type ClientUser struct {
 }
 
 func (c *Client) User(connectAddress string) (*ClientUser, error) {
-	cu, err := c.Cluster(connectAddress)
+	cu, err := c.cluster(connectAddress)
 	if err != nil {
 		return nil, err
 	}

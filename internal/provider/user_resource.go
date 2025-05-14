@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -27,7 +26,7 @@ type UserResource struct {
 }
 
 type UserResourceModel struct {
-	Id             types.String `tfsdk:"id"` // /connects/{connect_address}/users/{username}
+	Id             types.String `tfsdk:"id"` // /connections/{connect_address}/users/{username}
 	ConnectAddress types.String `tfsdk:"connect_address"`
 	Username       types.String `tfsdk:"username"`
 	Password       types.String `tfsdk:"password"`
@@ -51,7 +50,7 @@ Typical use case: managing database users for access control and tenant isolatio
 
 **Format:**
 
-` + "`" + `/connects/{connect_address}/users/{username}` + "`" + `
+` + "`" + `/connections/{connect_address}/users/{username}` + "`" + `
 
 **Fields:**
 - ` + "`connect_address`" + ` — The address used to connect to the cluster.
@@ -59,7 +58,7 @@ Typical use case: managing database users for access control and tenant isolatio
 
 **Example:**
 
-` + "`" + `/connects/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alice` + "`" + `
+` + "`" + `/connections/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alice` + "`" + `
 
 > **Note:** This value is automatically set and should not be manually specified.`,
 				PlanModifiers: []planmodifier.String{
@@ -80,6 +79,9 @@ You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + `
 			},
 			"username": schema.StringAttribute{
 				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 				MarkdownDescription: `The username for the database user.
 
 **Constraints:**
@@ -270,13 +272,12 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 }
 
 func (r *UserResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Parse import ID, format: "/connects/{connect_address}/users/{username}"
-	fmt.Fprintf(os.Stdout, "req.ID: %s", req.ID)
+	// Parse import ID, format: "/connections/{connect_address}/users/{username}"
 	connectAddress, username, ok := ParseUserID(req.ID)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Invalid import ID format",
-			"Import ID must be in the format '/connects/{connect_address}/users/{username}'",
+			"Import ID must be in the format '/connections/{connect_address}/users/{username}'",
 		)
 		return
 	}
@@ -317,13 +318,13 @@ func (r *UserResource) ImportState(ctx context.Context, req resource.ImportState
 }
 
 func BuildUserID(connectAddress, username string) string {
-	return fmt.Sprintf("/connects/%s/users/%s", connectAddress, username)
+	return fmt.Sprintf("/connections/%s/users/%s", connectAddress, username)
 }
 
-// /connects/{connect_address}/users/{username}
+// /connections/{connect_address}/users/{username}
 func ParseUserID(id string) (string, string, bool) {
 	parts := strings.Split(id, "/")
-	if len(parts) != 5 || parts[1] != "connects" || parts[3] != "users" {
+	if len(parts) != 5 || parts[1] != "connections" || parts[3] != "users" {
 		return "", "", false
 	}
 	return parts[2], parts[4], true
