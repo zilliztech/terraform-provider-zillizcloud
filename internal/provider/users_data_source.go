@@ -14,30 +14,30 @@ import (
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
-var _ datasource.DataSource = &ListUserDataSource{}
+var _ datasource.DataSource = &UsersDataSource{}
 
-func NewListUserDataSource() datasource.DataSource {
-	return &ListUserDataSource{}
+func NewUsersDataSource() datasource.DataSource {
+	return &UsersDataSource{}
 }
 
-type ListUserDataSource struct {
+type UsersDataSource struct {
 	client *zilliz.Client
 }
 
-type ListUserItem struct {
+type UserItem struct {
 	UserId types.String `tfsdk:"user_id"`
 }
 
-type ListUserDataSourceModel struct {
-	ConnectAddress types.String   `tfsdk:"connect_address"`
-	Items          []ListUserItem `tfsdk:"items"`
+type UsersDataSourceModel struct {
+	ConnectAddress types.String `tfsdk:"connect_address"`
+	Items          []UserItem   `tfsdk:"items"`
 }
 
-func (d *ListUserDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *UsersDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_users"
 }
 
-func (d *ListUserDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *UsersDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "List users of a given cluster by connect_address",
 
@@ -62,7 +62,7 @@ func (d *ListUserDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 	}
 }
 
-func (d *ListUserDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *UsersDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -79,8 +79,8 @@ func (d *ListUserDataSource) Configure(ctx context.Context, req datasource.Confi
 	d.client = client
 }
 
-func (d *ListUserDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state ListUserDataSourceModel
+func (d *UsersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var state UsersDataSourceModel
 
 	// Parse config input
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
@@ -101,7 +101,7 @@ func (d *ListUserDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 
 	for _, u := range users {
-		state.Items = append(state.Items, ListUserItem{
+		state.Items = append(state.Items, UserItem{
 			UserId: types.StringValue(string(u)),
 		})
 	}

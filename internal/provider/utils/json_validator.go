@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func JsonMapValidator(allowedPrefix string) validator.String {
@@ -53,4 +56,22 @@ func (v *jsonMapValidatorImpl) ValidateString(ctx context.Context, req validator
 			)
 		}
 	}
+}
+
+func ParseJsonMap(raw types.String, path path.Path, diags *diag.Diagnostics) map[string]any {
+	if raw.IsNull() || raw.IsUnknown() {
+		return nil
+	}
+
+	var result map[string]any
+	err := json.Unmarshal([]byte(raw.ValueString()), &result)
+	if err != nil {
+		diags.AddAttributeError(
+			path,
+			"Invalid JSON",
+			"Cannot decode map json: "+err.Error(),
+		)
+		return nil
+	}
+	return result
 }

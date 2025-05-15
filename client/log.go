@@ -1,17 +1,17 @@
 package client
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
+	"net/http"
 	"os"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -143,10 +143,6 @@ func generateShortID() string {
 	return hex.EncodeToString(sum[:])[:8]
 }
 
-var sensitiveKeys = []string{
-	"password", "secret", "token", "access_token", "authorization", "api_key",
-}
-
 func (l *LoggerWrapper) logResponseBody(body []byte) {
 	if os.Getenv("ZILLIZ_LOG_RAW_JSON") == "true" {
 		return
@@ -161,63 +157,19 @@ func (l *LoggerWrapper) logResponseBody(body []byte) {
 	bytes, _ := json.Marshal(parsed)
 	l.Printf("Response JSON: %s", maskSensitiveFields(string(bytes)))
 }
-func (l *LoggerWrapper) logRequestBody(buf io.ReadWriter) {
-	if os.Getenv("ZILLIZ_LOG_RAW_JSON") == "true" {
-		return
-	}
-	l.Printf("Request: %s", maskSensitiveFields(buf.(*bytes.Buffer).String()))
+
+var sensitiveKeys = []string{
+	"password", "secret", "token", "access_token", "authorization", "api_key",
 }
 
 func maskSensitiveFields(s string) string {
-	fields := []string{"password", "access_token", "secret", "authorization", "api_key"}
-
-	for _, key := range fields {
+	for _, key := range sensitiveKeys {
 		pattern := `"` + regexp.QuoteMeta(key) + `"\s*:\s*".*?"`
 		replacement := `"` + key + `":"***"`
 		re := regexp.MustCompile(pattern)
 		s = re.ReplaceAllString(s, replacement)
 	}
 	return s
-}
-
-func describeField(key string, val any) string {
-	if isSensitiveKey(key) {
-		return "*** (masked)"
-	}
-	switch v := val.(type) {
-	case string:
-		if len(v) > 80 {
-			return fmt.Sprintf("string(len=%d)", len(v))
-		}
-		return fmt.Sprintf("string: \"%s\"", v)
-	case float64:
-		return fmt.Sprintf("number: %.2f", v)
-	case bool:
-		return fmt.Sprintf("bool: %v", v)
-	case []any:
-		return fmt.Sprintf("array(len=%d)", len(v))
-	case map[string]any:
-		return fmt.Sprintf("object(fields=%d)", len(v))
-	case nil:
-		return "null"
-	default:
-		return fmt.Sprintf("type=%T", v)
-	}
-}
-
-func isSensitiveKey(key string) bool {
-	k := normalizeKey(key)
-	for _, sk := range sensitiveKeys {
-		if k == sk {
-			return true
-		}
-	}
-	return false
-}
-
-func normalizeKey(k string) string {
-	k = regexp.MustCompile(`[^a-zA-Z0-9_]`).ReplaceAllString(k, "")
-	return string(bytes.ToLower([]byte(k)))
 }
 
 func getFrame(skipFrames int) runtime.Frame {
@@ -241,4 +193,54 @@ func getFrame(skipFrames int) runtime.Frame {
 	}
 
 	return frame
+}
+
+func RequestToCurl(req *http.Request) (string, error) {
+	var sb strings.Builder
+
+	sb.WriteString("curl -i")
+
+	// Method
+	if req.Method != http.MethodGet {
+		sb.WriteString(fmt.Sprintf(" -X %s", req.Method))
+	}
+
+	// Headers
+	keys := make([]string, 0, len(req.Header))
+	for k := range req.Header {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys) // keep output deterministic
+
+	for _, k := range keys {
+		for _, v := range req.Header[k] {
+			sb.WriteString(fmt.Sprintf(` -H "%s: %s"`, k, v))
+		}
+	}
+
+	// Body (if repeatable)
+	if req.Body != nil && req.GetBody != nil {
+		bodyReader, err := req.GetBody()
+		if err != nil {
+			return "", fmt.Errorf("could not clone body: %w", err)
+		}
+		defer bodyReader.Close()
+		bodyBytes := make([]byte, req.ContentLength)
+		_, err = bodyReader.Read(bodyBytes)
+		if err == nil && len(bodyBytes) > 0 {
+			bodyStr := string(bodyBytes)
+			bodyStr = strings.TrimRight(bodyStr, "\r\n\t ")
+			sb.WriteString(fmt.Sprintf(` --data-binary '%s'`, escapeSingleQuote(maskSensitiveFields(bodyStr))))
+		}
+	}
+
+	// URL
+	sb.WriteString(fmt.Sprintf(" '%s'", req.URL.String()))
+
+	return sb.String(), nil
+}
+
+func escapeSingleQuote(s string) string {
+	// Escapes single quotes in curl string using the correct bash-safe pattern
+	return strings.ReplaceAll(s, `'`, `'\''`)
 }

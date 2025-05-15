@@ -70,3 +70,12 @@ func (c *ClientCluster) UpdateDatabase(params UpdateDatabaseParams) (any, error)
 	}
 	return resp.Data, nil
 }
+
+func (c *ClientCluster) ListDatabases() ([]string, error) {
+	var resp zillizResponse[[]string]
+	err := c.do("POST", "v2/vectordb/databases/list", map[string]any{}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Data, nil
+}

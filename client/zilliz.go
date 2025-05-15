@@ -278,7 +278,6 @@ func (c *Client) do(method string, path string, body interface{}, result interfa
 	if err != nil {
 		return err
 	}
-	c.logger.Debugf("Request URL %s", u.String())
 
 	req, err := c.newRequest(method, u, body)
 	if err != nil {
@@ -295,7 +294,6 @@ func (c *Client) newRequest(method string, u *url.URL, body interface{}) (*http.
 		if err != nil {
 			return nil, err
 		}
-		c.logger.logRequestBody(buf)
 	}
 	req, err := http.NewRequest(method, u.String(), buf)
 	if err != nil {
@@ -303,10 +301,13 @@ func (c *Client) newRequest(method string, u *url.URL, body interface{}) (*http.
 	}
 	// req.Header.Set("User-Agent", c.UserAgent)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	req.Header.Set("Authorization", "Bearer ${TOKEN}")
+	command, _ := RequestToCurl(req)
+	c.logger.Debugf("%v", command)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
 
 	return req, nil
 }

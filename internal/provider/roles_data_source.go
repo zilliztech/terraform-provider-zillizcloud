@@ -14,30 +14,30 @@ import (
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
-var _ datasource.DataSource = &ListRoleDataSource{}
+var _ datasource.DataSource = &RolesDataSource{}
 
-func NewListRoleDataSource() datasource.DataSource {
-	return &ListRoleDataSource{}
+func NewRolesDataSource() datasource.DataSource {
+	return &RolesDataSource{}
 }
 
-type ListRoleDataSource struct {
+type RolesDataSource struct {
 	client *zilliz.Client
 }
 
-type ListRoleItem struct {
+type RoleItem struct {
 	RoleId types.String `tfsdk:"role_id"`
 }
 
-type ListRoleDataSourceModel struct {
-	ConnectAddress types.String   `tfsdk:"connect_address"`
-	Items          []ListRoleItem `tfsdk:"items"`
+type RolesDataSourceModel struct {
+	ConnectAddress types.String `tfsdk:"connect_address"`
+	Items          []RoleItem   `tfsdk:"items"`
 }
 
-func (d *ListRoleDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *RolesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_roles"
 }
 
-func (d *ListRoleDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *RolesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "List roles of a given cluster by connect_address",
 
@@ -62,7 +62,7 @@ func (d *ListRoleDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 	}
 }
 
-func (d *ListRoleDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *RolesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -79,8 +79,8 @@ func (d *ListRoleDataSource) Configure(ctx context.Context, req datasource.Confi
 	d.client = client
 }
 
-func (d *ListRoleDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state ListRoleDataSourceModel
+func (d *RolesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var state RolesDataSourceModel
 
 	// Parse config input
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
@@ -101,7 +101,7 @@ func (d *ListRoleDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 
 	for _, u := range roles {
-		state.Items = append(state.Items, ListRoleItem{
+		state.Items = append(state.Items, RoleItem{
 			RoleId: types.StringValue(string(u)),
 		})
 	}

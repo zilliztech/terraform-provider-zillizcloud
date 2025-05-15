@@ -2,11 +2,9 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -99,24 +97,6 @@ func (r *DatabaseResource) Configure(ctx context.Context, req resource.Configure
 	r.client = client
 }
 
-func ParsePropertiesJson(raw types.String, path path.Path, diags *diag.Diagnostics) map[string]any {
-	if raw.IsNull() || raw.IsUnknown() {
-		return nil
-	}
-
-	var result map[string]any
-	err := json.Unmarshal([]byte(raw.ValueString()), &result)
-	if err != nil {
-		diags.AddAttributeError(
-			path,
-			"Invalid JSON",
-			"Cannot decode properties_json: "+err.Error(),
-		)
-		return nil
-	}
-	return result
-}
-
 func (r *DatabaseResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data DatabaseResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...) // Get planned data
@@ -134,7 +114,7 @@ func (r *DatabaseResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	props := ParsePropertiesJson(data.Properties, path.Root("properties"), &resp.Diagnostics)
+	props := utils.ParseJsonMap(data.Properties, path.Root("properties"), &resp.Diagnostics)
 	if props == nil {
 		return
 	}
@@ -288,7 +268,7 @@ func (r *DatabaseResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	// Parse the desired properties from the plan (JSON string to map)
-	planPropsRaw := ParsePropertiesJson(plan.Properties, path.Root("properties"), &resp.Diagnostics)
+	planPropsRaw := utils.ParseJsonMap(plan.Properties, path.Root("properties"), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
