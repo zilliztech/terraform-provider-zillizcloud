@@ -109,6 +109,7 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewDatabaseResource,
 		NewCollectionResource,
 		NewIndexResource,
+		NewAliasResource,
 	}
 }
 

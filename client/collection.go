@@ -60,14 +60,66 @@ func (c *ClientCollection) DropCollection(params *DropCollectionParams) error {
 	return nil
 }
 
+type CollectionDescription struct {
+	Code    int            `json:"code"`
+	Data    CollectionData `json:"data"`
+	Message string         `json:"message"`
+}
+
+type CollectionData struct {
+	Aliases            []string             `json:"aliases"`
+	AutoID             bool                 `json:"autoId"`
+	CollectionID       int64                `json:"collectionID"`
+	CollectionName     string               `json:"collectionName"`
+	ConsistencyLevel   string               `json:"consistencyLevel"`
+	Description        string               `json:"description"`
+	EnableDynamicField bool                 `json:"enableDynamicField"`
+	Fields             []CollectionField    `json:"fields"`
+	Functions          []interface{}        `json:"functions"` // Assuming functions is an array of unknown objects
+	Indexes            []CollectionIndex    `json:"indexes"`
+	Load               string               `json:"load"`
+	PartitionsNum      int                  `json:"partitionsNum"`
+	Properties         []CollectionProperty `json:"properties"`
+	ShardsNum          int                  `json:"shardsNum"`
+}
+
+type CollectionField struct {
+	AutoID        bool         `json:"autoId"`
+	ClusteringKey bool         `json:"clusteringKey"`
+	Description   string       `json:"description"`
+	ID            int          `json:"id"`
+	Name          string       `json:"name"`
+	Nullable      bool         `json:"nullable"`
+	PartitionKey  bool         `json:"partitionKey"`
+	PrimaryKey    bool         `json:"primaryKey"`
+	Type          string       `json:"type"`
+	Params        []FieldParam `json:"params,omitempty"`
+}
+
+type FieldParam struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type CollectionIndex struct {
+	FieldName  string `json:"fieldName"`
+	IndexName  string `json:"indexName"`
+	MetricType string `json:"metricType"`
+}
+
+type CollectionProperty struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type DescribeCollectionParams struct {
 	DbName         string `json:"dbName"`
 	CollectionName string `json:"collectionName"`
 }
 
-func (c *ClientCollection) DescribeCollection(params *DescribeCollectionParams) (any, error) {
+func (c *ClientCollection) DescribeCollection(params *DescribeCollectionParams) (*CollectionDescription, error) {
 	params.DbName = c.dbName
-	var resp zillizResponse[any]
+	var resp zillizResponse[*CollectionDescription]
 	err := c.do("POST", "v2/vectordb/collections/describe", params, &resp)
 	if err != nil {
 		return nil, err

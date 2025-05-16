@@ -56,7 +56,7 @@ Typical use case: manage user permissions and access control for database securi
 - ` + "`username`" + `: The name of the user
 
 **Example:**  
-` + "`" + `/connections/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alice/roles` + "`" + `
+` + "`" + `/connections/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alias/roles` + "`" + `
 
 > **Note:** This value is automatically set and should not be manually specified.`,
 				PlanModifiers: []planmodifier.String{
@@ -189,7 +189,9 @@ func (r *UserRoleResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	roles, err := client.DescribeUser(state.Username.ValueString())
+	roles, err := client.DescribeUser(&zilliz.DescribeUserParams{
+		Username: state.Username.ValueString(),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("List Roles Error", err.Error())
 		return
@@ -301,7 +303,9 @@ func (r *UserRoleResource) ImportState(ctx context.Context, req resource.ImportS
 		return
 	}
 
-	roles, err := client.DescribeUser(username)
+	roles, err := client.DescribeUser(&zilliz.DescribeUserParams{
+		Username: username,
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Import UserRole Error", fmt.Sprintf("Failed to list roles: %s", err.Error()))
 		return

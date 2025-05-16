@@ -131,10 +131,11 @@ func (r *DatabaseResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	connectAddress = NormalizeConnectionID(connectAddress)
-
-	data.Id = types.StringValue(BuildDatabaseID(connectAddress, data.DbName.ValueString()))
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) // Save state
+	// Always normalize connect_address for ID, but keep full address in state
+	normalizedAddress := NormalizeConnectionID(connectAddress)
+	data.Id = types.StringValue(BuildDatabaseID(normalizedAddress, data.DbName.ValueString()))
+	data.ConnectAddress = types.StringValue(connectAddress) // always keep full address in state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)  // Save state
 }
 
 func (r *DatabaseResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

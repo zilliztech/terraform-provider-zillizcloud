@@ -58,7 +58,7 @@ Typical use case: managing database users for access control and tenant isolatio
 
 **Example:**
 
-` + "`" + `/connections/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alice` + "`" + `
+` + "`" + `/connections/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alias` + "`" + `
 
 > **Note:** This value is automatically set and should not be manually specified.`,
 				PlanModifiers: []planmodifier.String{
@@ -170,7 +170,9 @@ func (r *UserResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	_, err = client.DescribeUser(state.Username.ValueString())
+	_, err = client.DescribeUser(&zilliz.DescribeUserParams{
+		Username: state.Username.ValueString(),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to read user info",
@@ -198,7 +200,9 @@ func (r *UserResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 
-	err = client.DropUser(state.Username.ValueString())
+	err = client.DropUser(&zilliz.DropUserParams{
+		Username: state.Username.ValueString(),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to delete user",
@@ -236,7 +240,9 @@ func (r *UserResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	}
 
 	// 4. Delete old user
-	err = client.DropUser(state.Username.ValueString())
+	err = client.DropUser(&zilliz.DropUserParams{
+		Username: state.Username.ValueString(),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to delete user (during update)",
@@ -295,7 +301,9 @@ func (r *UserResource) ImportState(ctx context.Context, req resource.ImportState
 	}
 
 	// Check if user exists
-	_, err = client.DescribeUser(username)
+	_, err = client.DescribeUser(&zilliz.DescribeUserParams{
+		Username: username,
+	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to import user: user does not exist or cannot be retrieved",

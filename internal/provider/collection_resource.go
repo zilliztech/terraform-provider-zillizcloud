@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -372,8 +373,8 @@ func (r *CollectionResource) ImportState(ctx context.Context, req resource.Impor
 		return
 	}
 
-	// Check if collection exists
-	_, err = client.DescribeCollection(&zilliz.DescribeCollectionParams{
+	// Check if collection exists and get its details
+	describe, err := client.DescribeCollection(&zilliz.DescribeCollectionParams{
 		DbName:         dbName,
 		CollectionName: collectionName,
 	})
@@ -385,12 +386,31 @@ func (r *CollectionResource) ImportState(ctx context.Context, req resource.Impor
 		return
 	}
 
+	// Convert collection parameters to JSON string
+	paramsStr := "{}"
+	if len(describe.Data.Properties) > 0 {
+		params := make(map[string]string)
+		for _, prop := range describe.Data.Properties {
+			params[prop.Key] = prop.Value
+		}
+		paramsBytes, err := json.Marshal(params)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to marshal collection parameters",
+				fmt.Sprintf("Error: %s", err.Error()),
+			)
+			return
+		}
+		paramsStr = string(paramsBytes)
+	}
+
 	// Set import state (schema is nil, as it cannot be inferred)
 	state := CollectionResourceModel{
 		Id:             types.StringValue(req.ID),
 		ConnectAddress: types.StringValue(connectAddressFull),
 		DbName:         types.StringValue(dbName),
 		CollectionName: types.StringValue(collectionName),
+		Params:         types.StringValue(paramsStr),
 		Schema:         nil,
 	}
 

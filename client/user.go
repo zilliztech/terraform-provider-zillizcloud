@@ -32,9 +32,9 @@ type CreateUserParams struct {
 	Password string `json:"password"`
 }
 
-func (c *ClientUser) CreateUser(user *CreateUserParams) error {
-	var createUserResponse zillizResponse[any]
-	err := c.do("POST", "v2/vectordb/users/create", user, &createUserResponse)
+func (c *ClientUser) CreateUser(req *CreateUserParams) error {
+	var resp zillizResponse[any]
+	err := c.do("POST", "v2/vectordb/users/create", req, &resp)
 	if err != nil {
 		return err
 	}
@@ -45,23 +45,23 @@ type DescribeUserParams struct {
 	Username string `json:"userName"`
 }
 
-func (c *ClientUser) DescribeUser(username string) (Roles, error) {
-	var userResponse zillizResponse[Roles]
-	err := c.do("POST", "v2/vectordb/users/describe", &DescribeUserParams{Username: username}, &userResponse)
+func (c *ClientUser) DescribeUser(req *DescribeUserParams) (Roles, error) {
+	var resp zillizResponse[Roles]
+	err := c.do("POST", "v2/vectordb/users/describe", req, &resp)
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(userResponse.Data)
-	return userResponse.Data, nil
+	sort.Strings(resp.Data)
+	return resp.Data, nil
 }
 
 type DropUserParams struct {
 	Username string `json:"userName"`
 }
 
-func (c *ClientUser) DropUser(username string) error {
-	var dropUserResponse zillizResponse[any]
-	return c.do("POST", "v2/vectordb/users/drop", &DropUserParams{Username: username}, &dropUserResponse)
+func (c *ClientUser) DropUser(req *DropUserParams) error {
+	var resp zillizResponse[any]
+	return c.do("POST", "v2/vectordb/users/drop", req, &resp)
 }
 
 type UserGrantRoleToUserParams struct {

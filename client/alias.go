@@ -6,7 +6,7 @@ type CreateAliasParams struct {
 	CollectionName string `json:"collectionName"`
 }
 
-func (c *ClientCollection) CreateAlias(params *CreateCollectionParams) error {
+func (c *ClientCollection) CreateAlias(params *CreateAliasParams) error {
 	params.DbName = c.dbName
 	var resp zillizResponse[any]
 	err := c.do("POST", "v2/vectordb/aliases/create", params, &resp)
@@ -58,4 +58,20 @@ func (c *ClientCollection) DescribeAlias(params *DescribeAliasParams) (any, erro
 		return nil, err
 	}
 	return resp.Data, nil
+}
+
+type AlterAliasesParams struct {
+	DbName         string `json:"dbName"`
+	AliasName      string `json:"aliasName"`
+	CollectionName string `json:"collectionName"`
+}
+
+func (c *ClientCollection) AlterAliases(params *AlterAliasesParams) error {
+	params.DbName = c.dbName
+	var resp zillizResponse[any]
+	err := c.do("POST", "v2/vectordb/aliases/alter", params, &resp)
+	if err != nil {
+		return err
+	}
+	return nil
 }

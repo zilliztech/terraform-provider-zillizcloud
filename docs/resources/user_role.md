@@ -99,6 +99,6 @@ You can obtain this value from the output of the `zillizcloud_cluster` resource,
 - `username`: The name of the user
 
 **Example:**  
-`/connections/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alice/roles`
+`/connections/in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534/users/alias/roles`
 
 > **Note:** This value is automatically set and should not be manually specified.
