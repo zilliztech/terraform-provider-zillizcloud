@@ -226,7 +226,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan:
 			return true, nil
 		default:
-			return false, fmt.Errorf("Invalid plan: %s", data.Plan.ValueString())
+			return false, fmt.Errorf("invalid plan: %s", data.Plan.ValueString())
 		}
 
 	}

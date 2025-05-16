@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -101,7 +103,10 @@ func (r *CollectionResource) Schema(ctx context.Context, req resource.SchemaRequ
 				},
 			},
 			"schema": schema.SingleNestedAttribute{
-				Required:            true,
+				Required: true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.RequiresReplace(),
+				},
 				MarkdownDescription: `Defines the schema for the collection. Changing this block will force resource replacement.`,
 				Attributes: map[string]schema.Attribute{
 					"auto_id": schema.BoolAttribute{
@@ -281,17 +286,16 @@ func (r *CollectionResource) Delete(ctx context.Context, req resource.DeleteRequ
 // update logic need to be drop and create
 func (r *CollectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var state CollectionResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...) // Old state
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	var plan CollectionResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...) // New plan
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Default: drop and recreate
 	connectAddress := plan.ConnectAddress.ValueString()
 	client, err := r.client.Collection(connectAddress, plan.DbName.ValueString())
 	if err != nil {
@@ -302,6 +306,37 @@ func (r *CollectionResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
+	// Compare schema and other fields except params
+	schemaEqual := reflect.DeepEqual(state.Schema, plan.Schema) &&
+		state.DbName.ValueString() == plan.DbName.ValueString() &&
+		state.CollectionName.ValueString() == plan.CollectionName.ValueString() &&
+		state.ConnectAddress.ValueString() == plan.ConnectAddress.ValueString()
+
+	oldParams := utils.ParseJsonMap(state.Params, path.Root("params"), &resp.Diagnostics)
+	newParams := utils.ParseJsonMap(plan.Params, path.Root("params"), &resp.Diagnostics)
+
+	paramsEqual := reflect.DeepEqual(oldParams, newParams)
+
+	if schemaEqual && !paramsEqual {
+		// Only params changed, use AlterCollectionProperties
+		err := client.AlterCollectionProperties(&zilliz.AlterCollectionPropertiesParams{
+			DbName:         plan.DbName.ValueString(),
+			CollectionName: plan.CollectionName.ValueString(),
+			Properties:     newParams,
+		})
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to alter collection properties",
+				fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s",
+					connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
+			)
+			return
+		}
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		return
+	}
+
+	// Otherwise, drop and recreate
 	err = client.DropCollection(&zilliz.DropCollectionParams{
 		DbName:         plan.DbName.ValueString(),
 		CollectionName: plan.CollectionName.ValueString(),
@@ -309,7 +344,8 @@ func (r *CollectionResource) Update(ctx context.Context, req resource.UpdateRequ
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to drop collection",
-			fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s", connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
+			fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s",
+				connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
 		)
 		return
 	}
@@ -322,12 +358,13 @@ func (r *CollectionResource) Update(ctx context.Context, req resource.UpdateRequ
 			EnabledDynamicField: plan.Schema.EnabledDynamicField.ValueBool(),
 			Fields:              convertSchemaFields(plan.Schema.Fields),
 		},
-		Params: utils.ParseJsonMap(plan.Params, path.Root("params"), &resp.Diagnostics),
+		Params: newParams,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to create collection",
-			fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s", connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
+			fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s",
+				connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
 		)
 		return
 	}
@@ -388,18 +425,20 @@ func (r *CollectionResource) ImportState(ctx context.Context, req resource.Impor
 
 	// Convert collection parameters to JSON string
 	paramsStr := "{}"
-	if len(describe.Data.Properties) > 0 {
-		params := make(map[string]string)
-		for _, prop := range describe.Data.Properties {
-			params[prop.Key] = prop.Value
+	if len(describe.Properties) > 0 {
+		paramsMap, err := utils.SliceToMap(describe.Properties)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to convert collection parameters to map",
+				fmt.Sprintf("Error: %s", err.Error()),
+			)
 		}
-		paramsBytes, err := json.Marshal(params)
+		paramsBytes, err := json.Marshal(paramsMap)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Failed to marshal collection parameters",
 				fmt.Sprintf("Error: %s", err.Error()),
 			)
-			return
 		}
 		paramsStr = string(paramsBytes)
 	}

@@ -61,12 +61,6 @@ func (c *ClientCollection) DropCollection(params *DropCollectionParams) error {
 }
 
 type CollectionDescription struct {
-	Code    int            `json:"code"`
-	Data    CollectionData `json:"data"`
-	Message string         `json:"message"`
-}
-
-type CollectionData struct {
 	Aliases            []string             `json:"aliases"`
 	AutoID             bool                 `json:"autoId"`
 	CollectionID       int64                `json:"collectionID"`
@@ -124,6 +118,7 @@ func (c *ClientCollection) DescribeCollection(params *DescribeCollectionParams) 
 	if err != nil {
 		return nil, err
 	}
+	c.logger.Debugf("DescribeCollection resp: %+v", resp.Data)
 	return resp.Data, nil
 }
 
@@ -169,4 +164,20 @@ func (c *ClientCollection) ListCollections(params *ListCollectionsParams) ([]str
 		return nil, err
 	}
 	return resp.Data, nil
+}
+
+type AlterCollectionPropertiesParams struct {
+	DbName         string         `json:"dbName"`
+	CollectionName string         `json:"collectionName"`
+	Properties     map[string]any `json:"properties"`
+}
+
+func (c *ClientCollection) AlterCollectionProperties(params *AlterCollectionPropertiesParams) error {
+	params.DbName = c.dbName
+	var resp zillizResponse[any]
+	err := c.do("POST", "v2/vectordb/collections/alter_properties", params, &resp)
+	if err != nil {
+		return err
+	}
+	return nil
 }
