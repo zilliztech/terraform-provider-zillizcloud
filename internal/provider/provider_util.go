@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
@@ -25,3 +27,8 @@ var (
 		"zillizcloud": providerserver.NewProtocol6WithError(New("test")()),
 	}
 )
+
+// Helper to strip 'https://' prefix from connect_address for connection_id
+func NormalizeConnectionID(connectAddress string) string {
+	return strings.TrimPrefix(connectAddress, "https://")
+}
