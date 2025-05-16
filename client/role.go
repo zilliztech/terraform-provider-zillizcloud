@@ -7,7 +7,7 @@ type ClientRole struct {
 }
 
 func (c *Client) Role(connectAddress string) (*ClientRole, error) {
-	cu, err := c.Cluster(connectAddress)
+	cu, err := c.cluster(connectAddress)
 	if err != nil {
 		return nil, err
 	}

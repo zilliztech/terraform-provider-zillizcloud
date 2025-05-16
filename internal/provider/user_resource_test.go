@@ -28,6 +28,34 @@ resource "zillizcloud_user" "test" {
 				),
 			},
 			{
+				Config: provider.ProviderConfig + `
+resource "zillizcloud_user" "test" {
+  connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
+  username        = "testuser"
+  password        = "LZ0lS#FRU5V49$2q"
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_user.test", "connect_address", "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"),
+					resource.TestCheckResourceAttr("zillizcloud_user.test", "username", "testuser"),
+					resource.TestCheckResourceAttrSet("zillizcloud_user.test", "id"),
+				),
+			},
+			{
+				Config: provider.ProviderConfig + `
+resource "zillizcloud_user" "test" {
+  connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
+  username        = "testuser"
+  password        = "NewP@ssw0rd123!"
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_user.test", "connect_address", "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"),
+					resource.TestCheckResourceAttr("zillizcloud_user.test", "username", "testuser"),
+					resource.TestCheckResourceAttrSet("zillizcloud_user.test", "id"),
+				),
+			},
+			{
 				ResourceName:            "zillizcloud_user.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
@@ -40,7 +68,7 @@ resource "zillizcloud_user" "test" {
 					connectAddress := rs.Primary.Attributes["connect_address"]
 					username := rs.Primary.Attributes["username"]
 					connectAddress = connectAddress[len("https://"):]
-					return fmt.Sprintf("/connects/%s/users/%s", connectAddress, username), nil
+					return fmt.Sprintf("/connections/%s/users/%s", connectAddress, username), nil
 				},
 			},
 		},
