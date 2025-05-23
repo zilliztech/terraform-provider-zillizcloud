@@ -90,17 +90,17 @@ resource "zillizcloud_collection" "mycollection" {
 
 ### Optional
 
-- `params` (String) A JSON-formatted map of advanced params.
+- `params` (Attributes) A JSON-formatted map of advanced params.
 
 **Example:**
 
-`{
-  "mmap.enabled": true,
-  "ttlSeconds": 86400,
-  "consistencyLevel": "Bounded"
-}`
+`  params = {
+    mmap_enabled = true
+    ttl_seconds = 86400
+    consistency_level = "Bounded"
+  }`
 
-> Supports string, integer, and boolean values.
+> Supports string, integer, and boolean values. (see [below for nested schema](#nestedatt--params))
 
 ### Read-Only
 
@@ -130,3 +130,14 @@ Optional:
 
 - `element_type_params` (Map of String) Additional parameters for element type, if applicable (e.g., for array fields).
 - `is_primary` (Boolean) Whether this field is the primary key.
+
+
+
+<a id="nestedatt--params"></a>
+### Nested Schema for `params`
+
+Optional:
+
+- `consistency_level` (String) The consistency level for the collection. Possible values are "Bounded" or "Unbounded".
+- `mmap_enabled` (Boolean) Whether to enable memory-mapped files for the collection.
+- `ttl_seconds` (Number) Time-to-live (TTL) in seconds for the collection. After this period, the collection will be automatically deleted.
