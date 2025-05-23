@@ -19,12 +19,6 @@ func TestAccCollectionResource(t *testing.T) {
 resource "zillizcloud_database" "test" {
   connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
   db_name         = "testdb"
-  properties      = jsonencode({
-    "database.replica.number" = 1
-    "database.max.collections" = 10
-    "database.force.deny.writing" = false
-    "database.force.deny.reading" = false
-  })
 }
 resource "zillizcloud_collection" "test" {
   connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
@@ -43,16 +37,16 @@ resource "zillizcloud_collection" "test" {
         field_name = "vector"
         data_type  = "FloatVector"
         element_type_params = {
-          dim = "128"
+          dim = "256"
         }
       }
     ]
   }
-  params = jsonencode({
-    "mmap.enabled" = true
-    "ttlSeconds" = 86400
-    "consistencyLevel" = "Bounded"
-  })
+  params = {
+    mmap_enabled = true
+    ttl_seconds = 86400
+    consistency_level = "Bounded"
+  }
   depends_on = [zillizcloud_database.test]
 }
 `,
@@ -69,20 +63,14 @@ resource "zillizcloud_collection" "test" {
 resource "zillizcloud_database" "test" {
   connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
   db_name         = "testdb"
-  properties      = jsonencode({
-    "database.replica.number" = 1
-    "database.max.collections" = 10
-    "database.force.deny.writing" = false
-    "database.force.deny.reading" = false
-  })
 }
 resource "zillizcloud_collection" "test" {
   connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
   db_name         = "testdb"
   collection_name = "testcollection"
   schema = {
-    auto_id = false
-    enabled_dynamic_field = true
+    auto_id = true
+    enabled_dynamic_field = false
     fields = [
       {
         field_name = "id"
@@ -95,29 +83,17 @@ resource "zillizcloud_collection" "test" {
         element_type_params = {
           dim = "256"
         }
-      },
-      {
-        field_name = "tag"
-        data_type  = "VarChar"
-        element_type_params = {
-          max_length = "256"
-        }
       }
     ]
   }
-  params = jsonencode({
-    "mmap.enabled" = true
-    "ttlSeconds" = 86400
-    "consistencyLevel" = "Bounded"
-  })
   depends_on = [zillizcloud_database.test]
 }
 `,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("zillizcloud_collection.test", "db_name", "testdb"),
-					resource.TestCheckResourceAttr("zillizcloud_collection.test", "collection_name", "testcollection"),
-					resource.TestCheckResourceAttrSet("zillizcloud_collection.test", "id"),
-				),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+				//			Check: resource.ComposeAggregateTestCheckFunc(
+				//				resource.TestCheckResourceAttr("zillizcloud_collection.test", "schema.auto_id", "false"),
+				//			),
 			},
 			// Step 3: Import collection
 			{

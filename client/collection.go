@@ -24,15 +24,15 @@ type CollectionSchema struct {
 type CollectionSchemaField struct {
 	FieldName         string         `json:"fieldName"`
 	DataType          string         `json:"dataType"`
-	IsPrimary         bool           `json:"isPrimary,omitempty"`
-	ElementTypeParams map[string]any `json:"elementTypeParams,omitempty"`
+	IsPrimary         bool           `json:"isPrimary"`
+	ElementTypeParams map[string]any `json:"elementTypeParams"`
 }
 
 type CreateCollectionParams struct {
 	DbName         string           `json:"dbName"`
 	CollectionName string           `json:"collectionName"`
 	Schema         CollectionSchema `json:"schema"`
-	Params         map[string]any   `json:"params,omitempty"`
+	Params         map[string]any   `json:"params"`
 }
 
 func (c *ClientCollection) CreateCollection(params *CreateCollectionParams) error {
@@ -61,12 +61,6 @@ func (c *ClientCollection) DropCollection(params *DropCollectionParams) error {
 }
 
 type CollectionDescription struct {
-	Code    int            `json:"code"`
-	Data    CollectionData `json:"data"`
-	Message string         `json:"message"`
-}
-
-type CollectionData struct {
 	Aliases            []string             `json:"aliases"`
 	AutoID             bool                 `json:"autoId"`
 	CollectionID       int64                `json:"collectionID"`
@@ -93,7 +87,7 @@ type CollectionField struct {
 	PartitionKey  bool         `json:"partitionKey"`
 	PrimaryKey    bool         `json:"primaryKey"`
 	Type          string       `json:"type"`
-	Params        []FieldParam `json:"params,omitempty"`
+	Params        []FieldParam `json:"params"`
 }
 
 type FieldParam struct {
@@ -124,6 +118,7 @@ func (c *ClientCollection) DescribeCollection(params *DescribeCollectionParams) 
 	if err != nil {
 		return nil, err
 	}
+	c.logger.Debugf("DescribeCollection resp: %+v", resp.Data)
 	return resp.Data, nil
 }
 
@@ -169,4 +164,20 @@ func (c *ClientCollection) ListCollections(params *ListCollectionsParams) ([]str
 		return nil, err
 	}
 	return resp.Data, nil
+}
+
+type AlterCollectionPropertiesParams struct {
+	DbName         string         `json:"dbName"`
+	CollectionName string         `json:"collectionName"`
+	Properties     map[string]any `json:"properties"`
+}
+
+func (c *ClientCollection) AlterCollectionProperties(params *AlterCollectionPropertiesParams) error {
+	params.DbName = c.dbName
+	var resp zillizResponse[any]
+	err := c.do("POST", "v2/vectordb/collections/alter_properties", params, &resp)
+	if err != nil {
+		return err
+	}
+	return nil
 }

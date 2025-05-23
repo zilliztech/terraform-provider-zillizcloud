@@ -2,19 +2,25 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"os"
+	"reflect"
+	"strconv"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
-	"github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/utils"
 )
 
 // NewCollectionResource returns a new collection resource.
@@ -32,7 +38,13 @@ type CollectionResourceModel struct {
 	DbName         types.String           `tfsdk:"db_name"`
 	CollectionName types.String           `tfsdk:"collection_name"`
 	Schema         *CollectionSchemaModel `tfsdk:"schema"`
-	Params         types.String           `tfsdk:"params"`
+	Params         *CollectionParamsModel `tfsdk:"params"`
+}
+
+type CollectionParamsModel struct {
+	MMAPEnabled      types.Bool   `tfsdk:"mmap_enabled"`
+	TTLSeconds       types.Int64  `tfsdk:"ttl_seconds"`
+	ConsistencyLevel types.String `tfsdk:"consistency_level"`
 }
 
 type CollectionSchemaModel struct {
@@ -83,56 +95,102 @@ func (r *CollectionResource) Schema(ctx context.Context, req resource.SchemaRequ
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"params": schema.StringAttribute{
+			"params": schema.SingleNestedAttribute{
 				Optional: true,
 				MarkdownDescription: `A JSON-formatted map of advanced params.
 
 **Example:**
 
-` + "`" + `{
-  "mmap.enabled": true,
-  "ttlSeconds": 86400,
-  "consistencyLevel": "Bounded"
-}` + "`" + `
+` + "`" + `  params = {
+    mmap_enabled = true
+    ttl_seconds = 86400
+    consistency_level = "Bounded"
+  }` + "`" + `
 
 > Supports string, integer, and boolean values.`,
-				Validators: []validator.String{
-					utils.JsonMapValidator(""), // validate the json map
+				Attributes: map[string]schema.Attribute{
+					"mmap_enabled": schema.BoolAttribute{
+						Optional:            true,
+						MarkdownDescription: `Whether to enable memory-mapped files for the collection.`,
+					},
+					"ttl_seconds": schema.Int64Attribute{
+						Optional:            true,
+						MarkdownDescription: `Time-to-live (TTL) in seconds for the collection. After this period, the collection will be automatically deleted.`,
+					},
+					"consistency_level": schema.StringAttribute{
+						Optional:            true,
+						MarkdownDescription: `The consistency level for the collection. Possible values are "Bounded" or "Unbounded".`,
+					},
 				},
 			},
 			"schema": schema.SingleNestedAttribute{
-				Required:            true,
+				Required: true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.RequiresReplace(),
+				},
 				MarkdownDescription: `Defines the schema for the collection. Changing this block will force resource replacement.`,
 				Attributes: map[string]schema.Attribute{
 					"auto_id": schema.BoolAttribute{
 						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(false),
 						MarkdownDescription: `Whether to enable automatic ID generation for the collection.`,
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.RequiresReplace(),
+						},
 					},
 					"enabled_dynamic_field": schema.BoolAttribute{
 						Optional:            true,
+						Computed:            true,
 						MarkdownDescription: `Whether to enable dynamic fields for the collection.`,
+						Default:             booldefault.StaticBool(false),
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.RequiresReplace(),
+						},
 					},
 					"fields": schema.ListNestedAttribute{
 						Required:            true,
 						MarkdownDescription: `List of field definitions for the collection schema. Each field describes a column in the collection.`,
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.RequiresReplace(),
+						},
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"field_name": schema.StringAttribute{
 									Required:            true,
 									MarkdownDescription: `The name of the field.`,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.RequiresReplace(),
+									},
 								},
 								"data_type": schema.StringAttribute{
 									Required:            true,
 									MarkdownDescription: `The data type of the field (e.g., "INT64", "FLOAT", "STRING", etc.).`,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.RequiresReplace(),
+									},
 								},
 								"is_primary": schema.BoolAttribute{
 									Optional:            true,
+									Computed:            true,
 									MarkdownDescription: `Whether this field is the primary key.`,
+									Default:             booldefault.StaticBool(false),
+									PlanModifiers: []planmodifier.Bool{
+										boolplanmodifier.RequiresReplace(),
+									},
 								},
 								"element_type_params": schema.MapAttribute{
-									Optional:            true,
-									ElementType:         types.StringType,
+									Optional:    true,
+									Computed:    true,
+									ElementType: types.StringType,
+									Default: mapdefault.StaticValue(types.MapValueMust(
+										types.StringType,
+										map[string]attr.Value{},
+									)),
 									MarkdownDescription: `Additional parameters for element type, if applicable (e.g., for array fields).`,
+									PlanModifiers: []planmodifier.Map{
+										mapplanmodifier.RequiresReplace(),
+									},
 								},
 							},
 						},
@@ -174,6 +232,19 @@ func convertSchemaFields(fields []CollectionSchemaFieldModel) []zilliz.Collectio
 	}
 	return result
 }
+func convertSchemaFieldModel(field zilliz.CollectionField) CollectionSchemaFieldModel {
+	elementTypeParams := make(map[string]types.String)
+	for _, v := range field.Params {
+		elementTypeParams[v.Key] = types.StringValue(v.Value)
+	}
+
+	return CollectionSchemaFieldModel{
+		FieldName:         types.StringValue(field.Name),
+		DataType:          types.StringValue(field.Type),
+		IsPrimary:         types.BoolValue(field.PrimaryKey),
+		ElementTypeParams: elementTypeParams,
+	}
+}
 
 func (r *CollectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data CollectionResourceModel
@@ -191,6 +262,18 @@ func (r *CollectionResource) Create(ctx context.Context, req resource.CreateRequ
 		)
 		return
 	}
+	params := make(map[string]any)
+	if data.Params != nil {
+		if !data.Params.MMAPEnabled.IsNull() && !data.Params.MMAPEnabled.IsUnknown() {
+			params["mmap.enabled"] = data.Params.MMAPEnabled.ValueBool()
+		}
+		if !data.Params.TTLSeconds.IsNull() && !data.Params.TTLSeconds.IsUnknown() {
+			params["ttlSeconds"] = data.Params.TTLSeconds.ValueInt64()
+		}
+		if !data.Params.ConsistencyLevel.IsNull() && !data.Params.ConsistencyLevel.IsUnknown() {
+			params["consistencyLevel"] = data.Params.ConsistencyLevel.ValueString()
+		}
+	}
 
 	err = client.CreateCollection(&zilliz.CreateCollectionParams{
 		DbName:         data.DbName.ValueString(),
@@ -200,7 +283,7 @@ func (r *CollectionResource) Create(ctx context.Context, req resource.CreateRequ
 			EnabledDynamicField: data.Schema.EnabledDynamicField.ValueBool(),
 			Fields:              convertSchemaFields(data.Schema.Fields),
 		},
-		Params: utils.ParseJsonMap(data.Params, path.Root("params"), &resp.Diagnostics),
+		Params: params,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -233,7 +316,7 @@ func (r *CollectionResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	_, err = client.DescribeCollection(&zilliz.DescribeCollectionParams{
+	desc, err := client.DescribeCollection(&zilliz.DescribeCollectionParams{
 		DbName:         data.DbName.ValueString(),
 		CollectionName: data.CollectionName.ValueString(),
 	})
@@ -243,6 +326,32 @@ func (r *CollectionResource) Read(ctx context.Context, req resource.ReadRequest,
 			fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s", connectAddress, data.DbName.ValueString(), data.CollectionName.ValueString(), err.Error()),
 		)
 		return
+	}
+	fields := make([]CollectionSchemaFieldModel, len(desc.Fields))
+	for i, field := range desc.Fields {
+		fields[i] = convertSchemaFieldModel(field)
+	}
+	f, _ := os.Create("x.log")
+	defer f.Close()
+	f.WriteString(fmt.Sprintf("fields: %v\n", fields))
+	data.Schema = &CollectionSchemaModel{
+		AutoID:              types.BoolValue(desc.AutoID),
+		EnabledDynamicField: types.BoolValue(desc.EnableDynamicField),
+		Fields:              fields,
+	}
+	data.CollectionName = types.StringValue(desc.CollectionName)
+	data.Params = &CollectionParamsModel{
+		ConsistencyLevel: types.StringValue(desc.ConsistencyLevel),
+	}
+	for _, prop := range desc.Properties {
+		if prop.Key == "mmap.enabled" {
+			v, _ := strconv.ParseBool(prop.Value)
+			data.Params.MMAPEnabled = types.BoolValue(v)
+		}
+		if prop.Key == "collection.ttl.seconds" {
+			v, _ := strconv.ParseInt(prop.Value, 10, 64)
+			data.Params.TTLSeconds = types.Int64Value(v)
+		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) // Save state
@@ -281,17 +390,16 @@ func (r *CollectionResource) Delete(ctx context.Context, req resource.DeleteRequ
 // update logic need to be drop and create
 func (r *CollectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var state CollectionResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...) // Old state
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	var plan CollectionResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...) // New plan
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Default: drop and recreate
 	connectAddress := plan.ConnectAddress.ValueString()
 	client, err := r.client.Collection(connectAddress, plan.DbName.ValueString())
 	if err != nil {
@@ -302,34 +410,41 @@ func (r *CollectionResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	err = client.DropCollection(&zilliz.DropCollectionParams{
-		DbName:         plan.DbName.ValueString(),
-		CollectionName: plan.CollectionName.ValueString(),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to drop collection",
-			fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s", connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
-		)
-		return
+	// Compare schema and other fields except params
+	schemaEqual := reflect.DeepEqual(state.Schema, plan.Schema) &&
+		state.DbName.ValueString() == plan.DbName.ValueString() &&
+		state.CollectionName.ValueString() == plan.CollectionName.ValueString() &&
+		state.ConnectAddress.ValueString() == plan.ConnectAddress.ValueString()
+
+	paramsEqual := reflect.DeepEqual(state.Params, plan.Params)
+	params := make(map[string]any)
+	if plan.Params != nil {
+		if !plan.Params.MMAPEnabled.IsNull() && !plan.Params.MMAPEnabled.IsUnknown() {
+			params["mmap.enabled"] = plan.Params.MMAPEnabled.ValueBool()
+		}
+		if !plan.Params.TTLSeconds.IsNull() && !plan.Params.TTLSeconds.IsUnknown() {
+			params["ttlSeconds"] = plan.Params.TTLSeconds.ValueInt64()
+		}
+		if !plan.Params.ConsistencyLevel.IsNull() && !plan.Params.ConsistencyLevel.IsUnknown() {
+			params["consistencyLevel"] = plan.Params.ConsistencyLevel.ValueString()
+		}
 	}
 
-	err = client.CreateCollection(&zilliz.CreateCollectionParams{
-		DbName:         plan.DbName.ValueString(),
-		CollectionName: plan.CollectionName.ValueString(),
-		Schema: zilliz.CollectionSchema{
-			AutoID:              plan.Schema.AutoID.ValueBool(),
-			EnabledDynamicField: plan.Schema.EnabledDynamicField.ValueBool(),
-			Fields:              convertSchemaFields(plan.Schema.Fields),
-		},
-		Params: utils.ParseJsonMap(plan.Params, path.Root("params"), &resp.Diagnostics),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to create collection",
-			fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s", connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
-		)
-		return
+	if schemaEqual && !paramsEqual {
+		// Only params changed, use AlterCollectionProperties
+		err := client.AlterCollectionProperties(&zilliz.AlterCollectionPropertiesParams{
+			DbName:         plan.DbName.ValueString(),
+			CollectionName: plan.CollectionName.ValueString(),
+			Properties:     params,
+		})
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to alter collection properties",
+				fmt.Sprintf("ConnectAddress: %s, DbName: %s, CollectionName: %s, error: %s",
+					connectAddress, plan.DbName.ValueString(), plan.CollectionName.ValueString(), err.Error()),
+			)
+			return
+		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -387,31 +502,19 @@ func (r *CollectionResource) ImportState(ctx context.Context, req resource.Impor
 	}
 
 	// Convert collection parameters to JSON string
-	paramsStr := "{}"
-	if len(describe.Data.Properties) > 0 {
-		params := make(map[string]string)
-		for _, prop := range describe.Data.Properties {
-			params[prop.Key] = prop.Value
-		}
-		paramsBytes, err := json.Marshal(params)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to marshal collection parameters",
-				fmt.Sprintf("Error: %s", err.Error()),
-			)
-			return
-		}
-		paramsStr = string(paramsBytes)
+	paramsGoMap := make(map[string]any)
+	for _, prop := range describe.Properties {
+		paramsGoMap[prop.Key] = prop.Value
 	}
 
-	// Set import state (schema is nil, as it cannot be inferred)
+	// Set import state (schema/params is nil, as it cannot be inferred)
 	state := CollectionResourceModel{
 		Id:             types.StringValue(req.ID),
 		ConnectAddress: types.StringValue(connectAddressFull),
 		DbName:         types.StringValue(dbName),
 		CollectionName: types.StringValue(collectionName),
-		Params:         types.StringValue(paramsStr),
 		Schema:         nil,
+		Params:         nil,
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

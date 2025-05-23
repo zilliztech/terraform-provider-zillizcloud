@@ -114,9 +114,13 @@ func (r *DatabaseResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	props := utils.ParseJsonMap(data.Properties, path.Root("properties"), &resp.Diagnostics)
-	if props == nil {
-		return
+	// Parse properties only if they are provided
+	var props map[string]any
+	if !data.Properties.IsNull() {
+		props = utils.ParseJsonMap(data.Properties, path.Root("properties"), &resp.Diagnostics)
+		if props == nil {
+			return
+		}
 	}
 
 	_, err = client.CreateDatabase(zilliz.CreateDatabaseParams{
@@ -134,8 +138,7 @@ func (r *DatabaseResource) Create(ctx context.Context, req resource.CreateReques
 	// Always normalize connect_address for ID, but keep full address in state
 	normalizedAddress := NormalizeConnectionID(connectAddress)
 	data.Id = types.StringValue(BuildDatabaseID(normalizedAddress, data.DbName.ValueString()))
-	data.ConnectAddress = types.StringValue(connectAddress) // always keep full address in state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)  // Save state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) // Save state
 }
 
 func (r *DatabaseResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -208,6 +211,8 @@ func (r *DatabaseResource) ImportState(ctx context.Context, req resource.ImportS
 		)
 		return
 	}
+
+	connectAddress = "https://" + connectAddress
 
 	// Set connect_address as is
 	state := DatabaseResourceModel{
