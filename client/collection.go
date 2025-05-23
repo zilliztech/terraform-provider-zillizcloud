@@ -24,15 +24,15 @@ type CollectionSchema struct {
 type CollectionSchemaField struct {
 	FieldName         string         `json:"fieldName"`
 	DataType          string         `json:"dataType"`
-	IsPrimary         bool           `json:"isPrimary,omitempty"`
-	ElementTypeParams map[string]any `json:"elementTypeParams,omitempty"`
+	IsPrimary         bool           `json:"isPrimary"`
+	ElementTypeParams map[string]any `json:"elementTypeParams"`
 }
 
 type CreateCollectionParams struct {
 	DbName         string           `json:"dbName"`
 	CollectionName string           `json:"collectionName"`
 	Schema         CollectionSchema `json:"schema"`
-	Params         map[string]any   `json:"params,omitempty"`
+	Params         map[string]any   `json:"params"`
 }
 
 func (c *ClientCollection) CreateCollection(params *CreateCollectionParams) error {
@@ -87,7 +87,7 @@ type CollectionField struct {
 	PartitionKey  bool         `json:"partitionKey"`
 	PrimaryKey    bool         `json:"primaryKey"`
 	Type          string       `json:"type"`
-	Params        []FieldParam `json:"params,omitempty"`
+	Params        []FieldParam `json:"params"`
 }
 
 type FieldParam struct {
