@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultClusterCreateTimeout time.Duration = 5 * time.Minute
+	defaultClusterCreateTimeout time.Duration = 8 * time.Minute
 	defaultClusterUpdateTimeout time.Duration = 5 * time.Minute
 )
 
@@ -226,7 +226,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan:
 			return true, nil
 		default:
-			return false, fmt.Errorf("Invalid plan: %s", data.Plan.ValueString())
+			return false, fmt.Errorf("invalid plan: %s", data.Plan.ValueString())
 		}
 
 	}
