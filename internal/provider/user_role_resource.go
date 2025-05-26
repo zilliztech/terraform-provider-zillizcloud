@@ -218,15 +218,22 @@ func (r *UserRoleResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 
+	var errors []string
 	for _, role := range state.Roles {
 		err := client.RevokeRoleFromUser(&zilliz.UserRevokeRoleFromParams{
 			UserName: state.Username.ValueString(),
 			RoleName: role.ValueString(),
 		})
 		if err != nil {
-			resp.Diagnostics.AddError("Revoke Role Error", err.Error())
-			return
+			errors = append(errors, fmt.Sprintf("Failed to revoke role '%s': %s", role.ValueString(), err.Error()))
 		}
+	}
+
+	if len(errors) > 0 {
+		resp.Diagnostics.AddError(
+			"Failed to revoke some roles",
+			fmt.Sprintf("The following errors occurred while revoking roles:\n%s", strings.Join(errors, "\n")),
+		)
 	}
 }
 
@@ -259,20 +266,36 @@ func (r *UserRoleResource) Update(ctx context.Context, req resource.UpdateReques
 	// Revoke roles not in plan
 	for role := range existingRoles {
 		if !plannedRoles[role] {
-			client.RevokeRoleFromUser(&zilliz.UserRevokeRoleFromParams{
+			err := client.RevokeRoleFromUser(&zilliz.UserRevokeRoleFromParams{
 				UserName: plan.Username.ValueString(),
 				RoleName: role,
 			})
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Failed to revoke role from user",
+					fmt.Sprintf("ConnectAddress: %s, Username: %s, Role: %s, error: %s",
+						plan.ConnectAddress.ValueString(), plan.Username.ValueString(), role, err.Error()),
+				)
+				return
+			}
 		}
 	}
 
 	// Grant new roles
 	for role := range plannedRoles {
 		if !existingRoles[role] {
-			client.GrantRoleToUser(&zilliz.UserGrantRoleToUserParams{
+			err := client.GrantRoleToUser(&zilliz.UserGrantRoleToUserParams{
 				UserName: plan.Username.ValueString(),
 				RoleName: role,
 			})
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Failed to grant role to user",
+					fmt.Sprintf("ConnectAddress: %s, Username: %s, Role: %s, error: %s",
+						plan.ConnectAddress.ValueString(), plan.Username.ValueString(), role, err.Error()),
+				)
+				return
+			}
 		}
 	}
 
