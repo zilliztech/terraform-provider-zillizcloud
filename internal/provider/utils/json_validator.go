@@ -80,7 +80,7 @@ func ParseJsonMap(raw types.String, path path.Path, diags *diag.Diagnostics) map
 	return result
 }
 
-// ConvertMapToJson converts a map to a JSON string
+// ConvertMapToJson converts a map to a JSON string.
 func ConvertMapToJson(data interface{}) (string, error) {
 	if data == nil {
 		return "", nil

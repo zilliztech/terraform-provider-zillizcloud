@@ -101,7 +101,7 @@ func SliceToMap(input any) (map[string]any, error) {
 	return result, nil
 }
 
-// parseValue attempts to parse a string into bool, int64, float64, or fallback to string
+// parseValue attempts to parse a string into bool, int64, float64, or fallback to string.
 func parseValue(s string) any {
 	s = strings.TrimSpace(s)
 	if s == "true" || s == "false" {

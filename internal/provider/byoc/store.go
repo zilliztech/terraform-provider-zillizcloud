@@ -46,7 +46,7 @@ func (s *byocProjectStore) Suspend(ctx context.Context, data *BYOCProjectResourc
 		status := project.Status.ValueString()
 		switch status {
 		case BYOCProjectStatusStopping.String():
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is stopping...")}
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is stopping")}
 		case BYOCProjectStatusStopped.String():
 			// achieved the target status
 			return nil, nil
@@ -82,7 +82,7 @@ func (s *byocProjectStore) Resume(ctx context.Context, data *BYOCProjectResource
 		status := project.Status.ValueString()
 		switch status {
 		case BYOCProjectStatusResuming.String():
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is resuming...")}
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is resuming")}
 		case BYOCProjectStatusRunning.String():
 			// achieved the target status
 			return nil, nil
@@ -213,9 +213,9 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 
 		switch project.Status.ValueString() {
 		case BYOCProjectStatusPending.String():
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending...")}
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending")}
 		case BYOCProjectStatusFailed.String():
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project failed to create...")}
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project failed to create")}
 		case BYOCProjectStatusRunning.String():
 			// achieved the target status
 			return &project, nil
@@ -241,7 +241,7 @@ func (s *byocProjectStore) Delete(ctx context.Context, data *BYOCProjectResource
 			return fmt.Errorf("failed to describe BYOC project: %w", err)
 		}
 
-		if !(project.Status.ValueString() == BYOCProjectStatusDeleted.String() || project.Status.ValueString() == BYOCProjectStatusDeleting.String()) {
+		if project.Status.ValueString() != BYOCProjectStatusDeleted.String() && project.Status.ValueString() != BYOCProjectStatusDeleting.String() {
 			_, err = s.client.DeleteBYOCProject(&zilliz.DeleteBYOCProjectRequest{
 				ProjectId:   projectID,
 				DataPlaneID: dataPlaneID,
@@ -266,7 +266,7 @@ func (s *byocProjectStore) Delete(ctx context.Context, data *BYOCProjectResource
 		}
 
 		if project.Status.ValueString() == BYOCProjectStatusDeleting.String() {
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is still deleting...")}
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is still deleting")}
 		}
 
 		if project.Status.ValueString() == BYOCProjectStatusDeleted.String() {

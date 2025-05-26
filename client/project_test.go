@@ -16,7 +16,7 @@ func TestClient_ListProject(t *testing.T) {
 			t.Fatalf("failed to list projects: %v", err)
 		}
 
-		var want string = "Default Project"
+		want := "Default Project"
 
 		if len(got) == 0 || got[0].ProjectName != want {
 			t.Errorf("want = %s, got = %v", want, got)
