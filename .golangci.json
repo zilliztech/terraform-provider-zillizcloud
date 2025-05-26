@@ -1,0 +1,53 @@
+{
+  "formatters": {
+    "enable": [
+      "gofmt"
+    ],
+    "exclusions": {
+      "generated": "lax",
+      "paths": [
+        "third_party$",
+        "builtin$",
+        "examples$"
+      ]
+    }
+  },
+  "issues": {
+    "max-same-issues": 0
+  },
+  "linters": {
+    "default": "none",
+    "enable": [
+      "copyloopvar",
+      "durationcheck",
+      "errcheck",
+      "forcetypeassert",
+      "godot",
+      "govet",
+      "ineffassign",
+      "makezero",
+      "misspell",
+      "nilerr",
+      "predeclared",
+      "staticcheck",
+      "unconvert",
+      "unparam",
+      "unused"
+    ],
+    "exclusions": {
+      "generated": "lax",
+      "paths": [
+        "third_party$",
+        "builtin$",
+        "examples$"
+      ],
+      "presets": [
+        "comments",
+        "common-false-positives",
+        "legacy",
+        "std-error-handling"
+      ]
+    }
+  },
+  "version": "2"
+}
