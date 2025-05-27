@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -330,11 +329,6 @@ func (r *CollectionResource) Read(ctx context.Context, req resource.ReadRequest,
 	fields := make([]CollectionSchemaFieldModel, len(desc.Fields))
 	for i, field := range desc.Fields {
 		fields[i] = convertSchemaFieldModel(field)
-	}
-	f, _ := os.Create("x.log")
-	defer f.Close()
-	if _, err := fmt.Fprintf(f, "fields: %v\n", fields); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to write fields to log: %v\n", err)
 	}
 	data.Schema = &CollectionSchemaModel{
 		AutoID:              types.BoolValue(desc.AutoID),
