@@ -301,7 +301,7 @@ func BuildIndexID(connectAddress, dbName, collectionName, indexName string) stri
 }
 
 // ParseIndexID parses the import ID for an index resource.
-// Format: /connections/{connect_address}/databases/{db_name}/collections/{collection_name}/indexes/{index_name}
+// Format: /connections/{connect_address}/databases/{db_name}/collections/{collection_name}/indexes/{index_name}.
 func ParseIndexID(id string) (connectAddress, dbName, collectionName, indexName string, ok bool) {
 	parts := strings.Split(id, "/")
 	if len(parts) != 9 || parts[1] != "connections" || parts[3] != "databases" || parts[5] != "collections" || parts[7] != "indexes" {

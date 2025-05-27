@@ -28,7 +28,7 @@ var (
 	}
 )
 
-// Helper to strip 'https://' prefix from connect_address for connection_id
+// Helper to strip 'https://' prefix from connect_address for connection_id.
 func NormalizeConnectionID(connectAddress string) string {
 	return strings.TrimPrefix(connectAddress, "https://")
 }

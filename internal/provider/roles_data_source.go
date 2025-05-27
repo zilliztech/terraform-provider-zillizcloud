@@ -102,7 +102,7 @@ func (d *RolesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 	for _, u := range roles {
 		state.Items = append(state.Items, RoleItem{
-			RoleId: types.StringValue(string(u)),
+			RoleId: types.StringValue(u),
 		})
 	}
 
