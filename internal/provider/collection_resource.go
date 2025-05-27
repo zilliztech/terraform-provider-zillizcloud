@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -331,9 +330,6 @@ func (r *CollectionResource) Read(ctx context.Context, req resource.ReadRequest,
 	for i, field := range desc.Fields {
 		fields[i] = convertSchemaFieldModel(field)
 	}
-	f, _ := os.Create("x.log")
-	defer f.Close()
-	f.WriteString(fmt.Sprintf("fields: %v\n", fields))
 	data.Schema = &CollectionSchemaModel{
 		AutoID:              types.BoolValue(desc.AutoID),
 		EnabledDynamicField: types.BoolValue(desc.EnableDynamicField),
