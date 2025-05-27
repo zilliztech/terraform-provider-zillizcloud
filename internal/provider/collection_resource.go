@@ -333,7 +333,9 @@ func (r *CollectionResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 	f, _ := os.Create("x.log")
 	defer f.Close()
-	f.WriteString(fmt.Sprintf("fields: %v\n", fields))
+	if _, err := fmt.Fprintf(f, "fields: %v\n", fields); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to write fields to log: %v\n", err)
+	}
 	data.Schema = &CollectionSchemaModel{
 		AutoID:              types.BoolValue(desc.AutoID),
 		EnabledDynamicField: types.BoolValue(desc.EnableDynamicField),
@@ -387,7 +389,7 @@ func (r *CollectionResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 }
 
-// update logic need to be drop and create
+// update logic need to be drop and create.
 func (r *CollectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var state CollectionResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -456,7 +458,7 @@ func BuildCollectionID(connectAddress, dbName, collectionName string) string {
 }
 
 // ParseCollectionID parses the import ID for a collection resource.
-// Format: /connections/{connect_address}/databases/{db_name}/collections/{collection_name}
+// Format: /connections/{connect_address}/databases/{db_name}/collections/{collection_name}.
 func ParseCollectionID(id string) (connectAddress, dbName, collectionName string, ok bool) {
 	parts := strings.Split(id, "/")
 	if len(parts) != 7 || parts[1] != "connections" || parts[3] != "databases" || parts[5] != "collections" {

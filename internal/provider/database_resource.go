@@ -224,7 +224,7 @@ func (r *DatabaseResource) ImportState(ctx context.Context, req resource.ImportS
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...) // Save state
 }
 
-// BuildDatabaseID constructs the resource ID in the format: /connections/{connect_address}/databases/{db_name}
+// BuildDatabaseID constructs the resource ID in the format: /connections/{connect_address}/databases/{db_name}.
 func BuildDatabaseID(connectAddress, dbName string) string {
 	if strings.HasPrefix(connectAddress, "https://") {
 		connectAddress = NormalizeConnectionID(connectAddress)
@@ -233,7 +233,7 @@ func BuildDatabaseID(connectAddress, dbName string) string {
 }
 
 // ParseDatabaseID parses the resource ID and extracts connect_address and db_name.
-// Expected format: /connections/{connect_address}/databases/{db_name}
+// Expected format: /connections/{connect_address}/databases/{db_name}.
 func ParseDatabaseID(id string) (string, string, bool) {
 	parts := strings.Split(id, "/")
 	if len(parts) != 5 || parts[1] != "connections" || parts[3] != "databases" {
@@ -245,7 +245,6 @@ func ParseDatabaseID(id string) (string, string, bool) {
 // Update updates the database properties if there are any changes.
 func (r *DatabaseResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// TODO: update current has permission issue, directly return for now
-	return
 	var plan, state DatabaseResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)   // New plan
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...) // Old state

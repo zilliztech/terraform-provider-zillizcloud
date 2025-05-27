@@ -48,7 +48,7 @@ func NewLoggerWrapper(base *log.Logger) *LoggerWrapper {
 		minLevel: level,
 	}
 }
-func (l *LoggerWrapper) logf(level LogLevel, skip int, format string, v ...any) {
+func (l *LoggerWrapper) logf(level LogLevel, format string, v ...any) {
 	if level > l.minLevel {
 		return
 	}
@@ -107,15 +107,15 @@ func isUpper(b byte) bool {
 }
 
 func (l *LoggerWrapper) Debugf(format string, v ...any) {
-	l.logf(LogLevelDebug, 4, format, v...)
+	l.logf(LogLevelDebug, format, v...)
 }
 
 func (l *LoggerWrapper) Infof(format string, v ...any) {
-	l.logf(LogLevelInfo, 4, format, v...)
+	l.logf(LogLevelInfo, format, v...)
 }
 
 func (l *LoggerWrapper) Errorf(format string, v ...any) {
-	l.logf(LogLevelError, 4, format, v...)
+	l.logf(LogLevelError, format, v...)
 }
 
 func (l *LoggerWrapper) Printf(format string, v ...any) {
@@ -123,7 +123,8 @@ func (l *LoggerWrapper) Printf(format string, v ...any) {
 }
 
 func (l *LoggerWrapper) Println(v ...any) {
-	l.Infof(strings.TrimSuffix(fmt.Sprintln(v...), "\n"))
+	msg := strings.TrimSuffix(fmt.Sprintln(v...), "\n")
+	l.Infof("%s", msg)
 }
 
 func generateShortID() string {

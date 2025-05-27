@@ -86,9 +86,9 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 
 		switch project.Status.ValueInt64() {
 		case int64(BYOCProjectStatusConnected):
-			return nil, &util.Err{Err: fmt.Errorf("agent already connected, BYOC project is deploying status, please wait...")}
+			return nil, &util.Err{Err: fmt.Errorf("agent already connected, BYOC project is deploying status, please wait")}
 		case int64(BYOCProjectStatusPending):
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending status, please wait...")}
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending status, please wait")}
 		case int64(BYOCProjectStatusRunning):
 			return &project, nil
 		case int64(BYOCProjectStatusInit):
@@ -128,7 +128,7 @@ func (s *byocOpProjectStore) Delete(ctx context.Context, data *BYOCOpProjectReso
 		tflog.Info(ctx, fmt.Sprintf("Before delete BYOC Op Project, peek the status: %d", project.Status.ValueInt64()))
 
 		//skip delete if project is already deleted or deleting
-		if !(project.Status.ValueInt64() == int64(BYOCProjectStatusDeleted) || project.Status.ValueInt64() == int64(BYOCProjectStatusDeleting)) {
+		if project.Status.ValueInt64() != int64(BYOCProjectStatusDeleted) && project.Status.ValueInt64() != int64(BYOCProjectStatusDeleting) {
 			_, err = s.client.DeleteBYOCProject(request)
 			if err != nil {
 				return fmt.Errorf("failed to delete BYOC Op project: %w", err)
@@ -150,7 +150,7 @@ func (s *byocOpProjectStore) Delete(ctx context.Context, data *BYOCOpProjectReso
 		}
 
 		if project.Status.ValueInt64() == int64(BYOCProjectStatusDeleting) {
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is still deleting...")}
+			return nil, &util.Err{Err: fmt.Errorf("BYOC project is still deleting")}
 		}
 
 		if project.Status.ValueInt64() == int64(BYOCProjectStatusDeleted) {

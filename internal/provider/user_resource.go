@@ -86,7 +86,7 @@ You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + `
 
 **Constraints:**
 - Must be unique within the cluster.
-- Should follow your organization’s naming conventions.`,
+- Should follow your organization's naming conventions.`,
 			},
 			"password": schema.StringAttribute{
 				Required:  true,
@@ -329,7 +329,7 @@ func BuildUserID(connectAddress, username string) string {
 	return fmt.Sprintf("/connections/%s/users/%s", connectAddress, username)
 }
 
-// /connections/{connect_address}/users/{username}
+// /connections/{connect_address}/users/{username}.
 func ParseUserID(id string) (string, string, bool) {
 	parts := strings.Split(id, "/")
 	if len(parts) != 5 || parts[1] != "connections" || parts[3] != "users" {

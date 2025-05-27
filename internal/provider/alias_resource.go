@@ -245,7 +245,7 @@ func (r *AliasResource) ImportState(ctx context.Context, req resource.ImportStat
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...) // Save state
 }
 
-// Update method: only alias_name can be updated in-place, others require replacement
+// Update method: only alias_name can be updated in-place, others require replacement.
 func (r *AliasResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var state AliasResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...) // Old state

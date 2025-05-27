@@ -102,7 +102,7 @@ func (d *UsersDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 	for _, u := range users {
 		state.Items = append(state.Items, UserItem{
-			UserId: types.StringValue(string(u)),
+			UserId: types.StringValue(u),
 		})
 	}
 
