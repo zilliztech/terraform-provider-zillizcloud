@@ -104,6 +104,12 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		byoc_op.NewBYOCOpProjectSettingsResource,
 		byoc_op.NewBYOCOpProjectResource,
 		byoc_op.NewBYOCOpProjectAgentResource,
+		NewUserResource,
+		NewUserRoleResource,
+		NewDatabaseResource,
+		NewCollectionResource,
+		NewIndexResource,
+		NewAliasResource,
 	}
 }
 
@@ -116,6 +122,11 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewClusterDataSource,
 		byoc.NewExternalIdDataSource,
 		byoc_op.NewBYOCOpProjectSettingsData,
+		NewUsersDataSource,
+		NewRolesDataSource,
+		NewDatabasesDataSource,
+		NewCollectionsDataSource,
+		NewIndexesDataSource,
 	}
 }
 

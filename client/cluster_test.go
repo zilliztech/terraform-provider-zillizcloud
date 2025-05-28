@@ -42,7 +42,7 @@ func TestClient_Cluster(t *testing.T) {
 			t.Fatalf("failed to list projects: %v", err)
 		}
 
-		var want string = "Default Project"
+		var want = "Default Project"
 
 		if len(projects) == 0 || projects[0].ProjectName != want {
 			t.Errorf("want = %s, got = %v", want, projects)
@@ -179,7 +179,7 @@ func TestClient_ServerlessCluster(t *testing.T) {
 			t.Fatalf("failed to list projects: %v", err)
 		}
 
-		var want string = "Default Project"
+		var want = "Default Project"
 
 		if len(projects) == 0 || projects[0].ProjectName != want {
 			t.Errorf("want = %s, got = %v", want, projects)
@@ -286,7 +286,7 @@ func TestClient_FreeCluster(t *testing.T) {
 			t.Fatalf("failed to list projects: %v", err)
 		}
 
-		var want string = "Default Project"
+		var want = "Default Project"
 
 		if len(projects) == 0 || projects[0].ProjectName != want {
 			t.Errorf("want = %s, got = %v", want, projects)
