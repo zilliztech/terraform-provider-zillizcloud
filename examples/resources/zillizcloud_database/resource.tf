@@ -25,10 +25,10 @@ resource "zillizcloud_cluster" "cluster" {
 resource "zillizcloud_database" "db" {
   connect_address = zillizcloud_cluster.cluster.connect_address
   db_name         = "db"
-  properties = jsonencode({
-    "database.replica.number"     = 1
-    "database.max.collections"    = 10
-    "database.force.deny.writing" = false
-    "database.force.deny.reading" = false
-  })
+  properties = {
+    "database.replica.number"     = "1"
+    "database.max.collections"    = "10"
+    "database.force.deny.writing" = "false"
+    "database.force.deny.reading" = "false"
+  }
 }

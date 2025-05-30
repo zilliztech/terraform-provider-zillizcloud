@@ -19,16 +19,10 @@ func TestAccIndexResource(t *testing.T) {
 resource "zillizcloud_database" "test" {
   connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
   db_name         = "testdb"
-  properties      = jsonencode({
-    "database.replica.number" = 1
-    "database.max.collections" = 10
-    "database.force.deny.writing" = false
-    "database.force.deny.reading" = false
-  })
 }
 resource "zillizcloud_collection" "test" {
-  connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
-  db_name         = "testdb"
+  connect_address = zillizcloud_database.test.connect_address
+  db_name         = zillizcloud_database.test.db_name
   collection_name = "testcollection"
   schema = {
     auto_id = true
@@ -76,16 +70,10 @@ resource "zillizcloud_index" "test" {
 resource "zillizcloud_database" "test" {
   connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
   db_name         = "testdb"
-  properties      = jsonencode({
-    "database.replica.number" = 1
-    "database.max.collections" = 10
-    "database.force.deny.writing" = false
-    "database.force.deny.reading" = false
-  })
 }
 resource "zillizcloud_collection" "test" {
-  connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
-  db_name         = "testdb"
+  connect_address = zillizcloud_database.test.connect_address
+  db_name         = zillizcloud_database.test.db_name
   collection_name = "testcollection"
   schema = {
     auto_id = true

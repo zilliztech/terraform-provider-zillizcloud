@@ -68,14 +68,13 @@ resource "zillizcloud_user_role" "myuser_role" {
 ### Required
 
 - `connect_address` (String) The connection address of the target Zilliz Cloud cluster.
-
-You can obtain this value from the output of the `zillizcloud_cluster` resource, e.g.:  
+You can obtain this value from the output of the `zillizcloud_cluster` resource, for example:
 `zillizcloud_cluster.example.connect_address`
 
-**Example:**  
+**Example:**
 `https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534`
 
-> **Note:** The address must include the protocol (`https://`).
+> **Note:** The address must include the protocol (e.g., `https://`).
 - `roles` (List of String) A list of roles to assign to the user.
 
 **Example:**  
