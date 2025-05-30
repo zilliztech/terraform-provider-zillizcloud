@@ -17,9 +17,8 @@ func (c *ClientCollection) CreateAlias(params *CreateAliasParams) error {
 }
 
 type DropAliasParams struct {
-	DbName         string `json:"dbName"`
-	AliasName      string `json:"aliasName"`
-	CollectionName string `json:"collectionName"`
+	DbName    string `json:"dbName"`
+	AliasName string `json:"aliasName"`
 }
 
 func (c *ClientCollection) DropAlias(params *DropAliasParams) error {
