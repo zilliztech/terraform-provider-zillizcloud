@@ -11,34 +11,34 @@ import (
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
-var _ datasource.DataSource = &IndexesDataSource{}
+var _ datasource.DataSource = &PartitionsDataSource{}
 
-func NewIndexesDataSource() datasource.DataSource {
-	return &IndexesDataSource{}
+func NewPartitionsDataSource() datasource.DataSource {
+	return &PartitionsDataSource{}
 }
 
-type IndexesDataSource struct {
+type PartitionsDataSource struct {
 	client *zilliz.Client
 }
 
-type IndexItem struct {
-	IndexName types.String `tfsdk:"index_name"`
+type PartitionItem struct {
+	PartitionName types.String `tfsdk:"partition_name"`
 }
 
-type IndexesDataSourceModel struct {
-	ConnectAddress types.String `tfsdk:"connect_address"`
-	DbName         types.String `tfsdk:"db_name"`
-	CollectionName types.String `tfsdk:"collection_name"`
-	Items          []IndexItem  `tfsdk:"items"`
+type PartitionsDataSourceModel struct {
+	ConnectAddress types.String    `tfsdk:"connect_address"`
+	DbName         types.String    `tfsdk:"db_name"`
+	CollectionName types.String    `tfsdk:"collection_name"`
+	Items          []PartitionItem `tfsdk:"items"`
 }
 
-func (d *IndexesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_indexes"
+func (d *PartitionsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_partitions"
 }
 
-func (d *IndexesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *PartitionsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "List indexes of a given collection by connect_address, db_name, and collection_name",
+		MarkdownDescription: "List partitions of a given collection by connect_address, db_name, and collection_name",
 		Attributes: map[string]schema.Attribute{
 			"connect_address": schema.StringAttribute{
 				MarkdownDescription: `The connection address of the target Zilliz Cloud cluster.
@@ -60,12 +60,12 @@ You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + `
 				Required:            true,
 			},
 			"items": schema.ListNestedAttribute{
-				MarkdownDescription: "List of indexes",
+				MarkdownDescription: "List of partitions",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"index_name": schema.StringAttribute{
-							MarkdownDescription: "Index name",
+						"partition_name": schema.StringAttribute{
+							MarkdownDescription: "Partition name",
 							Computed:            true,
 						},
 					},
@@ -75,7 +75,7 @@ You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + `
 	}
 }
 
-func (d *IndexesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *PartitionsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -91,8 +91,8 @@ func (d *IndexesDataSource) Configure(ctx context.Context, req datasource.Config
 	d.client = client
 }
 
-func (d *IndexesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state IndexesDataSourceModel
+func (d *PartitionsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var state PartitionsDataSourceModel
 
 	// Parse config input
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
@@ -105,18 +105,18 @@ func (d *IndexesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Failed to create collection client for connect_address %q, db_name %q: %s", state.ConnectAddress.ValueString(), state.DbName.ValueString(), err))
 		return
 	}
-	indexes, err := clientCollection.ListIndex(&zilliz.ListIndexParams{
+	partitions, err := clientCollection.ListPartitionses(&zilliz.ListPartitionsesParams{
 		DbName:         state.DbName.ValueString(),
 		CollectionName: state.CollectionName.ValueString(),
 	})
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Failed to list indexes for connect_address %q, db_name %q, collection_name %q: %s", state.ConnectAddress.ValueString(), state.DbName.ValueString(), state.CollectionName.ValueString(), err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Failed to list partitions for connect_address %q, db_name %q, collection_name %q: %s", state.ConnectAddress.ValueString(), state.DbName.ValueString(), state.CollectionName.ValueString(), err))
 		return
 	}
 
-	for _, idx := range indexes {
-		state.Items = append(state.Items, IndexItem{
-			IndexName: types.StringValue(idx),
+	for _, partition := range partitions {
+		state.Items = append(state.Items, PartitionItem{
+			PartitionName: types.StringValue(partition),
 		})
 	}
 

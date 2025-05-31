@@ -40,8 +40,15 @@ func (d *CollectionsDataSource) Schema(ctx context.Context, req datasource.Schem
 		MarkdownDescription: "List collections of a given database by connect_address and db_name",
 		Attributes: map[string]schema.Attribute{
 			"connect_address": schema.StringAttribute{
-				MarkdownDescription: "Cluster's connection address",
-				Required:            true,
+				MarkdownDescription: `The connection address of the target Zilliz Cloud cluster.
+You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + ` resource, for example:
+` + "`zillizcloud_cluster.example.connect_address`" + `
+
+**Example:**
+` + "`https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534`" + `
+
+> **Note:** The address must include the protocol (e.g., ` + "`https://`" + `).`,
+				Required: true,
 			},
 			"db_name": schema.StringAttribute{
 				MarkdownDescription: "Database name",

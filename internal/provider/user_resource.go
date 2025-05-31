@@ -68,12 +68,11 @@ Typical use case: managing database users for access control and tenant isolatio
 			"connect_address": schema.StringAttribute{
 				Required: true,
 				MarkdownDescription: `The connection address of the target Zilliz Cloud cluster.
+You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + ` resource, for example:
+` + "`zillizcloud_cluster.example.connect_address`" + `
 
-You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + ` resource, for example:  
-` + "`" + `zillizcloud_cluster.example.connect_address` + "`" + `
-
-**Example:**  
-` + "`" + `https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534` + "`" + `
+**Example:**
+` + "`https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534`" + `
 
 > **Note:** The address must include the protocol (e.g., ` + "`https://`" + `).`,
 			},

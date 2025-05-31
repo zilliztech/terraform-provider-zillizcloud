@@ -32,7 +32,8 @@ func (c *ClientCollection) DropAlias(params *DropAliasParams) error {
 }
 
 type ListAliasesParams struct {
-	DbName string `json:"dbName"`
+	DbName         string `json:"dbName"`
+	CollectionName string `json:"collectionName"`
 }
 
 func (c *ClientCollection) ListAliases(params *ListAliasesParams) ([]string, error) {
