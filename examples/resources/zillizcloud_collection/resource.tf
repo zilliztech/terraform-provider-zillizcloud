@@ -25,12 +25,12 @@ resource "zillizcloud_cluster" "mycluster" {
 resource "zillizcloud_database" "mydb" {
   connect_address = zillizcloud_cluster.mycluster.connect_address
   db_name         = "mydb"
-  properties = jsonencode({
-    "database.replica.number"     = 1
-    "database.max.collections"    = 10
-    "database.force.deny.writing" = false
-    "database.force.deny.reading" = false
-  })
+  properties = {
+    "database.replica.number"     = "1"
+    "database.max.collections"    = "10"
+    "database.force.deny.writing" = "false"
+    "database.force.deny.reading" = "false"
+  }
 }
 
 resource "zillizcloud_collection" "mycollection" {
@@ -55,9 +55,9 @@ resource "zillizcloud_collection" "mycollection" {
       }
     ]
   }
-  params = jsonencode({
-    "mmap.enabled"     = true
-    "ttlSeconds"       = 86400
-    "consistencyLevel" = "Bounded"
-  })
+  params = {
+    "mmap_enabled"      = true
+    "ttl_seconds"       = 86400
+    "consistency_level" = "Bounded"
+  }
 }

@@ -21,8 +21,8 @@ resource "zillizcloud_database" "test" {
   db_name         = "testdb"
 }
 resource "zillizcloud_collection" "test" {
-  connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
-  db_name         = "testdb"
+  connect_address = zillizcloud_database.test.connect_address
+  db_name         = zillizcloud_database.test.db_name
   collection_name = "testcollection"
   schema = {
     auto_id = true
@@ -47,7 +47,6 @@ resource "zillizcloud_collection" "test" {
     ttl_seconds = 86400
     consistency_level = "Bounded"
   }
-  depends_on = [zillizcloud_database.test]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -65,8 +64,8 @@ resource "zillizcloud_database" "test" {
   db_name         = "testdb"
 }
 resource "zillizcloud_collection" "test" {
-  connect_address = "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"
-  db_name         = "testdb"
+  connect_address = zillizcloud_database.test.connect_address
+  db_name         = zillizcloud_database.test.db_name
   collection_name = "testcollection"
   schema = {
     auto_id = true
@@ -86,7 +85,6 @@ resource "zillizcloud_collection" "test" {
       }
     ]
   }
-  depends_on = [zillizcloud_database.test]
 }
 `,
 				PlanOnly:           true,

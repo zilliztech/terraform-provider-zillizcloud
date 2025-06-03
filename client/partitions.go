@@ -2,11 +2,11 @@ package client
 
 type CreatePartitionsParams struct {
 	DbName         string `json:"dbName"`
-	PartitionsName string `json:"aliasName"`
+	PartitionsName string `json:"partitionName"`
 	CollectionName string `json:"collectionName"`
 }
 
-func (c *ClientCollection) CreatePartitions(params *CreateCollectionParams) error {
+func (c *ClientCollection) CreatePartitions(params *CreatePartitionsParams) error {
 	params.DbName = c.dbName
 	var resp zillizResponse[any]
 	err := c.do("POST", "v2/vectordb/partitions/create", params, &resp)
@@ -18,7 +18,8 @@ func (c *ClientCollection) CreatePartitions(params *CreateCollectionParams) erro
 
 type DropPartitionsParams struct {
 	DbName         string `json:"dbName"`
-	PartitionsName string `json:"aliasName"`
+	PartitionsName string `json:"partitionName"`
+	CollectionName string `json:"collectionName"`
 }
 
 func (c *ClientCollection) DropPartitions(params *DropPartitionsParams) error {
@@ -32,7 +33,8 @@ func (c *ClientCollection) DropPartitions(params *DropPartitionsParams) error {
 }
 
 type ListPartitionsesParams struct {
-	DbName string `json:"dbName"`
+	DbName         string `json:"dbName"`
+	CollectionName string `json:"collectionName"`
 }
 
 func (c *ClientCollection) ListPartitionses(params *ListPartitionsesParams) ([]string, error) {
@@ -47,7 +49,8 @@ func (c *ClientCollection) ListPartitionses(params *ListPartitionsesParams) ([]s
 
 type DescribePartitionsParams struct {
 	DbName         string `json:"dbName"`
-	PartitionsName string `json:"aliasName"`
+	PartitionsName string `json:"partitionName"`
+	CollectionName string `json:"collectionName"`
 }
 
 func (c *ClientCollection) DescribePartitions(params *DescribePartitionsParams) (any, error) {

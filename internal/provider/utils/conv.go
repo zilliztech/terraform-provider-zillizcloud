@@ -1,10 +1,13 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func ToInt(v any) (int, bool) {
@@ -115,4 +118,60 @@ func parseValue(s string) any {
 		return fVal
 	}
 	return s
+}
+
+// ConvertPropertiesToMap converts a types.Map to a map[string]any for API calls.
+func ConvertPropertiesToMap(props types.Map) (map[string]any, error) {
+	if props.IsNull() || props.IsUnknown() {
+		return nil, nil
+	}
+
+	result := make(map[string]any)
+	elements := make(map[string]types.String)
+	diags := props.ElementsAs(context.Background(), &elements, false)
+	if diags.HasError() {
+		return nil, fmt.Errorf("failed to convert properties: %v", diags)
+	}
+
+	for k, v := range elements {
+		val := v.ValueString()
+		// Parse string values to their appropriate types
+		if val == "true" {
+			result[k] = true
+		} else if val == "false" {
+			result[k] = false
+		} else if intVal, err := strconv.ParseInt(val, 10, 64); err == nil {
+			result[k] = intVal
+		} else if floatVal, err := strconv.ParseFloat(val, 64); err == nil {
+			// Convert float to int if it's a whole number
+			if floatVal == float64(int64(floatVal)) {
+				result[k] = int64(floatVal)
+			} else {
+				result[k] = val
+			}
+		} else {
+			result[k] = val
+		}
+	}
+	return result, nil
+}
+
+// ConvertMapToProperties converts a map[string]any to types.Map for state management.
+func ConvertMapToProperties(props map[string]any) (types.Map, error) {
+	if len(props) == 0 {
+		return types.MapNull(types.StringType), nil
+	}
+
+	elements := make(map[string]types.String)
+	for k, v := range props {
+		// Convert all values to strings for storage
+		elements[k] = types.StringValue(fmt.Sprintf("%v", v))
+	}
+
+	mapVal, diags := types.MapValueFrom(context.Background(), types.StringType, elements)
+	if diags.HasError() {
+		return types.MapNull(types.StringType), fmt.Errorf("failed to create map: %v", diags)
+	}
+
+	return mapVal, nil
 }
