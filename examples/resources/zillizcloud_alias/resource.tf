@@ -25,12 +25,12 @@ resource "zillizcloud_cluster" "mycluster" {
 resource "zillizcloud_database" "mydb" {
   connect_address = zillizcloud_cluster.mycluster.connect_address
   db_name         = "mydb"
-  properties = jsonencode({
+  properties = {
     "database.replica.number"     = "1"
     "database.max.collections"    = "10"
     "database.force.deny.writing" = "false"
     "database.force.deny.reading" = "false"
-  })
+  }
 }
 
 resource "zillizcloud_collection" "mycollection" {
@@ -56,18 +56,13 @@ resource "zillizcloud_collection" "mycollection" {
     ]
   }
   params = {
-    "mmap_enabled"      = true
-    "ttl_seconds"       = 86400
-    "consistency_level" = "Bounded"
+    consistency_level = "Bounded"
   }
 }
 
-resource "zillizcloud_index" "myindex" {
+resource "zillizcloud_alias" "myalias" {
   connect_address = zillizcloud_cluster.mycluster.connect_address
   db_name         = zillizcloud_database.mydb.db_name
+  alias_name      = "myalias"
   collection_name = zillizcloud_collection.mycollection.collection_name
-  field_name      = "vector"
-  metric_type     = "IP"
-  index_name      = "testindex"
-  index_type      = "HNSW"
-}
+} 

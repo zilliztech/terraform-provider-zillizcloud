@@ -38,18 +38,36 @@ func (r *AliasResource) Metadata(ctx context.Context, req resource.MetadataReque
 
 func (r *AliasResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: `Manages a collection alias in a Zilliz Cloud database.\n\nChanging db_name, connect_address, or collection_name will force resource replacement. Only alias_name can be updated in-place.`,
+		MarkdownDescription: `Manages a collection alias in a Zilliz Cloud database.
+Changing any field will force resource replacement as alias updates require drop and recreate operations.`,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: `The unique identifier for the alias resource.\n\n**Format:**\n` + "`" + `/connections/{connect_address}/databases/{db_name}/aliases/{alias_name}` + "`" + `\n\n**Fields:**\n- ` + "`connect_address`" + ` — The cluster address (without protocol).\n- ` + "`db_name`" + ` — The database name.\n- ` + "`alias_name`" + ` — The alias name.\n\n**Example:**\n` + "`" + `/connections/in01-xxx/databases/testdb/aliases/myalias` + "`" + `\n\n> **Note:** This value is automatically set and should not be manually specified.`,
+				Computed: true,
+				MarkdownDescription: `The unique identifier for the alias resource.
+
+**Format:**
+
+` + "`/connections/{connect_address}/databases/{db_name}/aliases/{alias_name}`" + `
+
+**Example:**
+
+` + "`/connections/in01-xxx/databases/testdb/aliases/myalias`" + `
+
+> **Note:** This value is automatically set and should not be manually specified.`,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"connect_address": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: `The connection address of the target Zilliz Cloud cluster. Must include protocol (e.g., https://).`,
+				Required: true,
+				MarkdownDescription: `The connection address of the target Zilliz Cloud cluster.
+You can obtain this value from the output of the ` + "`zillizcloud_cluster`" + ` resource, for example:
+` + "`zillizcloud_cluster.example.connect_address`" + `
+
+**Example:**
+` + "`https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534`" + `
+
+> **Note:** The address must include the protocol (e.g., ` + "`https://`" + `).`,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -63,7 +81,10 @@ func (r *AliasResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 			},
 			"alias_name": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: `The name of the alias. (Can be updated in-place)`,
+				MarkdownDescription: `The name of the alias.`,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"collection_name": schema.StringAttribute{
 				Required:            true,
@@ -245,7 +266,7 @@ func (r *AliasResource) ImportState(ctx context.Context, req resource.ImportStat
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...) // Save state
 }
 
-// Update method: only alias_name can be updated in-place, others require replacement.
+// Update method: implements drop + create pattern for alias updates.
 func (r *AliasResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var state AliasResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...) // Old state
@@ -258,19 +279,8 @@ func (r *AliasResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	// Only alias_name can be updated in-place
-	if state.ConnectAddress.ValueString() != plan.ConnectAddress.ValueString() ||
-		state.DbName.ValueString() != plan.DbName.ValueString() ||
-		state.CollectionName.ValueString() != plan.CollectionName.ValueString() {
-		resp.Diagnostics.AddError(
-			"Update Not Supported",
-			"Only alias_name can be updated in-place. Changing connect_address, db_name, or collection_name requires resource replacement.",
-		)
-		return
-	}
-
-	connectAddress := plan.ConnectAddress.ValueString()
-	client, err := r.client.Collection(connectAddress, plan.DbName.ValueString())
+	connectAddress := state.ConnectAddress.ValueString()
+	client, err := r.client.Collection(connectAddress, state.DbName.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to get collection client",
@@ -279,19 +289,45 @@ func (r *AliasResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	err = client.AlterAliases(&zilliz.AlterAliasesParams{
+	// Step 1: Drop the existing alias
+	err = client.DropAlias(&zilliz.DropAliasParams{
+		DbName:    state.DbName.ValueString(),
+		AliasName: state.AliasName.ValueString(),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to drop existing alias during update",
+			fmt.Sprintf("ConnectAddress: %s, DbName: %s, AliasName: %s, error: %s", connectAddress, state.DbName.ValueString(), state.AliasName.ValueString(), err.Error()),
+		)
+		return
+	}
+
+	// Step 2: Create the new alias with updated values
+	newConnectAddress := plan.ConnectAddress.ValueString()
+	newClient, err := r.client.Collection(newConnectAddress, plan.DbName.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to get collection client for new alias",
+			fmt.Sprintf("ConnectAddress: %s, error: %s", newConnectAddress, err.Error()),
+		)
+		return
+	}
+
+	err = newClient.CreateAlias(&zilliz.CreateAliasParams{
 		DbName:         plan.DbName.ValueString(),
 		AliasName:      plan.AliasName.ValueString(),
 		CollectionName: plan.CollectionName.ValueString(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to update alias_name",
-			fmt.Sprintf("ConnectAddress: %s, DbName: %s, AliasName: %s, error: %s", connectAddress, plan.DbName.ValueString(), plan.AliasName.ValueString(), err.Error()),
+			"Failed to create new alias during update",
+			fmt.Sprintf("ConnectAddress: %s, DbName: %s, AliasName: %s, error: %s", newConnectAddress, plan.DbName.ValueString(), plan.AliasName.ValueString(), err.Error()),
 		)
 		return
 	}
 
-	plan.Id = types.StringValue(BuildAliasID(NormalizeConnectionID(connectAddress), plan.DbName.ValueString(), plan.AliasName.ValueString()))
+	// Update the ID with normalized connection address
+	normalizedConnectAddress := NormalizeConnectionID(newConnectAddress)
+	plan.Id = types.StringValue(BuildAliasID(normalizedConnectAddress, plan.DbName.ValueString(), plan.AliasName.ValueString()))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...) // Save state
 }

@@ -20,12 +20,12 @@ func TestAccDatabasesDataSource(t *testing.T) {
 resource "zillizcloud_database" "test" {
   connect_address = "%s"
   db_name         = "%s"
-  properties      = jsonencode({
-    "database.replica.number" = 1
-    "database.max.collections" = 10
-    "database.force.deny.writing" = false
-    "database.force.deny.reading" = false
-  })
+  properties      = {
+    "database.replica.number" = "1"
+    "database.max.collections" = "10"
+    "database.force.deny.writing" = "false"
+    "database.force.deny.reading" = "false"
+  }
 }
 data "zillizcloud_databases" "test" {
   connect_address = zillizcloud_database.test.connect_address

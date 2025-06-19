@@ -110,6 +110,7 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewCollectionResource,
 		NewIndexResource,
 		NewAliasResource,
+		NewPartitionsResource,
 	}
 }
 
@@ -127,6 +128,8 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewDatabasesDataSource,
 		NewCollectionsDataSource,
 		NewIndexesDataSource,
+		NewAliasesDataSource,
+		NewPartitionsDataSource,
 	}
 }
 

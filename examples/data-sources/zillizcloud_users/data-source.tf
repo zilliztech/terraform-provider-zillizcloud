@@ -13,7 +13,7 @@ data "zillizcloud_project" "default" {
   # Fetching the default project information to be used in cluster provisioning
 }
 
-resource "zillizcloud_cluster" "cluster" {
+resource "zillizcloud_cluster" "example" {
   cluster_name = "Cluster-03"                        # The name of the cluster
   region_id    = "aws-us-east-2"                     # The region where the cluster will be deployed
   plan         = "Enterprise"                        # The service plan for the cluster
@@ -22,13 +22,10 @@ resource "zillizcloud_cluster" "cluster" {
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
 }
 
-resource "zillizcloud_database" "db" {
-  connect_address = zillizcloud_cluster.cluster.connect_address
-  db_name         = "db"
-  properties = {
-    "database.replica.number"     = "1"
-    "database.max.collections"    = "10"
-    "database.force.deny.writing" = "false"
-    "database.force.deny.reading" = "false"
-  }
+data "zillizcloud_users" "example" {
+  connect_address = zillizcloud_cluster.example.connect_address
 }
+
+output "users" {
+  value = data.zillizcloud_users.example.items
+} 
