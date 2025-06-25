@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
@@ -36,6 +37,7 @@ const (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BYOCProjectResource{}
 var _ resource.ResourceWithConfigure = &BYOCProjectResource{}
+var _ resource.ResourceWithValidateConfig = &BYOCProjectResource{}
 
 func NewBYOCProjectResource() resource.Resource {
 	return &BYOCProjectResource{}
@@ -167,9 +169,9 @@ func (r *BYOCProjectResource) Schema(ctx context.Context, req resource.SchemaReq
 							},
 						},
 					},
-					"instances": zschema.Instances,
 				},
 			},
+			"instances": zschema.Instances,
 		},
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx,
@@ -272,40 +274,73 @@ func sliceToTerraformSet(input []string) (types.Set, diag.Diagnostics) {
 
 func (r *BYOCProjectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	tflog.Info(ctx, "Update BYOC Project...")
-	var data BYOCProjectResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+
+	var currentData BYOCProjectResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &currentData)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	tflog.Info(ctx, fmt.Sprintf("Update BYOC Project request: %+v", data))
 
-	switch data.Status.ValueString() {
-	case BYOCProjectStatusRunning.String():
-		tflog.Info(ctx, "Resume BYOC Project...")
-		err := r.store.Resume(ctx, &data)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to resume BYOC project", err.Error())
-			return
-		}
-	case BYOCProjectStatusStopped.String():
-		tflog.Info(ctx, "Suspend BYOC Project...")
-		err := r.store.Suspend(ctx, &data)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to suspend BYOC project", err.Error())
-			return
-		}
-	default:
-		resp.Diagnostics.AddError(
-			"Invalid BYOC Project Status",
-			fmt.Sprintf("Unknown status: %s. Expected values are %s or %s",
-				data.Status.ValueString(),
-				BYOCProjectStatusRunning.String(),
-				BYOCProjectStatusStopped.String()),
-		)
+	var plannedData BYOCProjectResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plannedData)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	tflog.Info(ctx, fmt.Sprintf("Update BYOC Project current state: %+v", currentData))
+	tflog.Info(ctx, fmt.Sprintf("Update BYOC Project planned state: %+v", plannedData))
+
+	currentStatus := currentData.Status.ValueString()
+	plannedStatus := plannedData.Status.ValueString()
+
+	// Check if only status changed
+	if currentStatus != plannedStatus {
+		// Status changed from STOPPED to RUNNING - Resume
+		if currentStatus == BYOCProjectStatusStopped.String() && plannedStatus == BYOCProjectStatusRunning.String() {
+			tflog.Info(ctx, "Resume BYOC Project...")
+			err := r.store.Resume(ctx, &plannedData)
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to resume BYOC project", err.Error())
+				return
+			}
+		} else if currentStatus == BYOCProjectStatusRunning.String() && plannedStatus == BYOCProjectStatusStopped.String() {
+			// Status changed from RUNNING to STOPPED - Suspend
+			tflog.Info(ctx, "Suspend BYOC Project...")
+			err := r.store.Suspend(ctx, &plannedData)
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to suspend BYOC project", err.Error())
+				return
+			}
+		} else {
+			resp.Diagnostics.AddError(
+				"Invalid BYOC Project Status Change",
+				fmt.Sprintf("Invalid status change from %s to %s. Expected transitions are %s to %s or %s to %s",
+					currentStatus, plannedStatus,
+					BYOCProjectStatusStopped.String(), BYOCProjectStatusRunning.String(),
+					BYOCProjectStatusRunning.String(), BYOCProjectStatusStopped.String()),
+			)
+			return
+		}
+	} else {
+		// Any other changes - invoke create method
+		tflog.Info(ctx, "Non-status changes detected, invoking create method...")
+		// print the planned data
+		// tflog.Info(ctx, fmt.Sprintf("Planned data: %+v", plannedData))
+		err := r.store.Create(ctx, &plannedData, func(project *BYOCProjectResourceModel) error {
+			resp.Diagnostics.Append(resp.State.Set(ctx, &plannedData)...)
+			if resp.Diagnostics.HasError() {
+				return fmt.Errorf("failed to set state")
+			}
+			return nil
+		})
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update BYOC project", err.Error())
+			return
+		}
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plannedData)...)
 }
 
 func (r *BYOCProjectResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -320,5 +355,53 @@ func (r *BYOCProjectResource) Delete(ctx context.Context, req resource.DeleteReq
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete BYOC project", err.Error())
 		return
+	}
+}
+
+func (r *BYOCProjectResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data BYOCProjectResourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Validate fundamental VM configuration
+	if !data.Instances.Fundamental.MinCount.IsNull() && !data.Instances.Fundamental.MaxCount.IsNull() {
+		minCount := data.Instances.Fundamental.MinCount.ValueInt64()
+		maxCount := data.Instances.Fundamental.MaxCount.ValueInt64()
+		if minCount > maxCount {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("instances").AtName("fundamental").AtName("min_count"),
+				"Invalid min_count",
+				fmt.Sprintf("min_count (%d) must be less than or equal to max_count (%d)", minCount, maxCount),
+			)
+		}
+	}
+
+	// Validate search VM configuration
+	if !data.Instances.Search.MinCount.IsNull() && !data.Instances.Search.MaxCount.IsNull() {
+		minCount := data.Instances.Search.MinCount.ValueInt64()
+		maxCount := data.Instances.Search.MaxCount.ValueInt64()
+		if minCount > maxCount {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("instances").AtName("search").AtName("min_count"),
+				"Invalid min_count",
+				fmt.Sprintf("min_count (%d) must be less than or equal to max_count (%d)", minCount, maxCount),
+			)
+		}
+	}
+
+	// Validate index VM configuration
+	if !data.Instances.Index.MinCount.IsNull() && !data.Instances.Index.MaxCount.IsNull() {
+		minCount := data.Instances.Index.MinCount.ValueInt64()
+		maxCount := data.Instances.Index.MaxCount.ValueInt64()
+		if minCount > maxCount {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("instances").AtName("index").AtName("min_count"),
+				"Invalid min_count",
+				fmt.Sprintf("min_count (%d) must be less than or equal to max_count (%d)", minCount, maxCount),
+			)
+		}
 	}
 }

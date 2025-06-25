@@ -49,13 +49,24 @@ type Instances struct {
 	SearchVM      types.String `tfsdk:"search_vm"`
 }
 
+type VMOpConfig struct {
+	VM       types.String `tfsdk:"vm"`
+	MinCount types.Int64  `tfsdk:"min_count"`
+	MaxCount types.Int64  `tfsdk:"max_count"`
+}
+
+type CoreVMOpConfig struct {
+	VM    types.String `tfsdk:"vm"`
+	Count types.Int64  `tfsdk:"count"`
+}
+
 type InstancesOpConfig struct {
-	CoreVM             types.String `tfsdk:"core_vm"`
-	FundamentalVM      types.String `tfsdk:"fundamental_vm"`
-	SearchVM           types.String `tfsdk:"search_vm"`
-	SearchVMCount      types.Int64  `tfsdk:"search_vm_min_count"`
-	FundamentalVMCount types.Int64  `tfsdk:"fundamental_vm_min_count"`
-	CoreVMCount        types.Int64  `tfsdk:"core_vm_min_count"`
+	Core        CoreVMOpConfig `tfsdk:"core"`
+	Fundamental VMOpConfig     `tfsdk:"fundamental"`
+	Search      VMOpConfig     `tfsdk:"search"`
+	Index       VMOpConfig     `tfsdk:"index"`
+	AutoScaling types.Bool     `tfsdk:"auto_scaling"`
+	Arch        types.String   `tfsdk:"arch"`
 }
 
 func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel) {

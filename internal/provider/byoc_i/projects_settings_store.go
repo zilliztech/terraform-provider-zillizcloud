@@ -24,22 +24,34 @@ var _ ByocOpProjectSettingsStore = &byocOpProjectSettingsStore{}
 
 func (s *byocOpProjectSettingsStore) Create(ctx context.Context, data *BYOCOpProjectSettingsResourceModel, updateStatusFunc func(project *BYOCOpProjectSettingsResourceModel) error) (err error) {
 	request := zilliz.CreateByocOpProjectSettingsRequest{
-		ProjectName:   data.ProjectName.ValueString(),
-		CloudId:       data.CloudProvider.ValueString(),
-		RegionId:      data.Region.ValueString(),
-		SearchVm:      data.Instances.SearchVM.ValueString(),
-		FundamentalVm: data.Instances.FundamentalVM.ValueString(),
-		CoreVm:        data.Instances.CoreVM.ValueString(),
+		ProjectName: data.ProjectName.ValueString(),
+		CloudId:     data.CloudProvider.ValueString(),
+		RegionId:    data.Region.ValueString(),
+
+		SearchVm:      data.Instances.Search.VM.ValueString(),
+		FundamentalVm: data.Instances.Fundamental.VM.ValueString(),
+		CoreVm:        data.Instances.Core.VM.ValueString(),
+		IndexVm:       data.Instances.Index.VM.ValueString(),
+
+		SearchMin:      data.Instances.Search.MinCount.ValueInt64(),
+		SearchMax:      data.Instances.Search.MaxCount.ValueInt64(),
+		FundamentalMin: data.Instances.Fundamental.MinCount.ValueInt64(),
+		FundamentalMax: data.Instances.Fundamental.MaxCount.ValueInt64(),
+		CoreMin:        data.Instances.Core.Count.ValueInt64(),
+		CoreMax:        data.Instances.Core.Count.ValueInt64(),
+		IndexMin:       data.Instances.Index.MinCount.ValueInt64(),
+		IndexMax:       data.Instances.Index.MaxCount.ValueInt64(),
+
+		AutoScaling: data.Instances.AutoScaling.ValueBool(),
+		Arch:        data.Instances.Arch.ValueString(),
+
 		PrivateLinkEnabled: func() int {
 			if data.PrivateLinkEnabled.ValueBool() {
 				return 1
 			}
 			return 0
 		}(),
-		SearchMin:      data.Instances.SearchVMCount.ValueInt64(),
-		FundamentalMin: data.Instances.FundamentalVMCount.ValueInt64(),
-		CoreMin:        data.Instances.CoreVMCount.ValueInt64(),
-		DeployType:     TERRAFORM_DEPLOY_TYPE,
+		DeployType: TERRAFORM_DEPLOY_TYPE,
 	}
 
 	tflog.Info(ctx, fmt.Sprintf("Create BYOC Op Project Settings request: %+v", request))

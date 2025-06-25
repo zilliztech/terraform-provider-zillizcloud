@@ -1,18 +1,29 @@
 package client
 
 type CreateBYOCProjectRequest struct {
-	AWSParam       *AWSParam `json:"awsParam"`
-	ProjectName    string    `json:"projectName"`
-	RegionID       string    `json:"regionId"`
-	CloudID        CloudId   `json:"cloudId"`
-	BYOCID         *string   `json:"byocId"`
-	FundamentalVM  string    `json:"fundamentalVm"`
-	SearchVM       string    `json:"searchVm"`
-	CoreVM         string    `json:"coreVm"`
-	DeployType     int       `json:"deployType"`
-	SearchMin      int64     `json:"searchMin"`
-	FundamentalMin int64     `json:"fundamentalMin"`
-	CoreMin        int64     `json:"coreMin"`
+	AWSParam      *AWSParam `json:"awsParam"`
+	ProjectName   string    `json:"projectName"`
+	RegionID      string    `json:"regionId"`
+	CloudID       CloudId   `json:"cloudId"`
+	BYOCID        *string   `json:"byocId"`
+	FundamentalVM string    `json:"fundamentalVm"`
+	SearchVM      string    `json:"searchVm"`
+	CoreVM        string    `json:"coreVm"`
+	IndexVM       string    `json:"indexVm"`
+
+	SearchMin      int64 `json:"searchMin"`
+	SearchMax      int64 `json:"searchMax"`
+	FundamentalMin int64 `json:"fundamentalMin"`
+	FundamentalMax int64 `json:"fundamentalMax"`
+	CoreMin        int64 `json:"coreMin"`
+	CoreMax        int64 `json:"coreMax"`
+	IndexMin       int64 `json:"indexMin"`
+	IndexMax       int64 `json:"indexMax"`
+
+	AutoScaling bool   `json:"autoScaling"`
+	Arch        string `json:"arch"` //X86, ARM
+
+	DeployType int `json:"deployType"`
 }
 
 type AWSParam struct {
@@ -137,16 +148,29 @@ type GetBYOCProjectResponse struct {
 		EndpointID       *string  `json:"endpointId"`
 		SecurityGroupIDs []string `json:"securityGroupIds"`
 		SubnetIDs        []string `json:"subnetIds"`
-		VMCombine        struct {
-			CoreVM         string `json:"coreVm"`
-			FundamentalVM  string `json:"fundamentalVm"`
-			SearchVM       string `json:"searchVm"`
-			SearchMin      int64  `json:"searchMin"`
-			FundamentalMin int64  `json:"fundamentalMin"`
-			CoreMin        int64  `json:"coreMin"`
-		} `json:"vmCombine"`
+
 		VPCID string `json:"vpcId"`
 	} `json:"awsConfig"`
+	VMCombine struct {
+		CoreVM  string `json:"coreVm"`
+		CoreMax int64  `json:"coreMax"`
+		CoreMin int64  `json:"coreMin"`
+
+		FundamentalVM  string `json:"fundamentalVm"`
+		FundamentalMin int64  `json:"fundamentalMin"`
+		FundamentalMax int64  `json:"fundamentalMax"`
+
+		IndexVM  string `json:"indexVm"`
+		IndexMin int64  `json:"indexMin"`
+		IndexMax int64  `json:"indexMax"`
+
+		SearchVM  string `json:"searchVm"`
+		SearchMax int64  `json:"searchMax"`
+		SearchMin int64  `json:"searchMin"`
+
+		AutoScaling bool   `json:"autoScaling"`
+		Arch        string `json:"arch"`
+	} `json:"vmCombine"`
 	CloudID         string      `json:"cloudId"`
 	CreateTimeMilli int64       `json:"createTimeMilli"`
 	DataPlaneID     string      `json:"dataPlaneId"`

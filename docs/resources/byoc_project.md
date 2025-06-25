@@ -46,15 +46,34 @@ resource "zillizcloud_byoc_project" "this" {
     storage = {
       bucket_id = "zilliz-s3-0af21b"
     }
+  }
 
-    instances = {
-      core_vm                  = "m6i.2xlarge"
-      core_vm_min_count        = 3
-      fundamental_vm           = "m6i.2xlarge"
-      fundamental_vm_min_count = 0
-      search_vm                = "m6id.4xlarge"
-      search_vm_min_count      = 0
+  instances = {
+    core = {
+      vm    = "m6i.2xlarge"
+      count = 3
     }
+
+    fundamental = {
+      vm        = "m6i.2xlarge"
+      min_count = 1
+      max_count = 1
+    }
+
+    search = {
+      vm        = "m6id.4xlarge"
+      min_count = 1
+      max_count = 1
+    }
+
+    index = {
+      vm        = "m6i.2xlarge"
+      min_count = 2
+      max_count = 2
+    }
+
+    auto_scaling = true
+    arch         = "X86"
   }
 
 }
@@ -65,6 +84,7 @@ resource "zillizcloud_byoc_project" "this" {
 
 ### Required
 
+- `instances` (Attributes) Instance type configuration (see [below for nested schema](#nestedatt--instances))
 - `name` (String) The name of the BYOC project
 - `status` (String) The status of the BYOC project, possible values are RUNNING, STOPPED
 
@@ -78,29 +98,70 @@ resource "zillizcloud_byoc_project" "this" {
 - `data_plane_id` (String) The ID of the data plane
 - `id` (String) Project identifier
 
+<a id="nestedatt--instances"></a>
+### Nested Schema for `instances`
+
+Required:
+
+- `core` (Attributes) core VM configuration (see [below for nested schema](#nestedatt--instances--core))
+- `fundamental` (Attributes) fundamental VM configuration (see [below for nested schema](#nestedatt--instances--fundamental))
+- `index` (Attributes) index VM configuration (see [below for nested schema](#nestedatt--instances--index))
+- `search` (Attributes) search VM configuration (see [below for nested schema](#nestedatt--instances--search))
+
+Optional:
+
+- `arch` (String) Architecture type (X86 or ARM)
+- `auto_scaling` (Boolean) Enable auto scaling for instances
+
+<a id="nestedatt--instances--core"></a>
+### Nested Schema for `instances.core`
+
+Required:
+
+- `count` (Number) core VM instance count
+- `vm` (String) Instance type for core virtual machine
+
+
+<a id="nestedatt--instances--fundamental"></a>
+### Nested Schema for `instances.fundamental`
+
+Required:
+
+- `max_count` (Number) fundamental VM maximum instance count
+- `min_count` (Number) fundamental VM minimum instance count
+- `vm` (String) Instance type for fundamental virtual machine
+
+
+<a id="nestedatt--instances--index"></a>
+### Nested Schema for `instances.index`
+
+Required:
+
+- `max_count` (Number) index VM maximum instance count
+- `min_count` (Number) index VM minimum instance count
+- `vm` (String) Instance type for index virtual machine
+
+
+<a id="nestedatt--instances--search"></a>
+### Nested Schema for `instances.search`
+
+Required:
+
+- `max_count` (Number) search VM maximum instance count
+- `min_count` (Number) search VM minimum instance count
+- `vm` (String) Instance type for search virtual machine
+
+
+
 <a id="nestedatt--aws"></a>
 ### Nested Schema for `aws`
 
 Required:
 
-- `instances` (Attributes) Instance type configuration (see [below for nested schema](#nestedatt--aws--instances))
 - `network` (Attributes) Network configuration (see [below for nested schema](#nestedatt--aws--network))
 - `region` (String) AWS region
 - `role_arn` (Attributes) Role ARN configuration (see [below for nested schema](#nestedatt--aws--role_arn))
 - `storage` (Attributes) Storage configuration (see [below for nested schema](#nestedatt--aws--storage))
-
-<a id="nestedatt--aws--instances"></a>
-### Nested Schema for `aws.instances`
-
-Optional:
-
-- `core_vm` (String) Instance type used for the core virtual machine, which hosts Milvus Operators, Zilliz Cloud Agent, and Milvus dependencies, such as Prometheus, Etcd, Pulsar, etc.
-- `core_vm_min_count` (Number) Core VM instance count. Defaults to 3 if not specified.
-- `fundamental_vm` (String) Instance type used for the fundamental virtual machine, which hosts Milvus components other than the query nodes, including the proxy, datanode, index pool, and coordinators.
-- `fundamental_vm_min_count` (Number) Fundamental VM instance count
-- `search_vm` (String) Instance type used for the search virtual machine, which hosts the query nodes.
-- `search_vm_min_count` (Number) Search VM instance count
-
 
 <a id="nestedatt--aws--network"></a>
 ### Nested Schema for `aws.network`

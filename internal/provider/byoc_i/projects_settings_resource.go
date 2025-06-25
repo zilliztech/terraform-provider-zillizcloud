@@ -3,6 +3,8 @@ package byoc_op
 import (
 	"context"
 	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -17,6 +19,7 @@ import (
 
 var _ resource.Resource = &BYOCOpProjectSettingsResource{}
 var _ resource.ResourceWithConfigure = &BYOCOpProjectSettingsResource{}
+var _ resource.ResourceWithValidateConfig = &BYOCOpProjectSettingsResource{}
 
 func NewBYOCOpProjectSettingsResource() resource.Resource {
 	return &BYOCOpProjectSettingsResource{}
@@ -277,5 +280,53 @@ func (r *BYOCOpProjectSettingsResource) Delete(ctx context.Context, req resource
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to delete BYOC Op Project Settings", err.Error())
 		return
+	}
+}
+
+func (r *BYOCOpProjectSettingsResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data BYOCOpProjectSettingsResourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Validate fundamental VM configuration
+	if !data.Instances.Fundamental.MinCount.IsNull() && !data.Instances.Fundamental.MaxCount.IsNull() {
+		minCount := data.Instances.Fundamental.MinCount.ValueInt64()
+		maxCount := data.Instances.Fundamental.MaxCount.ValueInt64()
+		if minCount > maxCount {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("instances").AtName("fundamental").AtName("min_count"),
+				"Invalid min_count",
+				fmt.Sprintf("min_count (%d) must be less than or equal to max_count (%d)", minCount, maxCount),
+			)
+		}
+	}
+
+	// Validate search VM configuration
+	if !data.Instances.Search.MinCount.IsNull() && !data.Instances.Search.MaxCount.IsNull() {
+		minCount := data.Instances.Search.MinCount.ValueInt64()
+		maxCount := data.Instances.Search.MaxCount.ValueInt64()
+		if minCount > maxCount {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("instances").AtName("search").AtName("min_count"),
+				"Invalid min_count",
+				fmt.Sprintf("min_count (%d) must be less than or equal to max_count (%d)", minCount, maxCount),
+			)
+		}
+	}
+
+	// Validate index VM configuration
+	if !data.Instances.Index.MinCount.IsNull() && !data.Instances.Index.MaxCount.IsNull() {
+		minCount := data.Instances.Index.MinCount.ValueInt64()
+		maxCount := data.Instances.Index.MaxCount.ValueInt64()
+		if minCount > maxCount {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("instances").AtName("index").AtName("min_count"),
+				"Invalid min_count",
+				fmt.Sprintf("min_count (%d) must be less than or equal to max_count (%d)", minCount, maxCount),
+			)
+		}
 	}
 }
