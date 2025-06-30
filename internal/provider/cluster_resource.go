@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	util "github.com/zilliztech/terraform-provider-zillizcloud/client/retry"
 )
 
 const (
@@ -377,16 +377,23 @@ func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportSt
 func (r *ClusterResource) waitForStatus(ctx context.Context, timeout time.Duration, clusterId string, status string) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
+	_, err := util.Poll(ctx, timeout, func() (*string, *util.Err) {
 		cluster, err := r.client.DescribeCluster(clusterId)
 		if err != nil {
-			return retry.NonRetryableError(err)
+			// This is a non-retryable error
+			return nil, &util.Err{Err: err, Halt: true}
 		}
 		if cluster.Status != status {
-			return retry.RetryableError(fmt.Errorf("cluster not yet in the %s state. Current state: %s", status, cluster.Status))
+			// This is a retryable error
+			return nil, &util.Err{
+				Err:  fmt.Errorf("cluster not yet in the %s state. Current state: %s", status, cluster.Status),
+				Halt: false,
+			}
 		}
-		return nil
+		// Success, no error
+		return &cluster.Status, nil
 	})
+
 	if err != nil {
 		diags.AddError("Failed to wait for cluster to enter the RUNNING state.", err.Error())
 	}
