@@ -7,20 +7,20 @@ import (
 
 // BYOCProjectResourceModel describes the resource data model.
 type BYOCProjectResourceModel struct {
-	ID          types.String   `tfsdk:"id"`
-	Name        types.String   `tfsdk:"name"`
-	DataPlaneID types.String   `tfsdk:"data_plane_id"`
-	AWS         *AWSConfig     `tfsdk:"aws"`
-	Timeouts    timeouts.Value `tfsdk:"timeouts"`
-	Status      types.String   `tfsdk:"status"`
+	ID          types.String    `tfsdk:"id"`
+	Name        types.String    `tfsdk:"name"`
+	DataPlaneID types.String    `tfsdk:"data_plane_id"`
+	AWS         *AWSConfig      `tfsdk:"aws"`
+	Instances   InstancesConfig `tfsdk:"instances"`
+	Timeouts    timeouts.Value  `tfsdk:"timeouts"`
+	Status      types.String    `tfsdk:"status"`
 }
 
 type AWSConfig struct {
-	Region    types.String    `tfsdk:"region"`
-	Network   NetworkConfig   `tfsdk:"network"`
-	RoleARN   RoleARNConfig   `tfsdk:"role_arn"`
-	Storage   StorageConfig   `tfsdk:"storage"`
-	Instances InstancesConfig `tfsdk:"instances"`
+	Region  types.String  `tfsdk:"region"`
+	Network NetworkConfig `tfsdk:"network"`
+	RoleARN RoleARNConfig `tfsdk:"role_arn"`
+	Storage StorageConfig `tfsdk:"storage"`
 }
 
 type NetworkConfig struct {
@@ -40,17 +40,29 @@ type StorageConfig struct {
 	BucketID types.String `tfsdk:"bucket_id"`
 }
 
+type VMConfig struct {
+	VM       types.String `tfsdk:"vm"`
+	MinCount types.Int64  `tfsdk:"min_count"`
+	MaxCount types.Int64  `tfsdk:"max_count"`
+}
+
+type CoreVMConfig struct {
+	VM    types.String `tfsdk:"vm"`
+	Count types.Int64  `tfsdk:"count"`
+}
+
 type InstancesConfig struct {
-	CoreVM             types.String `tfsdk:"core_vm"`
-	FundamentalVM      types.String `tfsdk:"fundamental_vm"`
-	SearchVM           types.String `tfsdk:"search_vm"`
-	CoreVMCount        types.Int64  `tfsdk:"core_vm_min_count"`
-	FundamentalVMCount types.Int64  `tfsdk:"fundamental_vm_min_count"`
-	SearchVMCount      types.Int64  `tfsdk:"search_vm_min_count"`
+	Core        CoreVMConfig `tfsdk:"core"`
+	Fundamental VMConfig     `tfsdk:"fundamental"`
+	Search      VMConfig     `tfsdk:"search"`
+	Index       VMConfig     `tfsdk:"index"`
+	AutoScaling types.Bool   `tfsdk:"auto_scaling"`
+	Arch        types.String `tfsdk:"arch"`
 }
 
 func (data *BYOCProjectResourceModel) refresh(input BYOCProjectResourceModel) {
 	data.AWS = input.AWS
+	data.Instances = input.Instances
 	data.Status = input.Status
 	data.DataPlaneID = input.DataPlaneID
 	// data.Name = input.Name

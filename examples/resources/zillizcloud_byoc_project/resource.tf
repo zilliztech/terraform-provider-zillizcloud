@@ -31,15 +31,34 @@ resource "zillizcloud_byoc_project" "this" {
     storage = {
       bucket_id = "zilliz-s3-0af21b"
     }
+  }
 
-    instances = {
-      core_vm                  = "m6i.2xlarge"
-      core_vm_min_count        = 3
-      fundamental_vm           = "m6i.2xlarge"
-      fundamental_vm_min_count = 0
-      search_vm                = "m6id.4xlarge"
-      search_vm_min_count      = 0
+  instances = {
+    core = {
+      vm    = "m6i.2xlarge"
+      count = 3
     }
+
+    fundamental = {
+      vm        = "m6i.2xlarge"
+      min_count = 1
+      max_count = 1
+    }
+
+    search = {
+      vm        = "m6id.4xlarge"
+      min_count = 1
+      max_count = 1
+    }
+
+    index = {
+      vm        = "m6i.2xlarge"
+      min_count = 2
+      max_count = 2
+    }
+
+    auto_scaling = true
+    arch         = "X86"
   }
 
 }

@@ -1,9 +1,11 @@
 package schema
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -11,79 +13,81 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-var Instances = schema.SingleNestedAttribute{
+// vmConfigSchema creates a reusable schema for VM configuration.
+func vmConfigSchema(vmType string) schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		MarkdownDescription: fmt.Sprintf("%s VM configuration", vmType),
+		Required:            true,
+		Attributes: map[string]schema.Attribute{
+			"vm": schema.StringAttribute{
+				MarkdownDescription: fmt.Sprintf("Instance type for %s virtual machine", vmType),
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"min_count": schema.Int64Attribute{
+				MarkdownDescription: fmt.Sprintf("%s VM minimum instance count", vmType),
+				Required:            true,
+				// Note: min_count and max_count validation (min_count <= max_count)
+				// should be implemented at the resource level using ValidateConfig
+			},
+			"max_count": schema.Int64Attribute{
+				MarkdownDescription: fmt.Sprintf("%s VM maximum instance count", vmType),
+				Required:            true,
+				// Note: min_count and max_count validation (min_count <= max_count)
+				// should be implemented at the resource level using ValidateConfig
+			},
+		},
+	}
+}
 
+func coreVmConfigSchema(vmType string) schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		MarkdownDescription: fmt.Sprintf("%s VM configuration", vmType),
+		Required:            true,
+		Attributes: map[string]schema.Attribute{
+			"vm": schema.StringAttribute{
+				MarkdownDescription: fmt.Sprintf("Instance type for %s virtual machine", vmType),
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"count": schema.Int64Attribute{
+				MarkdownDescription: fmt.Sprintf("%s VM instance count", vmType),
+				Required:            true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
+			},
+		},
+	}
+}
+
+var Instances = schema.SingleNestedAttribute{
 	MarkdownDescription: "Instance type configuration",
 	Required:            true,
 	Attributes: map[string]schema.Attribute{
-		"core_vm": schema.StringAttribute{
-			MarkdownDescription: "Instance type used for the core virtual machine, which hosts Milvus Operators, Zilliz Cloud Agent, and Milvus dependencies, such as Prometheus, Etcd, Pulsar, etc. ",
-			Optional:            true,
+		"core":        coreVmConfigSchema("core"),
+		"fundamental": vmConfigSchema("fundamental"),
+		"search":      vmConfigSchema("search"),
+		"index":       vmConfigSchema("index"),
+
+		"auto_scaling": schema.BoolAttribute{
+			MarkdownDescription: "Enable auto scaling for instances",
+			Default:             booldefault.StaticBool(true),
 			Computed:            true,
-			Default:             stringdefault.StaticString("m6i.2xlarge"),
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.RequiresReplace(),
-			},
+			Optional:            true,
+		},
+		"arch": schema.StringAttribute{
+			MarkdownDescription: "Architecture type (X86 or ARM)",
+			Default:             stringdefault.StaticString("X86"),
+			Computed:            true,
+			Optional:            true,
+
 			Validators: []validator.String{
-				stringvalidator.OneOf(
-					"m6i.2xlarge",
-				),
-			},
-		},
-		"core_vm_min_count": schema.Int64Attribute{
-			MarkdownDescription: "Core VM instance count. Defaults to 3 if not specified.",
-			Optional:            true,
-			Computed:            true,
-			Default:             int64default.StaticInt64(3),
-			PlanModifiers: []planmodifier.Int64{
-				int64planmodifier.RequiresReplace(),
-			},
-		},
-		"fundamental_vm": schema.StringAttribute{
-			MarkdownDescription: "Instance type used for the fundamental virtual machine, which hosts Milvus components other than the query nodes, including the proxy, datanode, index pool, and coordinators.",
-			Optional:            true,
-			Computed:            true,
-			Default:             stringdefault.StaticString("m6i.2xlarge"),
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.RequiresReplace(),
-			},
-			Validators: []validator.String{
-				stringvalidator.OneOf(
-					"m6i.2xlarge",
-				),
-			},
-		},
-		"fundamental_vm_min_count": schema.Int64Attribute{
-			MarkdownDescription: "Fundamental VM instance count",
-			Optional:            true,
-			Computed:            true,
-			Default:             int64default.StaticInt64(0),
-			PlanModifiers: []planmodifier.Int64{
-				int64planmodifier.RequiresReplace(),
-			},
-		},
-		"search_vm": schema.StringAttribute{
-			MarkdownDescription: "Instance type used for the search virtual machine, which hosts the query nodes.",
-			Optional:            true,
-			Computed:            true,
-			Default:             stringdefault.StaticString("m6id.2xlarge"),
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.RequiresReplace(),
-			},
-			Validators: []validator.String{
-				stringvalidator.OneOf(
-					"m6id.2xlarge",
-					"m6id.4xlarge",
-				),
-			},
-		},
-		"search_vm_min_count": schema.Int64Attribute{
-			MarkdownDescription: "Search VM instance count",
-			Optional:            true,
-			Computed:            true,
-			Default:             int64default.StaticInt64(0),
-			PlanModifiers: []planmodifier.Int64{
-				int64planmodifier.RequiresReplace(),
+				stringvalidator.OneOf("X86", "ARM"),
 			},
 		},
 	},

@@ -2,6 +2,7 @@ package byoc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -138,15 +139,32 @@ func (s *byocProjectStore) Describe(ctx context.Context, projectID string, dataP
 		Storage: StorageConfig{
 			BucketID: types.StringValue(project.AWSConfig.BucketID),
 		},
-		Instances: InstancesConfig{
-			CoreVM:             types.StringValue(project.AWSConfig.VMCombine.CoreVM),
-			FundamentalVM:      types.StringValue(project.AWSConfig.VMCombine.FundamentalVM),
-			SearchVM:           types.StringValue(project.AWSConfig.VMCombine.SearchVM),
-			CoreVMCount:        types.Int64Value(project.AWSConfig.VMCombine.CoreMin),
-			FundamentalVMCount: types.Int64Value(project.AWSConfig.VMCombine.FundamentalMin),
-			SearchVMCount:      types.Int64Value(project.AWSConfig.VMCombine.SearchMin),
-		},
 	}
+
+	data.Instances = InstancesConfig{
+		Core: CoreVMConfig{
+			VM:    types.StringValue(project.VMCombine.CoreVM),
+			Count: types.Int64Value(project.VMCombine.CoreMin),
+		},
+		Fundamental: VMConfig{
+			VM:       types.StringValue(project.VMCombine.FundamentalVM),
+			MinCount: types.Int64Value(project.VMCombine.FundamentalMin),
+			MaxCount: types.Int64Value(project.VMCombine.FundamentalMax),
+		},
+		Search: VMConfig{
+			VM:       types.StringValue(project.VMCombine.SearchVM),
+			MinCount: types.Int64Value(project.VMCombine.SearchMin),
+			MaxCount: types.Int64Value(project.VMCombine.SearchMax),
+		},
+		Index: VMConfig{
+			VM:       types.StringValue(project.VMCombine.IndexVM),
+			MinCount: types.Int64Value(project.VMCombine.IndexMin),
+			MaxCount: types.Int64Value(project.VMCombine.IndexMax),
+		},
+		// AutoScaling: types.BoolValue(project.AWSConfig.VMCombine.AutoScaling),
+		// Arch:        types.StringValue(project.AWSConfig.VMCombine.Arch),
+	}
+
 	return data, nil
 }
 
@@ -163,16 +181,28 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 		data.AWS.Network.SecurityGroupIDs.ElementsAs(ctx, &securityGroupIDs, false)
 
 		request = zilliz.CreateBYOCProjectRequest{
-			ProjectName:    data.Name.ValueString(),
-			RegionID:       data.AWS.Region.ValueString(),
-			CloudID:        zilliz.CloudId("aws"),
-			FundamentalVM:  data.AWS.Instances.FundamentalVM.ValueString(),
-			SearchVM:       data.AWS.Instances.SearchVM.ValueString(),
-			CoreVM:         data.AWS.Instances.CoreVM.ValueString(),
-			SearchMin:      data.AWS.Instances.SearchVMCount.ValueInt64(),
-			FundamentalMin: data.AWS.Instances.FundamentalVMCount.ValueInt64(),
-			CoreMin:        data.AWS.Instances.CoreVMCount.ValueInt64(),
-			DeployType:     TERRAFORM_DEPLOY_TYPE,
+			ProjectName: data.Name.ValueString(),
+			RegionID:    data.AWS.Region.ValueString(),
+			CloudID:     zilliz.CloudId("aws"),
+
+			FundamentalVM: data.Instances.Fundamental.VM.ValueString(),
+			SearchVM:      data.Instances.Search.VM.ValueString(),
+			CoreVM:        data.Instances.Core.VM.ValueString(),
+			IndexVM:       data.Instances.Index.VM.ValueString(),
+
+			SearchMin:      data.Instances.Search.MinCount.ValueInt64(),
+			SearchMax:      data.Instances.Search.MaxCount.ValueInt64(),
+			FundamentalMin: data.Instances.Fundamental.MinCount.ValueInt64(),
+			FundamentalMax: data.Instances.Fundamental.MaxCount.ValueInt64(),
+			CoreMin:        data.Instances.Core.Count.ValueInt64(),
+			CoreMax:        data.Instances.Core.Count.ValueInt64(),
+			IndexMin:       data.Instances.Index.MinCount.ValueInt64(),
+			IndexMax:       data.Instances.Index.MaxCount.ValueInt64(),
+
+			AutoScaling: data.Instances.AutoScaling.ValueBool(),
+			Arch:        data.Instances.Arch.ValueString(),
+
+			DeployType: TERRAFORM_DEPLOY_TYPE,
 			AWSParam: &zilliz.AWSParam{
 				BucketID:         data.AWS.Storage.BucketID.ValueString(),
 				StorageRoleArn:   data.AWS.RoleARN.Storage.ValueString(),
@@ -185,7 +215,10 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 			},
 		}
 	}
-	tflog.Info(ctx, fmt.Sprintf("Create BYOC Project request: %+v", request))
+	tflog.Info(ctx, fmt.Sprintf("Create BYOC Project request: %s", func() string {
+		json, _ := json.Marshal(request)
+		return string(json)
+	}()))
 
 	response, err := s.client.CreateBYOCProject(&request)
 	if err != nil {

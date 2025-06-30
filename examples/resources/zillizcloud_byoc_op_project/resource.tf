@@ -19,12 +19,32 @@ resource "zillizcloud_byoc_i_project_settings" "this" {
   project_name   = "byoc-zilliz-test"
 
   instances = {
-    core_vm                  = "m6i.2xlarge"
-    core_vm_min_count        = 3
-    fundamental_vm           = "m6i.2xlarge"
-    fundamental_vm_min_count = 0
-    search_vm                = "m6id.4xlarge"
-    search_vm_min_count      = 0
+    core = {
+      vm        = "m6i.2xlarge"
+      min_count = 3
+      max_count = 3
+    }
+
+    fundamental = {
+      vm        = "m6i.2xlarge"
+      min_count = 1
+      max_count = 1
+    }
+
+    search = {
+      vm        = "m6id.4xlarge"
+      min_count = 1
+      max_count = 1
+    }
+
+    index = {
+      vm        = "m6i.2xlarge"
+      min_count = 2
+      max_count = 2
+    }
+
+    auto_scaling = true
+    arch         = "X86"
   }
 
 }

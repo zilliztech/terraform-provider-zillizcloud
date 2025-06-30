@@ -37,14 +37,56 @@ BYOC Op Project Settings resource for managing project configurations.
 <a id="nestedatt--instances"></a>
 ### Nested Schema for `instances`
 
+Required:
+
+- `core` (Attributes) core VM configuration (see [below for nested schema](#nestedatt--instances--core))
+- `fundamental` (Attributes) fundamental VM configuration (see [below for nested schema](#nestedatt--instances--fundamental))
+- `index` (Attributes) index VM configuration (see [below for nested schema](#nestedatt--instances--index))
+- `search` (Attributes) search VM configuration (see [below for nested schema](#nestedatt--instances--search))
+
 Optional:
 
-- `core_vm` (String) Instance type used for the core virtual machine, which hosts Milvus Operators, Zilliz Cloud Agent, and Milvus dependencies, such as Prometheus, Etcd, Pulsar, etc.
-- `core_vm_min_count` (Number) Core VM instance count. Defaults to 3 if not specified.
-- `fundamental_vm` (String) Instance type used for the fundamental virtual machine, which hosts Milvus components other than the query nodes, including the proxy, datanode, index pool, and coordinators.
-- `fundamental_vm_min_count` (Number) Fundamental VM instance count
-- `search_vm` (String) Instance type used for the search virtual machine, which hosts the query nodes.
-- `search_vm_min_count` (Number) Search VM instance count
+- `arch` (String) Architecture type (X86 or ARM)
+- `auto_scaling` (Boolean) Enable auto scaling for instances
+
+<a id="nestedatt--instances--core"></a>
+### Nested Schema for `instances.core`
+
+Required:
+
+- `count` (Number) core VM instance count
+- `vm` (String) Instance type for core virtual machine
+
+
+<a id="nestedatt--instances--fundamental"></a>
+### Nested Schema for `instances.fundamental`
+
+Required:
+
+- `max_count` (Number) fundamental VM maximum instance count
+- `min_count` (Number) fundamental VM minimum instance count
+- `vm` (String) Instance type for fundamental virtual machine
+
+
+<a id="nestedatt--instances--index"></a>
+### Nested Schema for `instances.index`
+
+Required:
+
+- `max_count` (Number) index VM maximum instance count
+- `min_count` (Number) index VM minimum instance count
+- `vm` (String) Instance type for index virtual machine
+
+
+<a id="nestedatt--instances--search"></a>
+### Nested Schema for `instances.search`
+
+Required:
+
+- `max_count` (Number) search VM maximum instance count
+- `min_count` (Number) search VM minimum instance count
+- `vm` (String) Instance type for search virtual machine
+
 
 
 <a id="nestedatt--node_quotas"></a>

@@ -1,17 +1,29 @@
 package client
 
 type CreateByocOpProjectSettingsRequest struct {
-	ProjectName        string `json:"projectName"`
-	CloudId            string `json:"cloudId"`
-	RegionId           string `json:"regionId"`
-	SearchVm           string `json:"searchVm"`
-	FundamentalVm      string `json:"fundamentalVm"`
-	CoreVm             string `json:"coreVm"`
-	SearchMin          int64  `json:"searchMin"`
-	FundamentalMin     int64  `json:"fundamentalMin"`
-	CoreMin            int64  `json:"coreMin"`
-	DeployType         int    `json:"deployType"`
-	PrivateLinkEnabled int    `json:"openPl"`
+	ProjectName string `json:"projectName"`
+	CloudId     string `json:"cloudId"`
+	RegionId    string `json:"regionId"`
+
+	SearchVm      string `json:"searchVm"`
+	FundamentalVm string `json:"fundamentalVm"`
+	CoreVm        string `json:"coreVm"`
+	IndexVm       string `json:"indexVm"`
+
+	SearchMin      int64 `json:"searchMin"`
+	SearchMax      int64 `json:"searchMax"`
+	FundamentalMin int64 `json:"fundamentalMin"`
+	FundamentalMax int64 `json:"fundamentalMax"`
+	CoreMin        int64 `json:"coreMin"`
+	CoreMax        int64 `json:"coreMax"`
+	IndexMin       int64 `json:"indexMin"`
+	IndexMax       int64 `json:"indexMax"`
+
+	AutoScaling bool   `json:"autoScaling"`
+	Arch        string `json:"arch"`
+
+	DeployType         int `json:"deployType"`
+	PrivateLinkEnabled int `json:"openPl"`
 }
 
 func (c *Client) CreateByocOpProjectSetting(params *CreateByocOpProjectSettingsRequest) (*CreateByocOpProjectSettingResponse, error) {
