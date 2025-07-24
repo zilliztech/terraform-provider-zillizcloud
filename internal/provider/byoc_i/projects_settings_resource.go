@@ -83,7 +83,7 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 		},
 	}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "BYOC Op Project Settings resource for managing project configurations.",
+		MarkdownDescription: "BYOC-I Project Settings resource for managing project configurations.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Settings identifier",
@@ -198,7 +198,7 @@ func (r *BYOCOpProjectSettingsResource) Create(ctx context.Context, req resource
 		return
 	}
 
-	tflog.Info(ctx, "Creating BYOC Op Project Settings...")
+	tflog.Info(ctx, "Creating BYOC-I Project Settings...")
 
 	err := r.store.Create(ctx, &data, func(input *BYOCOpProjectSettingsResourceModel) error {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -208,13 +208,13 @@ func (r *BYOCOpProjectSettingsResource) Create(ctx context.Context, req resource
 		return nil
 	})
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to create BYOC Op Project Settings", err.Error())
+		resp.Diagnostics.AddError("Failed to create BYOC-I Project Settings", err.Error())
 		return
 	}
 
 	model, err := r.store.Describe(ctx, data.ProjectID.ValueString(), data.DataPlaneID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to describe BYOC Op Project Settings after creation", err.Error())
+		resp.Diagnostics.AddError("Failed to describe BYOC-I Project Settings after creation", err.Error())
 		return
 	}
 
@@ -235,10 +235,10 @@ func (r *BYOCOpProjectSettingsResource) Read(ctx context.Context, req resource.R
 		return
 	}
 
-	tflog.Info(ctx, "Reading BYOC Op Project Settings...")
+	tflog.Info(ctx, "Reading BYOC-I Project Settings...")
 	model, err := r.store.Describe(ctx, data.ProjectID.ValueString(), data.DataPlaneID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to describe BYOC Op Project Settings", err.Error())
+		resp.Diagnostics.AddError("Failed to describe BYOC-I Project Settings", err.Error())
 		return
 	}
 
@@ -260,7 +260,7 @@ func (r *BYOCOpProjectSettingsResource) Update(ctx context.Context, req resource
 		return
 	}
 
-	tflog.Info(ctx, "Updating BYOC Op Project Settings...")
+	tflog.Info(ctx, "Updating BYOC-I Project Settings...")
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -269,7 +269,7 @@ func (r *BYOCOpProjectSettingsResource) Update(ctx context.Context, req resource
 func (r *BYOCOpProjectSettingsResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data BYOCOpProjectSettingsResourceModel
 
-	tflog.Info(ctx, "Deleting BYOC Op Project Settings...")
+	tflog.Info(ctx, "Deleting BYOC-I Project Settings...")
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -278,7 +278,7 @@ func (r *BYOCOpProjectSettingsResource) Delete(ctx context.Context, req resource
 
 	err := r.store.Delete(ctx, &data)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to delete BYOC Op Project Settings", err.Error())
+		resp.Diagnostics.AddError("Failed to delete BYOC-I Project Settings", err.Error())
 		return
 	}
 }

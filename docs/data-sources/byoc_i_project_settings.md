@@ -3,12 +3,12 @@
 page_title: "zillizcloud_byoc_i_project_settings Data Source - zillizcloud"
 subcategory: ""
 description: |-
-  BYOC Op Project Settings resource for managing project configurations.
+  BYOC-I Project Settings resource for managing project configurations.
 ---
 
 # zillizcloud_byoc_i_project_settings (Data Source)
 
-BYOC Op Project Settings resource for managing project configurations.
+BYOC-I Project Settings resource for managing project configurations.
 
 
 

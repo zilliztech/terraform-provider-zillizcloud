@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// 7 is the deploy type for BYOC Op Project.
+	// 7 is the deploy type for BYOC-I Project.
 	TERRAFORM_DEPLOY_TYPE = 7
 )
 

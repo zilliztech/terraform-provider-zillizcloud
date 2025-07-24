@@ -59,11 +59,11 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("Create BYOC Op Project request: %+v", request))
+	tflog.Info(ctx, fmt.Sprintf("Create BYOC-I Project request: %+v", request))
 
 	response, err := s.client.CreateByocOpProject(&request)
 	if err != nil {
-		return fmt.Errorf("failed to create BYOC Op project: %w", err)
+		return fmt.Errorf("failed to create BYOC-I project: %w", err)
 	}
 
 	data.ID = types.StringValue(response.ProjectId)
@@ -73,36 +73,11 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		return err
 	}
 
-	timeout, diags := data.Timeouts.Create(ctx, defaultBYOCOpProjectCreateTimeout)
+	_, diags := data.Timeouts.Create(ctx, defaultBYOCOpProjectCreateTimeout)
 	if diags.HasError() {
 		return fmt.Errorf("failed to get create timeout")
 	}
 
-	ret, err := util.Poll[BYOCOpProjectResourceModel](ctx, timeout, func() (*BYOCOpProjectResourceModel, *util.Err) {
-		project, err := s.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
-		if err != nil {
-			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC Op project status")}
-		}
-
-		switch project.Status.ValueInt64() {
-		case int64(BYOCProjectStatusConnected):
-			return nil, &util.Err{Err: fmt.Errorf("agent already connected, BYOC project is deploying status, please wait")}
-		case int64(BYOCProjectStatusPending):
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending status, please wait")}
-		case int64(BYOCProjectStatusRunning):
-			return &project, nil
-		case int64(BYOCProjectStatusInit):
-			return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project should be connected")}
-		default:
-			return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %d", project.Status.ValueInt64())}
-		}
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to create BYOC Op project: %w", err)
-	}
-
-	data.Status = ret.Status
 	if err = updateStateFunc(data); err != nil {
 		return err
 	}
@@ -116,22 +91,22 @@ func (s *byocOpProjectStore) Delete(ctx context.Context, data *BYOCOpProjectReso
 		DataPlaneID: data.DataPlaneID.ValueString(),
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("Delete BYOC Op Project request: %+v", request))
+	tflog.Info(ctx, fmt.Sprintf("Delete BYOC-I Project request: %+v", request))
 
 	{
 
 		project, err := s.Describe(ctx, data.ProjectID.ValueString(), data.DataPlaneID.ValueString())
 		if err != nil {
-			return fmt.Errorf("failed to describe BYOC Op project: %w", err)
+			return fmt.Errorf("failed to describe BYOC-I project: %w", err)
 		}
 
-		tflog.Info(ctx, fmt.Sprintf("Before delete BYOC Op Project, peek the status: %d", project.Status.ValueInt64()))
+		tflog.Info(ctx, fmt.Sprintf("Before delete BYOC-I Project, peek the status: %d", project.Status.ValueInt64()))
 
 		//skip delete if project is already deleted or deleting
 		if project.Status.ValueInt64() != int64(BYOCProjectStatusDeleted) && project.Status.ValueInt64() != int64(BYOCProjectStatusDeleting) {
 			_, err = s.client.DeleteBYOCProject(request)
 			if err != nil {
-				return fmt.Errorf("failed to delete BYOC Op project: %w", err)
+				return fmt.Errorf("failed to delete BYOC-I project: %w", err)
 			}
 		}
 
@@ -169,11 +144,11 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 		DataPlaneID: dataPlaneID,
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("Describe BYOC Op Project request: %+v", request))
+	tflog.Info(ctx, fmt.Sprintf("Describe BYOC-I Project request: %+v", request))
 
 	response, err := s.client.DescribeByocOpProject(request)
 	if err != nil {
-		return data, fmt.Errorf("failed to describe BYOC Op project: %w", err)
+		return data, fmt.Errorf("failed to describe BYOC-I project: %w", err)
 	}
 
 	data.ID = types.StringValue(response.ProjectID)

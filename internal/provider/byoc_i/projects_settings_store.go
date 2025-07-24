@@ -54,13 +54,13 @@ func (s *byocOpProjectSettingsStore) Create(ctx context.Context, data *BYOCOpPro
 		DeployType: TERRAFORM_DEPLOY_TYPE,
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("Create BYOC Op Project Settings request: %+v", request))
+	tflog.Info(ctx, fmt.Sprintf("Create BYOC-I Project Settings request: %+v", request))
 
 	response, err := s.client.CreateByocOpProjectSetting(&request)
 	if err != nil {
-		return fmt.Errorf("failed to create BYOC Op project settings: %w", err)
+		return fmt.Errorf("failed to create BYOC-I project settings: %w", err)
 	}
-	tflog.Info(ctx, fmt.Sprintf("Create BYOC Op Project Settings response: %+v", response))
+	tflog.Info(ctx, fmt.Sprintf("Create BYOC-I Project Settings response: %+v", response))
 
 	data.ID = types.StringValue(response.ProjectId)
 	data.ProjectID = types.StringValue(response.ProjectId)
@@ -83,20 +83,20 @@ func (s *byocOpProjectSettingsStore) Delete(ctx context.Context, data *BYOCOpPro
 		DataPlaneID: data.DataPlaneID.ValueString(),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to describe BYOC Op project settings: %w", err)
+		return fmt.Errorf("failed to describe BYOC-I project settings: %w", err)
 	}
 
 	if response.Status == int(BYOCProjectStatusConnected) {
-		return fmt.Errorf("BYOC Op project settings is not deleted when agent is connected")
+		return fmt.Errorf("BYOC-I project settings is not deleted when agent is connected")
 	}
 
 	// if the project is not connected, delete the project settings
 	if response.Status == int(BYOCProjectStatusInit) {
 		deleteResponse, err := s.client.DeleteByocOpProjectSetting(&request)
 		if err != nil {
-			return fmt.Errorf("failed to delete BYOC Op project settings: %w", err)
+			return fmt.Errorf("failed to delete BYOC-I project settings: %w", err)
 		}
-		tflog.Info(ctx, fmt.Sprintf("Delete BYOC Op Project Settings response: %+v", deleteResponse))
+		tflog.Info(ctx, fmt.Sprintf("Delete BYOC-I Project Settings response: %+v", deleteResponse))
 	}
 
 	return nil
@@ -109,7 +109,7 @@ func (s *byocOpProjectSettingsStore) Describe(ctx context.Context, projectID str
 			DataPlaneID: dataPlaneID,
 		})
 		if err != nil {
-			return data, fmt.Errorf("failed to describe BYOC Op project settings: %w", err)
+			return data, fmt.Errorf("failed to describe BYOC-I project settings: %w", err)
 		}
 
 		// Convert response to model
@@ -126,7 +126,7 @@ func (s *byocOpProjectSettingsStore) Describe(ctx context.Context, projectID str
 			DataPlaneId: dataPlaneID,
 		})
 		if err != nil {
-			return data, fmt.Errorf("failed to describe BYOC Op project settings: %w", err)
+			return data, fmt.Errorf("failed to describe BYOC-I project settings: %w", err)
 		}
 		data.PrivateLinkEnabled = types.BoolValue(response.PrivateLinkEnabled == 1)
 		OpConfig, diag := types.ObjectValue(map[string]attr.Type{

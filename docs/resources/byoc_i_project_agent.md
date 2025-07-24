@@ -3,12 +3,12 @@
 page_title: "zillizcloud_byoc_i_project_agent Resource - zillizcloud"
 subcategory: ""
 description: |-
-  BYOC Op Project Agent resource for managing project agents.
+  BYOC-I Project Agent resource for managing project agents.
 ---
 
 # zillizcloud_byoc_i_project_agent (Resource)
 
-BYOC Op Project Agent resource for managing project agents.
+BYOC-I Project Agent resource for managing project agents.
 
 
 
