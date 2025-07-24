@@ -40,7 +40,7 @@ func (r *BYOCOpProjectResource) Metadata(ctx context.Context, req resource.Metad
 
 func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "BYOC Op Project resource for managing bring-your-own-cloud operator projects.",
+		MarkdownDescription: "BYOC-I Project resource for managing bring-your-own-cloud operator projects.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Project identifier",
@@ -204,7 +204,7 @@ func (r *BYOCOpProjectResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	tflog.Info(ctx, "Creating BYOC Op Project...")
+	tflog.Info(ctx, "Creating BYOC-I Project...")
 
 	err := r.store.Create(ctx, &data, func(project *BYOCOpProjectResourceModel) error {
 		resp.Diagnostics.Append(resp.State.Set(ctx, project)...)
@@ -214,11 +214,11 @@ func (r *BYOCOpProjectResource) Create(ctx context.Context, req resource.CreateR
 		return nil
 	})
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create BYOC Op project, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create BYOC-I project, got error: %s", err))
 		return
 	}
 
-	tflog.Info(ctx, "Created BYOC Op Project")
+	tflog.Info(ctx, "Created BYOC-I Project")
 }
 
 func (r *BYOCOpProjectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -230,11 +230,11 @@ func (r *BYOCOpProjectResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-	tflog.Info(ctx, "Reading BYOC Op Project...")
+	tflog.Info(ctx, "Reading BYOC-I Project...")
 
 	project, err := r.store.Describe(ctx, data.ProjectID.ValueString(), data.DataPlaneID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read BYOC Op project, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read BYOC-I project, got error: %s", err))
 		return
 	}
 
@@ -277,13 +277,13 @@ func (r *BYOCOpProjectResource) Delete(ctx context.Context, req resource.DeleteR
 		return
 	}
 
-	tflog.Info(ctx, "Deleting BYOC Op Project...")
+	tflog.Info(ctx, "Deleting BYOC-I Project...")
 
 	err := r.store.Delete(ctx, &data)
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete BYOC Op project, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete BYOC-I project, got error: %s", err))
 		return
 	}
 
-	tflog.Info(ctx, "Deleted BYOC Op Project")
+	tflog.Info(ctx, "Deleted BYOC-I Project")
 }

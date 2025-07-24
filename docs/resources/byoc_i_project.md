@@ -3,12 +3,12 @@
 page_title: "zillizcloud_byoc_i_project Resource - zillizcloud"
 subcategory: ""
 description: |-
-  BYOC Op Project resource for managing bring-your-own-cloud operator projects.
+  BYOC-I Project resource for managing bring-your-own-cloud operator projects.
 ---
 
 # zillizcloud_byoc_i_project (Resource)
 
-BYOC Op Project resource for managing bring-your-own-cloud operator projects.
+BYOC-I Project resource for managing bring-your-own-cloud operator projects.
 
 
 

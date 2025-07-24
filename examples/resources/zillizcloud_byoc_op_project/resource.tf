@@ -20,9 +20,8 @@ resource "zillizcloud_byoc_i_project_settings" "this" {
 
   instances = {
     core = {
-      vm        = "m6i.2xlarge"
-      min_count = 3
-      max_count = 3
+      vm    = "m6i.2xlarge"
+      count = 3
     }
 
     fundamental = {

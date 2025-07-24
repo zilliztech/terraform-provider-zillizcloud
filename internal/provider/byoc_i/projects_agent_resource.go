@@ -2,7 +2,9 @@ package byoc_op
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -47,7 +49,7 @@ func (r *BYOCOpProjectAgentResource) Metadata(ctx context.Context, req resource.
 
 func (r *BYOCOpProjectAgentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "BYOC Op Project Agent resource for managing project agents.",
+		MarkdownDescription: "BYOC-I Project Agent resource for managing project agents.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Agent identifier",
@@ -118,7 +120,7 @@ func (r *BYOCOpProjectAgentResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
-	tflog.Info(ctx, "Creating BYOC Op Project Agent...")
+	tflog.Info(ctx, "Creating BYOC-I Project Agent...")
 
 	// Set initial state
 	data.ID = types.StringValue(data.ProjectID.ValueString())
@@ -145,7 +147,7 @@ func (r *BYOCOpProjectAgentResource) Create(ctx context.Context, req resource.Cr
 		}
 		response, err := r.client.DescribeByocAgent(request)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check BYOC Op project agent status: %w", err)
+			return nil, fmt.Errorf("failed to check BYOC-I project agent status: %w", err)
 		}
 		return response, nil
 	}
@@ -156,7 +158,7 @@ func (r *BYOCOpProjectAgentResource) Create(ctx context.Context, req resource.Cr
 	if !willingToWait {
 		response, err := query()
 		if err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read BYOC Op project agent, got error: %s", err))
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read BYOC-I project agent, got error: %s", err))
 			return
 		}
 		data.Status = types.StringValue(BYOCProjectStatus(response.Status).String())
@@ -164,14 +166,24 @@ func (r *BYOCOpProjectAgentResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
+	retryCount := 0
+
 	// when willing to wait
 	_, err := util.Poll[any](ctx, timeout, func() (*any, *util.Err) {
 		response, err := query()
 		if err != nil {
-			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC Op project agent status: %w", err)}
+			// We have an error, if it's a network error and less than 3 retries, retry
+			var opError *net.OpError
+			if errors.As(err, &opError) && retryCount < 3 {
+				retryCount++
+				return nil, &util.Err{Halt: false, Err: err}
+			}
+			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC-I project agent status: %w", err)}
 		}
 
-		tflog.Info(ctx, fmt.Sprintf("Describe BYOC Op project agent response: %+v", response))
+		retryCount = 0
+
+		tflog.Info(ctx, fmt.Sprintf("Describe BYOC-I project agent response: %+v", response))
 
 		// wait until the agent is connected
 		if response.Status != int(BYOCProjectStatusConnected) {
@@ -185,11 +197,11 @@ func (r *BYOCOpProjectAgentResource) Create(ctx context.Context, req resource.Cr
 	})
 
 	if err != nil {
-		resp.Diagnostics.AddError("Creation Error", fmt.Sprintf("Failed to create BYOC Op project agent: %s", err))
+		resp.Diagnostics.AddError("Creation Error", fmt.Sprintf("Failed to create BYOC-I project agent: %s", err))
 		return
 	}
 
-	tflog.Info(ctx, "Created BYOC Op Project Agent")
+	tflog.Info(ctx, "Created BYOC-I Project Agent")
 }
 
 func (r *BYOCOpProjectAgentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -201,7 +213,7 @@ func (r *BYOCOpProjectAgentResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
-	tflog.Info(ctx, "Reading BYOC Op Project Agent...")
+	tflog.Info(ctx, "Reading BYOC-I Project Agent...")
 
 	response, err := r.client.DescribeByocAgent(&zilliz.DescribeByocAgentRequest{
 		ProjectId:   state.ProjectID.ValueString(),
@@ -209,7 +221,7 @@ func (r *BYOCOpProjectAgentResource) Read(ctx context.Context, req resource.Read
 	})
 
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read BYOC Op project agent, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read BYOC-I project agent, got error: %s", err))
 		return
 	}
 
@@ -239,6 +251,6 @@ func (r *BYOCOpProjectAgentResource) Delete(ctx context.Context, req resource.De
 		return
 	}
 
-	tflog.Info(ctx, "Deleting BYOC Op Project Agent...")
+	tflog.Info(ctx, "Deleting BYOC-I Project Agent...")
 
 }

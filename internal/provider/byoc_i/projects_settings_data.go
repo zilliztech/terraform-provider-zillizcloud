@@ -60,7 +60,7 @@ func (r *BYOCOpProjectSettingsData) Schema(ctx context.Context, req datasource.S
 		},
 	}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "BYOC Op Project Settings resource for managing project configurations.",
+		MarkdownDescription: "BYOC-I Project Settings resource for managing project configurations.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Settings identifier",
@@ -149,10 +149,10 @@ func (r *BYOCOpProjectSettingsData) Read(ctx context.Context, req datasource.Rea
 		return
 	}
 
-	tflog.Info(ctx, "Reading BYOC Op Project Settings...")
+	tflog.Info(ctx, "Reading BYOC-I Project Settings...")
 	model, err := r.store.Describe(ctx, data.ProjectID.ValueString(), data.DataPlaneID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to describe BYOC Op Project Settings after creation", err.Error())
+		resp.Diagnostics.AddError("Failed to describe BYOC-I Project Settings after creation", err.Error())
 		return
 	}
 	// Implement read logic here
@@ -181,7 +181,7 @@ func (s *byocOpProjectSettingsDataStore) Describe(ctx context.Context, projectID
 			DataPlaneID: dataPlaneID,
 		})
 		if err != nil {
-			return data, fmt.Errorf("failed to describe BYOC Op project: %w", err)
+			return data, fmt.Errorf("failed to describe BYOC-I project: %w", err)
 		}
 		data.ID = types.StringValue(response.ProjectID)
 		data.DataPlaneID = types.StringValue(response.DataPlaneID)
@@ -197,7 +197,7 @@ func (s *byocOpProjectSettingsDataStore) Describe(ctx context.Context, projectID
 			DataPlaneId: dataPlaneID,
 		})
 		if err != nil {
-			return data, fmt.Errorf("failed to describe BYOC Op project settings: %w", err)
+			return data, fmt.Errorf("failed to describe BYOC-I project settings: %w", err)
 		}
 
 		data.PrivateLinkEnabled = types.BoolValue(response.PrivateLinkEnabled == 1)
