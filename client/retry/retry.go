@@ -14,13 +14,22 @@ var jitterCoefficient = 0.1
 
 func Backoff(attempts int) time.Duration {
 	wait := time.Duration(float64(minWait) * math.Pow(2, float64(attempts)))
-	unitDuration := int64(jitterCoefficient * float64(wait))
-	jitterDuration := 2*time.Duration(rand.Int63n(unitDuration)) - time.Duration(unitDuration)
-	wait += jitterDuration
 
+	// Apply maxWait limit before jitter calculation to prevent overflow
 	if wait > maxWait {
 		wait = maxWait
 	}
+
+	jitterValue := jitterCoefficient * float64(wait)
+	var jitterDuration time.Duration
+
+	// Ensure jitterValue is positive and within int64 bounds
+	if jitterValue > 0 && jitterValue < float64(math.MaxInt64) {
+		unitDuration := int64(jitterValue)
+		jitterDuration = 2*time.Duration(rand.Int63n(unitDuration)) - time.Duration(unitDuration)
+	}
+
+	wait += jitterDuration
 
 	return wait
 }
