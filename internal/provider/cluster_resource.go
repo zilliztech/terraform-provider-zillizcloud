@@ -12,12 +12,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -27,8 +30,8 @@ import (
 )
 
 const (
-	defaultClusterCreateTimeout time.Duration = 8 * time.Minute
-	defaultClusterUpdateTimeout time.Duration = 5 * time.Minute
+	defaultClusterCreateTimeout time.Duration = 30 * time.Minute
+	defaultClusterUpdateTimeout time.Duration = 30 * time.Minute
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -138,9 +141,22 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"status": schema.StringAttribute{
-				MarkdownDescription: "The current status of the cluster. Possible values are INITIALIZING, RUNNING, SUSPENDING, and RESUMING.",
+			"desired_status": schema.StringAttribute{
+				MarkdownDescription: "The desired status of the cluster. Possible values are RUNNING and SUSPENDED. Defaults to RUNNING.",
+				Optional:            true,
 				Computed:            true,
+				Default:             stringdefault.StaticString("RUNNING"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("RUNNING", "SUSPENDED"),
+				},
+			},
+			"status": schema.StringAttribute{
+				MarkdownDescription: "The current status of the cluster. Possible values are RUNNING, SUSPENDING, SUSPENDED, and RESUMING.",
+				Computed:            true,
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"connect_address": schema.StringAttribute{
 				MarkdownDescription: "The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.",
@@ -156,6 +172,17 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"create_time": schema.StringAttribute{
 				MarkdownDescription: "The time at which the cluster has been created.",
 				Computed:            true,
+			},
+			"labels": schema.MapAttribute{
+				MarkdownDescription: "A map of labels to assign to the cluster. Labels are key-value pairs that can be used to organize and categorize clusters.",
+				Optional:            true,
+				ElementType:         types.StringType,
+			},
+			"replica": schema.Int64Attribute{
+				MarkdownDescription: "The number of replicas for the cluster. Defaults to 1.",
+				Optional:            true,
+				Computed:            true,
+				Default:             int64default.StaticInt64(1),
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -286,8 +313,10 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
 		return
 	}
+	tflog.Info(ctx, fmt.Sprintf("Cluster: %+v", cluster))
 
 	state.populate(cluster)
+	tflog.Info(ctx, fmt.Sprintf("State: %+v", state))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -315,20 +344,96 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			resp.Diagnostics.AddError("Failed to modify cluster", err.Error())
 			return
 		}
+		updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
-	// Wait for cluster to be RUNNING
-	// Update() is passed a default timeout to use if no value
-	// has been supplied in the Terraform configuration.
-	updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	if plan.Replica.ValueInt64() != state.Replica.ValueInt64() {
+		err := r.store.ModifyReplica(ctx, state.ClusterId.ValueString(), int(plan.Replica.ValueInt64()))
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to modify cluster replica", err.Error())
+			return
+		}
+		// Wait for SUSPENDED status
+		updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
-	resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
-	if resp.Diagnostics.HasError() {
-		return
+	// Handle desired_status change
+	if !plan.DesiredStatus.IsNull() && plan.DesiredStatus.ValueString() != "" {
+		desiredStatus := plan.DesiredStatus.ValueString()
+		currentStatus := state.Status.ValueString()
+
+		// Check if desired_status is different from current status
+		if desiredStatus == "SUSPENDED" && currentStatus == "RUNNING" {
+			// Suspend the cluster
+			err := r.store.SuspendCluster(ctx, state.ClusterId.ValueString())
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to suspend cluster", err.Error())
+				return
+			}
+			// Wait for SUSPENDED status
+			updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "SUSPENDED")...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		} else if desiredStatus == "RUNNING" && currentStatus == "SUSPENDED" {
+			// Resume the cluster
+			err := r.store.ResumeCluster(ctx, state.ClusterId.ValueString())
+			if err != nil {
+				resp.Diagnostics.AddError("Failed to resume cluster", err.Error())
+				return
+			}
+			// Wait for RUNNING status
+			updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
+	}
+
+	// Handle the case where desired_status is not provided - default to RUNNING
+	if plan.DesiredStatus.IsNull() && state.Status.ValueString() == "SUSPENDED" {
+		// Resume the cluster to maintain default behavior
+		err := r.store.ResumeCluster(ctx, state.ClusterId.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to resume cluster", err.Error())
+			return
+		}
+		// Wait for RUNNING status
+		updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
@@ -410,6 +515,9 @@ type ClusterStore interface {
 	Create(ctx context.Context, cluster *ClusterResourceModel) (*ClusterResourceModel, error)
 	Delete(ctx context.Context, clusterId string) error
 	UpgradeCuSize(ctx context.Context, clusterId string, cuSize int) error
+	ModifyReplica(ctx context.Context, clusterId string, replica int) error
+	SuspendCluster(ctx context.Context, clusterId string) error
+	ResumeCluster(ctx context.Context, clusterId string) error
 }
 
 func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterResourceModel, error) {
@@ -417,6 +525,16 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 	if err != nil {
 		return nil, err
 	}
+
+	labels := types.MapNull(types.StringType)
+	if len(cluster.Labels) > 0 {
+		labelValues := make(map[string]attr.Value)
+		for k, v := range cluster.Labels {
+			labelValues[k] = types.StringValue(v)
+		}
+		labels, _ = types.MapValue(types.StringType, labelValues)
+	}
+
 	return &ClusterResourceModel{
 		ClusterId:   types.StringValue(cluster.ClusterId),
 		Plan:        types.StringValue(string(cluster.Plan)),
@@ -427,11 +545,24 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		// Username:           types.StringValue(cluster.Username),
 		// Password:           types.StringValue(cluster.Password),
 		// Prompt:             types.StringValue(cluster.Prompt),
-		Description:        types.StringValue(cluster.Description),
-		RegionId:           types.StringValue(cluster.RegionId),
-		Status:             types.StringValue(cluster.Status),
+		Description: types.StringValue(cluster.Description),
+		RegionId:    types.StringValue(cluster.RegionId),
+		Status: types.StringValue(
+			func() string {
+				switch cluster.Status {
+				case "STOPPING":
+					return "SUSPENDING"
+				case "STOPPED":
+					return "SUSPENDED"
+				default:
+					return cluster.Status
+				}
+			}(),
+		),
 		ConnectAddress:     types.StringValue(cluster.ConnectAddress),
 		PrivateLinkAddress: types.StringValue(cluster.PrivateLinkAddress),
+		Labels:             labels,
+		Replica:            types.Int64Value(cluster.Replica),
 	}, nil
 }
 
@@ -441,6 +572,17 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 	regionId := cluster.RegionId.ValueString()
 	if cluster.RegionId.IsNull() || cluster.RegionId.ValueString() == "" {
 		regionId = c.client.RegionId
+	}
+
+	// Convert terraform map to Go map for labels
+	labels := make(map[string]string)
+	if !cluster.Labels.IsNull() && !cluster.Labels.IsUnknown() {
+		elements := cluster.Labels.Elements()
+		for k, v := range elements {
+			if strValue, ok := v.(types.String); ok {
+				labels[k] = strValue.ValueString()
+			}
+		}
 	}
 
 	if cluster.Plan.IsNull() || zilliz.Plan(cluster.Plan.ValueString()) == zilliz.FreePlan {
@@ -463,6 +605,7 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			CUSize:      int(cluster.CuSize.ValueInt64()),
 			CUType:      cluster.CuType.ValueString(),
 			ProjectId:   cluster.ProjectId.ValueString(),
+			Labels:      labels,
 		})
 	}
 
@@ -491,6 +634,23 @@ func (c *ClusterStoreImpl) UpgradeCuSize(ctx context.Context, clusterId string, 
 	return err
 }
 
+func (c *ClusterStoreImpl) ModifyReplica(ctx context.Context, clusterId string, replica int) error {
+	_, err := c.client.ModifyReplica(clusterId, &zilliz.ModifyReplicaParams{
+		Replica: replica,
+	})
+	return err
+}
+
+func (c *ClusterStoreImpl) SuspendCluster(ctx context.Context, clusterId string) error {
+	_, err := c.client.SuspendCluster(clusterId)
+	return err
+}
+
+func (c *ClusterStoreImpl) ResumeCluster(ctx context.Context, clusterId string) error {
+	_, err := c.client.ResumeCluster(clusterId)
+	return err
+}
+
 type ClusterResourceModel struct {
 	ClusterId          types.String   `tfsdk:"id"`
 	Plan               types.String   `tfsdk:"plan"`
@@ -505,9 +665,12 @@ type ClusterResourceModel struct {
 	RegionId           types.String   `tfsdk:"region_id"`
 	ClusterType        types.String   `tfsdk:"cluster_type"`
 	Status             types.String   `tfsdk:"status"`
+	DesiredStatus      types.String   `tfsdk:"desired_status"`
 	ConnectAddress     types.String   `tfsdk:"connect_address"`
 	PrivateLinkAddress types.String   `tfsdk:"private_link_address"`
 	CreateTime         types.String   `tfsdk:"create_time"`
+	Labels             types.Map      `tfsdk:"labels"`
+	Replica            types.Int64    `tfsdk:"replica"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -526,7 +689,12 @@ func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	data.Description = input.Description
 	data.RegionId = input.RegionId
 	data.Status = input.Status
+	data.DesiredStatus = input.Status
 	data.ConnectAddress = input.ConnectAddress
 	data.PrivateLinkAddress = input.PrivateLinkAddress
 	data.CreateTime = input.CreateTime
+	if !input.Labels.IsNull() {
+		data.Labels = input.Labels
+	}
+	data.Replica = input.Replica
 }
