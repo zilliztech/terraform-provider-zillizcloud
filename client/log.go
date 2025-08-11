@@ -42,7 +42,7 @@ func parseLogLevel(level string) LogLevel {
 }
 
 func NewLoggerWrapper(base *log.Logger) *LoggerWrapper {
-	level := parseLogLevel(os.Getenv("ZILLIZ_LOG_LEVEL"))
+	level := parseLogLevel(os.Getenv("ZILLIZCLOUD_LOG_LEVEL"))
 	return &LoggerWrapper{
 		logger:   base,
 		minLevel: level,
@@ -157,6 +157,95 @@ func (l *LoggerWrapper) logResponseBody(body []byte) {
 
 	bytes, _ := json.Marshal(parsed)
 	l.Printf("Response JSON: %s", maskSensitiveFields(string(bytes)))
+}
+
+// LogRequest logs the HTTP request details
+func (l *LoggerWrapper) LogRequest(req *http.Request) {
+	if req == nil {
+		return
+	}
+
+	l.Debugf("=== HTTP Request ===")
+	l.Debugf("Method: %s", req.Method)
+	l.Debugf("URL: %s", req.URL.String())
+
+	// Log headers (mask sensitive ones)
+	if len(req.Header) > 0 {
+		l.Debugf("Headers:")
+		for key, values := range req.Header {
+			for _, value := range values {
+				if isSensitiveHeader(key) {
+					l.Debugf("  %s: ***", key)
+				} else {
+					l.Debugf("  %s: %s", key, value)
+				}
+			}
+		}
+	}
+
+	// Log request body if present
+	if req.Body != nil && req.GetBody != nil {
+		bodyReader, err := req.GetBody()
+		if err == nil {
+			defer bodyReader.Close()
+			bodyBytes := make([]byte, req.ContentLength)
+			n, _ := bodyReader.Read(bodyBytes)
+			if n > 0 {
+				bodyStr := string(bodyBytes[:n])
+				l.Debugf("Request Body: %s", maskSensitiveFields(bodyStr))
+			}
+		}
+	}
+}
+
+// LogResponse logs the HTTP response details
+func (l *LoggerWrapper) LogResponse(res *http.Response, body []byte) {
+	if res == nil {
+		return
+	}
+
+	l.Debugf("=== HTTP Response ===")
+	l.Debugf("Status: %s (%d)", res.Status, res.StatusCode)
+
+	// Log response headers
+	if len(res.Header) > 0 {
+		l.Debugf("Headers:")
+		for key, values := range res.Header {
+			for _, value := range values {
+				l.Debugf("  %s: %s", key, value)
+			}
+		}
+	}
+
+	// Log response body
+	if len(body) > 0 {
+		// Try to parse as JSON for pretty formatting
+		var parsed zillizResponse[any]
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			l.Debugf("Response Body: [non-json] %s", string(body))
+		} else {
+			prettyBytes, _ := json.MarshalIndent(parsed, "", "  ")
+			l.Debugf("Response Body: %s", maskSensitiveFields(string(prettyBytes)))
+		}
+	} else {
+		l.Debugf("Response Body: [empty]")
+	}
+	l.Debugf("==================")
+}
+
+// isSensitiveHeader checks if a header contains sensitive information
+func isSensitiveHeader(headerName string) bool {
+	sensitiveHeaders := []string{
+		"authorization", "x-api-key", "cookie", "set-cookie",
+	}
+
+	headerLower := strings.ToLower(headerName)
+	for _, sensitive := range sensitiveHeaders {
+		if headerLower == sensitive {
+			return true
+		}
+	}
+	return false
 }
 
 var sensitiveKeys = []string{
