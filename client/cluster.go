@@ -15,13 +15,47 @@ type ModifyClusterParams struct {
 	CuSize int `json:"cuSize"`
 }
 
-type ModifyClusterResponse struct {
+type ClusterResponse struct {
 	ClusterId string `json:"clusterId"`
 }
 
+//suspend cluster
+
+func (c *Client) SuspendCluster(clusterId string) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/suspend", nil, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
+func (c *Client) ResumeCluster(clusterId string) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/resume", nil, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
 func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*string, error) {
-	var response zillizResponse[ModifyClusterResponse]
+	var response zillizResponse[ClusterResponse]
 	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
+// modifyReplica.
+type ModifyReplicaParams struct {
+	Replica int `json:"replica"`
+}
+
+func (c *Client) ModifyReplica(clusterId string, params *ModifyReplicaParams) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/modifyReplica", params, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -47,19 +81,21 @@ type Clusters struct {
 }
 
 type Cluster struct {
-	ClusterId          string `json:"clusterId"`
-	ClusterName        string `json:"clusterName"`
-	Description        string `json:"description"`
-	RegionId           string `json:"regionId"`
-	ClusterType        string `json:"clusterType"`
-	CuType             string `json:"cuType"`
-	Plan               Plan   `json:"plan"`
-	CuSize             int64  `json:"cuSize"`
-	Status             string `json:"status"`
-	ConnectAddress     string `json:"connectAddress"`
-	PrivateLinkAddress string `json:"privateLinkAddress"`
-	CreateTime         string `json:"createTime"`
-	ProjectId          string `json:"projectId"`
+	ClusterId          string            `json:"clusterId"`
+	ClusterName        string            `json:"clusterName"`
+	Description        string            `json:"description"`
+	RegionId           string            `json:"regionId"`
+	ClusterType        string            `json:"clusterType"`
+	CuType             string            `json:"cuType"`
+	Plan               Plan              `json:"plan"`
+	CuSize             int64             `json:"cuSize"`
+	Status             string            `json:"status"`
+	ConnectAddress     string            `json:"connectAddress"`
+	PrivateLinkAddress string            `json:"privateLinkAddress"`
+	CreateTime         string            `json:"createTime"`
+	ProjectId          string            `json:"projectId"`
+	Labels             map[string]string `json:"labels,omitempty"`
+	Replica            int64             `json:"replica,omitempty"`
 }
 
 func (c *Client) ListClusters() (Clusters, error) {
@@ -82,22 +118,31 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 		cluster.Plan = FreePlan
 	}
 
+	switch cluster.Status {
+	case "STOPPING":
+		cluster.Status = "SUSPENDING"
+	case "STOPPED":
+		cluster.Status = "SUSPENDED"
+	}
+
 	return cluster, err
 }
 
 type CreateClusterParams struct {
-	Plan        Plan   `json:"plan"`
-	ClusterName string `json:"clusterName"`
-	CUSize      int    `json:"cuSize"`
-	CUType      string `json:"cuType"`
-	ProjectId   string `json:"projectId"`
-	RegionId    string `json:"regionId"`
+	Plan        Plan              `json:"plan"`
+	ClusterName string            `json:"clusterName"`
+	CUSize      int               `json:"cuSize"`
+	CUType      string            `json:"cuType"`
+	ProjectId   string            `json:"projectId"`
+	RegionId    string            `json:"regionId"`
+	Labels      map[string]string `json:"labels,omitempty"`
 }
 
 type CreateServerlessClusterParams struct {
-	ClusterName string `json:"clusterName"`
-	ProjectId   string `json:"projectId"`
-	RegionId    string `json:"regionId"`
+	ClusterName string            `json:"clusterName"`
+	ProjectId   string            `json:"projectId"`
+	RegionId    string            `json:"regionId"`
+	Labels      map[string]string `json:"labels,omitempty"`
 }
 
 type CreateClusterResponse struct {
