@@ -232,35 +232,6 @@ func (s *byocProjectStore) Create(ctx context.Context, data *BYOCProjectResource
 		return err
 	}
 
-	timeout, diags := data.Timeouts.Create(ctx, defaultBYOCProjectCreateTimeout)
-	if diags.HasError() {
-		return fmt.Errorf("failed to get create timeout")
-	}
-
-	_, err = util.Poll[BYOCProjectResourceModel](ctx, timeout, func() (*BYOCProjectResourceModel, *util.Err) {
-
-		project, err := s.Describe(ctx, data.ID.ValueString(), data.DataPlaneID.ValueString())
-		if err != nil {
-			return nil, &util.Err{Halt: true, Err: fmt.Errorf("failed to check BYOC project status")}
-		}
-
-		switch project.Status.ValueString() {
-		case BYOCProjectStatusPending.String():
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project is pending")}
-		case BYOCProjectStatusFailed.String():
-			return nil, &util.Err{Err: fmt.Errorf("BYOC project failed to create")}
-		case BYOCProjectStatusRunning.String():
-			// achieved the target status
-			return &project, nil
-		default:
-			return nil, &util.Err{Halt: true, Err: fmt.Errorf("BYOC project is in unknown state: %s", project.Status.ValueString())}
-		}
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to create BYOC project: %w", err)
-	}
-
 	return nil
 
 }
