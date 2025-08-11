@@ -43,7 +43,7 @@ func (d *ProjectDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Project Identifier",
-				Computed:            true,
+				Optional:            true,
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Project Name",
@@ -104,6 +104,11 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	var filteredProjects []zilliz.Project
 	for _, p := range projects {
+		if types.StringValue(p.ProjectId) == state.Id {
+			filteredProjects = append(filteredProjects, p)
+			break
+		}
+
 		if types.StringValue(p.ProjectName) == state.Name {
 			filteredProjects = append(filteredProjects, p)
 		}

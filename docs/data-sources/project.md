@@ -17,10 +17,10 @@ description: |-
 
 ### Optional
 
+- `id` (String) Project Identifier
 - `name` (String) Project Name
 
 ### Read-Only
 
 - `created_at` (Number) Created At
-- `id` (String) Project Identifier
 - `instance_count` (Number) Instance Count

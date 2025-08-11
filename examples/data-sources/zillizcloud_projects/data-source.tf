@@ -9,18 +9,12 @@ terraform {
 provider "zillizcloud" {
 }
 
-// default project
-data "zillizcloud_project" "example01" {}
 
 // specific project
-data "zillizcloud_project" "example02" {
-  name = "payments"
+data "zillizcloud_project" "selected_project" {
+  id = "proj-ad010914c0e4bd421f7d7e"
 }
 
-output "output_01" {
-  value = data.zillizcloud_project.example01
-}
-
-output "output_02" {
-  value = data.zillizcloud_project.example02
+output "selected_project_details" {
+  value = data.zillizcloud_project.selected_project
 }
