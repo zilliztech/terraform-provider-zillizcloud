@@ -18,7 +18,7 @@ description: |-
 ### Optional
 
 - `id` (String) Project Identifier
-- `name` (String) Project Name
+- `name` (String, Deprecated) Project Name
 
 ### Read-Only
 
