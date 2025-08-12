@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 	util "github.com/zilliztech/terraform-provider-zillizcloud/client/retry"
+	customvalidator "github.com/zilliztech/terraform-provider-zillizcloud/internal/validator"
 )
 
 const (
@@ -192,6 +193,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "A map of labels to assign to the cluster. Labels are key-value pairs that can be used to organize and categorize clusters.",
 				Optional:            true,
 				ElementType:         types.StringType,
+				Validators: []validator.Map{
+					customvalidator.K8sLabelMapValidator{},
+				},
 			},
 			"replica": schema.Int64Attribute{
 				MarkdownDescription: "The number of replicas for the cluster. Defaults to 1.",
