@@ -47,6 +47,7 @@ func (d *ProjectDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Project Name",
+				DeprecationMessage:  "This attribute is deprecated and will be removed in a future version. Please use 'id' instead.",
 				Optional:            true,
 			},
 			"instance_count": schema.Int64Attribute{
@@ -117,7 +118,7 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	// not found
 	if len(projects) == 0 {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Project not found: %s", state.Name))
+		resp.Diagnostics.AddError("Client Error", "Project not found")
 		return
 	}
 
