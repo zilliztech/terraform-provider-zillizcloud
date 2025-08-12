@@ -22,7 +22,6 @@
       "durationcheck",
       "errcheck",
       "forcetypeassert",
-      "godot",
       "govet",
       "ineffassign",
       "makezero",
@@ -31,8 +30,7 @@
       "predeclared",
       "staticcheck",
       "unconvert",
-      "unparam",
-      "unused"
+      "unparam"
     ],
     "exclusions": {
       "generated": "lax",

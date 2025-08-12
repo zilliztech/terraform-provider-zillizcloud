@@ -28,8 +28,9 @@ type Client struct {
 	userAgent  string
 	HttpClient HttpClient
 
-	logger  *LoggerWrapper
-	traceId string
+	logger         *LoggerWrapper
+	traceId        string
+	logHttpTraffic bool
 }
 
 var (
@@ -126,6 +127,7 @@ func applyDefaults(c *Client) {
 		WithDefaultBaseUrl(),
 		WithDefaultUserAgent(),
 		WithDefaultTraceID(),
+		WithDefaultHttpTrafficLogging(),
 		WithDefaultLogger(),
 	}
 	for _, opt := range defaultOptions {
@@ -194,6 +196,12 @@ func WithLogger(logger *log.Logger) Option {
 	}
 }
 
+func WithHttpTrafficLogging(enabled bool) Option {
+	return func(c *Client) {
+		c.logHttpTraffic = enabled
+	}
+}
+
 func WithDefaultBaseUrl() Option {
 	return func(c *Client) {
 		if c.baseUrl == "" && c.RegionId != "" {
@@ -238,7 +246,7 @@ func WithDefaultUserAgent() Option {
 func WithDefaultLogger() Option {
 	return func(c *Client) {
 		if c.logger == nil {
-			if os.Getenv("ZILLIZ_DEBUG") == "true" {
+			if c.logHttpTraffic {
 				f, err := os.OpenFile("debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
 					// fallback to stderr
@@ -258,6 +266,12 @@ func WithDefaultTraceID() Option {
 		if c.traceId == "" {
 			c.traceId = generateShortID()
 		}
+	}
+}
+
+func WithDefaultHttpTrafficLogging() Option {
+	return func(c *Client) {
+		c.logHttpTraffic = os.Getenv("ZILLIZCLOUD_DEBUG") == "true"
 	}
 }
 
@@ -313,18 +327,40 @@ func (c *Client) newRequest(method string, u *url.URL, body interface{}) (*http.
 }
 
 func (c *Client) doRequest(req *http.Request, v any) error {
+	// Log the request if HTTP traffic logging is enabled
+	if c.logHttpTraffic {
+		c.logger.LogRequest(req)
+	}
+
 	res, err := c.HttpClient.Do(req)
 	if err != nil {
+		if c.logHttpTraffic {
+			c.logger.Errorf("HTTP request failed: %v", err)
+		}
 		return err
 	}
 
 	defer res.Body.Close()
 
-	if res.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("http status code: %d, error: %w", res.StatusCode, parseError(res.Body))
+	// Read the response body first so we can log it
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		if c.logHttpTraffic {
+			c.logger.Errorf("Failed to read response body: %v", err)
+		}
+		return err
 	}
 
-	return c.decodeResponse(res.Body, v)
+	// Log the response if HTTP traffic logging is enabled
+	if c.logHttpTraffic {
+		c.logger.LogResponse(res, bodyBytes)
+	}
+
+	if res.StatusCode >= http.StatusBadRequest {
+		return fmt.Errorf("http status code: %d, error: %w", res.StatusCode, parseError(bytes.NewReader(bodyBytes)))
+	}
+
+	return c.decodeResponse(bytes.NewReader(bodyBytes), v)
 }
 
 func parseError(body io.Reader) error {
@@ -350,7 +386,6 @@ func (c *Client) decodeResponse(body io.Reader, v any) error {
 	if err != nil {
 		return err
 	}
-	c.logger.logResponseBody(b)
 
 	var apierr Error
 	err = json.Unmarshal(b, &apierr)
