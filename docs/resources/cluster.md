@@ -45,7 +45,17 @@ resource "zillizcloud_cluster" "standard_plan_cluster" {
   cluster_name = "Cluster-03"                        # The name of the cluster
   region_id    = "aws-us-east-2"                     # The region where the cluster will be deployed
   plan         = "Standard"                          # The service plan for the cluster
-  cu_size      = "1"                                 # The size of the compute unit
+  cu_size      = 1                                   # The size of the compute unit
+  cu_type      = "Performance-optimized"             # The type of compute unit, optimized for performance
+  project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
+}
+
+
+resource "zillizcloud_cluster" "enterprise_plan_cluster" {
+  cluster_name = "Cluster-04"                        # The name of the cluster
+  region_id    = "aws-us-east-2"                     # The region where the cluster will be deployed
+  plan         = "Enterprise"                        # The service plan for the cluster
+  cu_size      = 1                                   # The size of the compute unit
   cu_type      = "Performance-optimized"             # The type of compute unit, optimized for performance
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
 }
