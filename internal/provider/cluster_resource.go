@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -201,7 +200,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The number of replicas for the cluster. Defaults to 1.",
 				Optional:            true,
 				Computed:            true,
-				Default:             int64default.StaticInt64(1),
 			},
 		},
 		Blocks: map[string]schema.Block{
