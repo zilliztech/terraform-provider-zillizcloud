@@ -67,16 +67,15 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
 ### Required
 
 - `cluster_name` (String) The name of the cluster to be created. It is a string of no more than 32 characters.
-- `plan` (String) The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.
 - `project_id` (String) The ID of the project where the cluster is to be created.
 
 ### Optional
 
-- `cluster_type` (String, Deprecated) [Deprecated] The type of CU associated with the cluster. Use 'cu_type' instead. Possible values are Performance-optimized and Capacity-optimized.
 - `cu_size` (Number) The size of the CU to be used for the created cluster. It is an integer from 1 to 256.
-- `cu_type` (String) The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.
+- `cu_type` (String) The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Extended-capacity.
 - `desired_status` (String) The desired status of the cluster. Possible values are RUNNING and SUSPENDED. Defaults to RUNNING.
 - `labels` (Map of String) A map of labels to assign to the cluster. Labels are key-value pairs that can be used to organize and categorize clusters.
+- `plan` (String) The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.
 - `region_id` (String) The ID of the region where the cluster exists.
 - `replica` (Number) The number of replicas for the cluster. Defaults to 1.
 - `status` (String) The current status of the cluster. Possible values are RUNNING, SUSPENDING, SUSPENDED, and RESUMING.

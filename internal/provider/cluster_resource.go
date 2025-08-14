@@ -80,7 +80,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			},
 			"plan": schema.StringAttribute{
 				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.",
-				Required:            true,
+				Optional:            true,
 			},
 			"cu_size": schema.Int64Attribute{
 				MarkdownDescription: "The size of the CU to be used for the created cluster. It is an integer from 1 to 256.",
@@ -91,22 +91,18 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 				Validators: []validator.Int64{
 					int64validator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("plan"),
 						path.MatchRelative().AtParent().AtName("cu_type"),
 					),
 				},
 			},
 			"cu_type": schema.StringAttribute{
-				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Cost-optimized. This parameter defaults to Performance-optimized. The value defaults to Performance-optimized.",
+				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Extended-capacity.",
 				Optional:            true,
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 				Validators: []validator.String{
+					stringvalidator.OneOf("Performance-optimized", "Capacity-optimized", "Extended-capacity"),
 					stringvalidator.AlsoRequires(
 						path.MatchRelative().AtParent().AtName("cu_size"),
-						path.MatchRelative().AtParent().AtName("plan"),
 					),
 				},
 			},
@@ -142,16 +138,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"region_id": schema.StringAttribute{
 				MarkdownDescription: "The ID of the region where the cluster exists.",
 				Optional:            true,
-				Computed:            true,
-			},
-			"cluster_type": schema.StringAttribute{
-				MarkdownDescription: "[Deprecated] The type of CU associated with the cluster. Use 'cu_type' instead. Possible values are Performance-optimized and Capacity-optimized.",
-				Computed:            true,
-				Optional:            true,
-				DeprecationMessage:  "This attribute is deprecated and will be removed in a future version. Please use 'cu_type' instead.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"desired_status": schema.StringAttribute{
 				MarkdownDescription: "The desired status of the cluster. Possible values are RUNNING and SUSPENDED. Defaults to RUNNING.",
@@ -262,7 +248,8 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	checkPlan := func(data ClusterResourceModel) (bool, error) {
 
-		if data.Plan.IsNull() {
+		// plan could be empty in byoc env
+		if data.Plan.IsNull() || data.Plan.IsUnknown() {
 			return true, nil
 		}
 
@@ -602,7 +589,7 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 		}
 	}
 
-	if cluster.Plan.IsNull() || zilliz.Plan(cluster.Plan.ValueString()) == zilliz.FreePlan {
+	if zilliz.Plan(cluster.Plan.ValueString()) == zilliz.FreePlan {
 		response, err = c.client.CreateFreeCluster(zilliz.CreateServerlessClusterParams{
 			RegionId:    regionId,
 			ClusterName: cluster.ClusterName.ValueString(),
@@ -618,6 +605,15 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
 			RegionId:    regionId,
 			Plan:        zilliz.Plan(cluster.Plan.ValueString()),
+			ClusterName: cluster.ClusterName.ValueString(),
+			CUSize:      int(cluster.CuSize.ValueInt64()),
+			CUType:      cluster.CuType.ValueString(),
+			ProjectId:   cluster.ProjectId.ValueString(),
+			Labels:      labels,
+		})
+	} else {
+		// byoc env if plan is not set
+		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
 			ClusterName: cluster.ClusterName.ValueString(),
 			CUSize:      int(cluster.CuSize.ValueInt64()),
 			CUType:      cluster.CuType.ValueString(),
@@ -680,7 +676,6 @@ type ClusterResourceModel struct {
 	Prompt             types.String   `tfsdk:"prompt"`
 	Description        types.String   `tfsdk:"description"`
 	RegionId           types.String   `tfsdk:"region_id"`
-	ClusterType        types.String   `tfsdk:"cluster_type"`
 	Status             types.String   `tfsdk:"status"`
 	DesiredStatus      types.String   `tfsdk:"desired_status"`
 	ConnectAddress     types.String   `tfsdk:"connect_address"`
@@ -694,17 +689,11 @@ type ClusterResourceModel struct {
 // populate the ClusterResourceModel with the input which is the response from the API.
 func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	data.ClusterId = input.ClusterId
-	data.Plan = input.Plan
 	data.ClusterName = input.ClusterName
 	data.CuSize = input.CuSize
 	data.CuType = input.CuType
-	data.ClusterType = input.CuType
 	data.ProjectId = input.ProjectId
-	// data.Username = input.Username
-	// data.Password = input.Password
-	// data.Prompt = input.Prompt
 	data.Description = input.Description
-	data.RegionId = input.RegionId
 	data.Status = input.Status
 	data.DesiredStatus = input.Status
 	data.ConnectAddress = input.ConnectAddress
