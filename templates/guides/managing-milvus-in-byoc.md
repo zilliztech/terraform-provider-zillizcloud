@@ -59,7 +59,7 @@ resource "zillizcloud_cluster" "a_cluster" {
   # (Required) The ID of the project where the cluster will be created.
   project_id   = data.zillizcloud_project.this.id
 
-  # (Optional) A map of key-value pairs to be passed as labels to the underlying Milvus pod.
+  # (Optional) Labels are key-value pairs that are attached to your Milvus pods. By using these labels, you can tag each pod with specific identifiers, such as a team name or service name etc. This allows your team to easily monitor compute resource consumption for each labeled workload and accurately allocate the associated infrastructure costs to the correct team or project.
   labels = {
     tenant = "infra"
   }
