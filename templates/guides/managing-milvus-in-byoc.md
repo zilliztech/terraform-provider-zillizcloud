@@ -44,12 +44,6 @@ resource "zillizcloud_cluster" "a_cluster" {
   # (Required) A unique and descriptive name for the cluster.
   cluster_name = "a-cluster-name"
 
-  # (Required) The cloud provider and region for deployment (e.g., "aws-us-west-2","aws-eu-central-1","gcp-us-west1").
-  region_id    = "aws-us-west-2"
-
-  # (Required) The service plan for the cluster. For BYOC (Bring Your Own Cloud) deployments, "Enterprise" is the only valid value.
-  plan         = "Enterprise"
-
   # (Required) The size of the Compute Unit (CU), defining the cluster's base resources.
   cu_size      = 1
 
