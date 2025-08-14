@@ -81,7 +81,7 @@ To permanently delete a cluster and its associated resources, use Terraform's de
 Update your `main.tf` if needed (e.g., remove or comment out unrelated resources), then run:
 
 ```bash
-terraform destroy
+terraform apply
 ```
 
 Confirm with `yes`. This will deprovision the cluster defined in the configuration. Always review the plan with `terraform plan -destroy` beforehand to avoid accidental deletions.
