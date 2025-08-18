@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -186,6 +187,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The number of replicas for the cluster. Defaults to 1.",
 				Optional:            true,
 				Computed:            true,
+				Default:             int64default.StaticInt64(1),
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -699,8 +701,11 @@ func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	data.ConnectAddress = input.ConnectAddress
 	data.PrivateLinkAddress = input.PrivateLinkAddress
 	data.CreateTime = input.CreateTime
+	data.Plan = input.Plan
 	if !input.Labels.IsNull() {
 		data.Labels = input.Labels
 	}
-	data.Replica = input.Replica
+	if input.Plan.ValueString() == string(zilliz.EnterprisePlan) || input.Plan.ValueString() == string(zilliz.StandardPlan) {
+		data.Replica = input.Replica
+	}
 }
