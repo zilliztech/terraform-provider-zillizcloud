@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -105,11 +106,18 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	var filteredProjects []zilliz.Project
 	for _, p := range projects {
+
 		if types.StringValue(p.ProjectId) == state.Id {
 			filteredProjects = append(filteredProjects, p)
 			break
 		}
 
+		if p.ProjectId == os.Getenv("ZILLIZCLOUD_PROJECT_ID") {
+			filteredProjects = append(filteredProjects, p)
+			break
+		}
+
+		// deprecated: use id instead
 		if types.StringValue(p.ProjectName) == state.Name {
 			filteredProjects = append(filteredProjects, p)
 		}
