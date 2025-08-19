@@ -15,6 +15,8 @@ import (
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 	byoc "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc"
 	byoc_op "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc_i"
+
+	cluster "github.com/zilliztech/terraform-provider-zillizcloud/internal/cluster"
 )
 
 // Ensure ZillizProvider satisfies various provider interfaces.
@@ -99,7 +101,7 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 
 func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewClusterResource,
+		cluster.NewClusterResource,
 		byoc.NewBYOCProjectResource,
 		byoc_op.NewBYOCOpProjectSettingsResource,
 		byoc_op.NewBYOCOpProjectResource,
@@ -119,8 +121,8 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewCloudProvidersDataSource,
 		NewCloudRegionsDataSource,
 		NewProjectDataSource,
-		NewClustersDataSource,
-		NewClusterDataSource,
+		cluster.NewClustersDataSource,
+		cluster.NewClusterDataSource,
 		byoc.NewExternalIdDataSource,
 		byoc_op.NewBYOCOpProjectSettingsData,
 		NewUsersDataSource,
