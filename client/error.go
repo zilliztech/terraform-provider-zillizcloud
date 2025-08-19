@@ -5,12 +5,13 @@ import (
 )
 
 type Error struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	RequestId string `json:"requestId"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
 }
 
 func (err Error) Error() string {
-	return fmt.Sprintf("code:%d,Message:%s", err.Code, err.Message)
+	return fmt.Sprintf("Error[%d]:%s. RequestId:%s", err.Code, err.Message, err.RequestId)
 }
 
 func (err Error) Is(target error) bool {

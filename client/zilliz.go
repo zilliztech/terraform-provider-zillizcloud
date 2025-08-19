@@ -360,7 +360,7 @@ func (c *Client) doRequest(req *http.Request, v any) error {
 		return fmt.Errorf("http status code: %d, error: %w", res.StatusCode, parseError(bytes.NewReader(bodyBytes)))
 	}
 
-	return c.decodeResponse(bytes.NewReader(bodyBytes), v)
+	return c.decodeResponse(bytes.NewReader(bodyBytes), res.Header.Get("requestid"), v)
 }
 
 func parseError(body io.Reader) error {
@@ -378,7 +378,7 @@ func parseError(body io.Reader) error {
 	return e
 }
 
-func (c *Client) decodeResponse(body io.Reader, v any) error {
+func (c *Client) decodeResponse(body io.Reader, requestId string, v any) error {
 	if v == nil {
 		return nil
 	}
@@ -392,6 +392,7 @@ func (c *Client) decodeResponse(body io.Reader, v any) error {
 	// if the error code is 0 or 200, it means the request is successful
 	// otherwise, it means the request is failed
 	if err == nil && apierr.Code != 200 && apierr.Code != 0 {
+		apierr.RequestId = requestId
 		return &apierr
 	}
 	err = json.Unmarshal(b, v)
