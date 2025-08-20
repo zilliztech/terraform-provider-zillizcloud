@@ -78,6 +78,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"plan": schema.StringAttribute{
 				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.",
 				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("Enterprise"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("Free", "Serverless", "Standard", "Enterprise"),
+				},
 			},
 			"cu_size": schema.Int64Attribute{
 				MarkdownDescription: "The size of the CU to be used for the created cluster. It is an integer from 1 to 256.",
@@ -86,21 +91,18 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
+				Default: int64default.StaticInt64(1),
 				Validators: []validator.Int64{
-					int64validator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("cu_type"),
-					),
+					int64validator.AtLeast(1),
 				},
 			},
 			"cu_type": schema.StringAttribute{
 				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Extended-capacity.",
 				Optional:            true,
 				Computed:            true,
+				Default:             stringdefault.StaticString("Performance-optimized"),
 				Validators: []validator.String{
 					stringvalidator.OneOf("Performance-optimized", "Capacity-optimized", "Extended-capacity"),
-					stringvalidator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("cu_size"),
-					),
 				},
 			},
 			"username": schema.StringAttribute{
@@ -532,10 +534,9 @@ type ClusterResourceModel struct {
 
 // populate the ClusterResourceModel with the input which is the response from the API.
 func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
+
 	data.ClusterId = input.ClusterId
 	data.ClusterName = input.ClusterName
-	data.CuSize = input.CuSize
-	data.CuType = input.CuType
 	data.ProjectId = input.ProjectId
 	data.Description = input.Description
 	data.Status = input.Status
@@ -547,7 +548,16 @@ func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	if !input.Labels.IsNull() {
 		data.Labels = input.Labels
 	}
-	if input.Plan.ValueString() == string(zilliz.EnterprisePlan) || input.Plan.ValueString() == string(zilliz.StandardPlan) {
-		data.Replica = input.Replica
+	data.Replica = input.Replica
+	data.CuSize = input.CuSize
+	data.CuType = input.CuType
+
+	// only for free or serverless plan, set default value
+	plan := input.Plan.ValueString()
+	isFreeOrServerless := plan == string(zilliz.FreePlan) || plan == string(zilliz.ServerlessPlan)
+	if isFreeOrServerless {
+		data.CuSize = types.Int64Value(1)
+		data.CuType = types.StringValue("Performance-optimized")
+		data.Replica = types.Int64Value(1)
 	}
 }
