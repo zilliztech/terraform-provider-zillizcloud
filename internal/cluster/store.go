@@ -65,7 +65,7 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		ConnectAddress:     types.StringValue(cluster.ConnectAddress),
 		PrivateLinkAddress: types.StringValue(cluster.PrivateLinkAddress),
 		Labels:             labels,
-		Replica:            types.Int64Value(func() int64 {
+		Replica: types.Int64Value(func() int64 {
 			if cluster.Replica == 0 {
 				return 1
 			}

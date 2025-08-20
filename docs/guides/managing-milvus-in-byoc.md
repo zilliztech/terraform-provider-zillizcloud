@@ -44,10 +44,10 @@ resource "zillizcloud_cluster" "a_cluster" {
   # (Required) A unique and descriptive name for the cluster.
   cluster_name = "a-cluster-name"
 
-  # (Required) The size of the Compute Unit (CU), defining the cluster's base resources.
+  # (Optional) The size of the Compute Unit (CU), defining the cluster's base resources.
   cu_size      = 1
 
-  # (Required) The type of Compute Unit. Valid values: "Performance-optimized", "Capacity-optimized".
+  # (Optional) The type of Compute Unit. Valid values: "Performance-optimized", "Capacity-optimized".
   cu_type      = "Performance-optimized"
 
   # (Required) The ID of the project where the cluster will be created.
