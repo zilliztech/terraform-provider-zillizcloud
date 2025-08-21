@@ -62,6 +62,28 @@ func (c *Client) ModifyReplica(clusterId string, params *ModifyReplicaParams) (*
 	return &response.Data.ClusterId, err
 }
 
+// update labels
+type UpdateLabelsParams struct {
+	Labels map[string]string `json:"labels"`
+}
+
+func (c *Client) UpdateLabels(clusterId string, params *UpdateLabelsParams) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("PUT", "clusters/"+clusterId+"/labels", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
+func (c *Client) GetLabels(clusterId string) (map[string]string, error) {
+	var response zillizResponse[struct {
+		Labels map[string]string `json:"labels"`
+	}]
+	err := c.do("GET", "clusters/"+clusterId+"/labels", nil, &response)
+	return response.Data.Labels, err
+}
+
 type DropClusterResponse struct {
 	ClusterId string `json:"clusterId"`
 }

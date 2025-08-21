@@ -17,6 +17,9 @@ func TestAccClusterResource(t *testing.T) {
 		t.Run("ServerlessPlan", testAccClusterResourceServerlessPlan)
 		t.Run("StandardPlan", testAccClusterResourceStandardPlan)
 	})
+	t.Run("BYOCEnv", func(t *testing.T) {
+		t.Run("UpdateLabels", testAccClusterResourceUpdateLabels)
+	})
 }
 
 func testAccClusterResourceFreePlan(t *testing.T) {
@@ -243,6 +246,71 @@ resource "zillizcloud_cluster" "test" {
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+				),
+			},
+		},
+	})
+}
+
+// test update labels
+func testAccClusterResourceUpdateLabels(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+					cluster_name = "a-byoc-cluster"
+					project_id   = data.zillizcloud_project.default.id
+					labels = {
+						"key1" = "value1"
+						"key2" = "value2"
+					}
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "labels.key1", "value1"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "labels.key2", "value2"),
+				),
+			},
+			// update labels
+			{
+				Config: provider.ProviderConfig + `
+				data "zillizcloud_project" "default" {
+				}
+
+				resource "zillizcloud_cluster" "test" {
+					cluster_name = "a-byoc-cluster"
+					project_id   = data.zillizcloud_project.default.id
+					labels = {
+						"key2" = "val2"
+						"key3" = "value3"
+					}
+				}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "labels.key2", "val2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "labels.key3", "value3"),
+				),
+			},
+			// delete labels
+			{
+				Config: provider.ProviderConfig + `
+				data "zillizcloud_project" "default" {
+				}
+
+				resource "zillizcloud_cluster" "test" {
+					cluster_name = "a-byoc-cluster"
+					project_id   = data.zillizcloud_project.default.id
+				}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// no attribute should be set
+					resource.TestCheckNoResourceAttr("zillizcloud_cluster.test", "labels.%"),
 				),
 			},
 		},

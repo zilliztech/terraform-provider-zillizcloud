@@ -9,12 +9,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -176,7 +178,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"labels": schema.MapAttribute{
 				MarkdownDescription: "A map of labels to assign to the cluster. Labels are key-value pairs that can be used to organize and categorize clusters.",
 				Optional:            true,
+				Computed:            true,
 				ElementType:         types.StringType,
+				Default: mapdefault.StaticValue(
+					types.MapValueMust(types.StringType, map[string]attr.Value{}),
+				),
 				Validators: []validator.Map{
 					customvalidator.K8sLabelMapValidator{},
 				},
@@ -236,6 +242,19 @@ func CloneClient(ctx context.Context, client *zilliz.Client, data *ClusterResour
 	tflog.Info(ctx, "Clone Client...")
 
 	return client.Clone(zilliz.WithCloudRegionId(regionId))
+}
+
+func convertTerraformMapToStringMap(terraformMap types.Map) map[string]string {
+	labels := make(map[string]string)
+	if !terraformMap.IsNull() && !terraformMap.IsUnknown() {
+		elements := terraformMap.Elements()
+		for k, v := range elements {
+			if strValue, ok := v.(types.String); ok {
+				labels[k] = strValue.ValueString()
+			}
+		}
+	}
+	return labels
 }
 
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -299,7 +318,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	data.populate(cluster)
+	data.populate(cluster, dummyUpdataFn)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -317,10 +336,16 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
 		return
 	}
-	tflog.Info(ctx, fmt.Sprintf("Cluster: %+v", cluster))
 
-	state.populate(cluster)
-	tflog.Info(ctx, fmt.Sprintf("State: %+v", state))
+	labels, err := r.store.GetLabels(ctx, state.ClusterId.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get cluster labels", err.Error())
+		return
+	}
+
+	state.populate(cluster, func(input *ClusterResourceModel) {
+		input.Labels = labels
+	})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -440,13 +465,26 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
+	// Handle labels update
+	if !plan.Labels.Equal(state.Labels) {
+		labels := convertTerraformMapToStringMap(plan.Labels)
+
+		err := r.store.UpdateLabels(ctx, state.ClusterId.ValueString(), labels)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to update cluster labels", err.Error())
+			return
+		}
+		state.Labels = plan.Labels
+
+	}
+
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
 		return
 	}
 
-	state.populate(cluster)
+	state.populate(cluster, dummyUpdataFn)
 	state.Timeouts = plan.Timeouts
 
 	// Save updated data into Terraform state
@@ -533,7 +571,7 @@ type ClusterResourceModel struct {
 }
 
 // populate the ClusterResourceModel with the input which is the response from the API.
-func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
+func (data *ClusterResourceModel) populate(input *ClusterResourceModel, updateFn func(input *ClusterResourceModel)) {
 
 	data.ClusterId = input.ClusterId
 	data.ClusterName = input.ClusterName
@@ -545,9 +583,6 @@ func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	data.PrivateLinkAddress = input.PrivateLinkAddress
 	data.CreateTime = input.CreateTime
 	data.Plan = input.Plan
-	if !input.Labels.IsNull() {
-		data.Labels = input.Labels
-	}
 	data.Replica = input.Replica
 	data.CuSize = input.CuSize
 	data.CuType = input.CuType
@@ -560,4 +595,10 @@ func (data *ClusterResourceModel) populate(input *ClusterResourceModel) {
 		data.CuType = types.StringValue("Performance-optimized")
 		data.Replica = types.Int64Value(1)
 	}
+
+	if updateFn != nil {
+		updateFn(data)
+	}
 }
+
+func dummyUpdataFn(input *ClusterResourceModel) {}
