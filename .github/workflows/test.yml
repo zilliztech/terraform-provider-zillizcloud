@@ -54,6 +54,41 @@ jobs:
           git diff --compact-summary --exit-code || \
             (echo; echo "Unexpected difference in directories after code generation. Run 'go generate ./...' command and commit."; exit 1)
 
+  # Run unit tests with mock server
+  unit-test:
+    name: Unit Tests with Mock Server
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mock-server:
+        image: ghcr.io/${{ github.repository }}/mock-server:latest
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8080/v2/byoc/describe || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - run: go mod download
+      - name: Wait for mock server to be ready
+        run: |
+          timeout 30s bash -c 'until curl -f http://localhost:8080/v2/byoc/describe; do sleep 1; done'
+      - name: Run unit tests
+        env:
+          ZILLIZCLOUD_HOST_ADDRESS: "http://localhost:8080"
+          ZILLIZCLOUD_API_KEY: "xxxxxxxxxxx"
+          TF_ACC: "1"
+        run: go test -v ./internal/cluster   
+        timeout-minutes: 10
+
   # Run acceptance tests in a matrix with Terraform CLI versions
   test:
     # disable this job for now
