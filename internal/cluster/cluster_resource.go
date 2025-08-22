@@ -44,8 +44,9 @@ func NewClusterResource() resource.Resource {
 
 // ClusterResource defines the resource implementation.
 type ClusterResource struct {
-	client *zilliz.Client
-	store  ClusterStore
+	client  *zilliz.Client
+	store   ClusterStore
+	timeout func() time.Duration
 }
 
 func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -318,7 +319,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	data.populate(cluster, dummyUpdataFn)
+	data.populate(cluster)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -336,6 +337,7 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
 		return
 	}
+	state.populate(cluster)
 
 	labels, err := r.store.GetLabels(ctx, state.ClusterId.ValueString())
 	if err != nil {
@@ -343,10 +345,83 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	state.populate(cluster, func(input *ClusterResourceModel) {
-		input.Labels = labels
-	})
+	state.Labels = labels
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *ClusterResource) handleCuSizeUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	err := r.store.UpgradeCuSize(ctx, state.ClusterId.ValueString(), int(plan.CuSize.ValueInt64()))
+	if err != nil {
+		diags.AddError("Failed to modify cluster", err.Error())
+		return diags
+	}
+
+	diags.Append(r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), "RUNNING")...)
+	return diags
+}
+
+func (r *ClusterResource) handleReplicaUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	err := r.store.ModifyReplica(ctx, state.ClusterId.ValueString(), int(plan.Replica.ValueInt64()))
+	if err != nil {
+		diags.AddError("Failed to modify cluster replica", err.Error())
+		return diags
+	}
+
+	diags.Append(r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), "RUNNING")...)
+	return diags
+}
+
+func (r *ClusterResource) handleStatusUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if !plan.isStatusChangeRequired(state) {
+		return diags
+	}
+
+	action := plan.getStatusAction(state)
+	var err error
+	var targetStatus string
+
+	switch action {
+	case StatusActionSuspend:
+		err = r.store.SuspendCluster(ctx, state.ClusterId.ValueString())
+		targetStatus = "SUSPENDED"
+		if err != nil {
+			diags.AddError("Failed to suspend cluster", err.Error())
+			return diags
+		}
+	case StatusActionResume:
+		err = r.store.ResumeCluster(ctx, state.ClusterId.ValueString())
+		targetStatus = "RUNNING"
+		if err != nil {
+			diags.AddError("Failed to resume cluster", err.Error())
+			return diags
+		}
+	case StatusActionNone:
+		return diags
+	}
+
+	diags.Append(r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), targetStatus)...)
+	return diags
+}
+
+func (r *ClusterResource) handleLabelsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	labels := convertTerraformMapToStringMap(plan.Labels)
+
+	err := r.store.UpdateLabels(ctx, state.ClusterId.ValueString(), labels)
+	if err != nil {
+		diags.AddError("Failed to update cluster labels", err.Error())
+		return diags
+	}
+
+	return diags
 }
 
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -354,6 +429,15 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	var plan ClusterResourceModel
 	var state ClusterResourceModel
+
+	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.timeout = func() time.Duration {
+		return updateTimeout
+	}
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -367,115 +451,31 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	if plan.CuSize.ValueInt64() != state.CuSize.ValueInt64() {
-		err := r.store.UpgradeCuSize(ctx, state.ClusterId.ValueString(), int(plan.CuSize.ValueInt64()))
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to modify cluster", err.Error())
-			return
-		}
-		updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
+	if plan.isCuSizeChanged(state) {
+		resp.Diagnostics.Append(r.handleCuSizeUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	if plan.Replica.ValueInt64() != state.Replica.ValueInt64() {
-		err := r.store.ModifyReplica(ctx, state.ClusterId.ValueString(), int(plan.Replica.ValueInt64()))
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to modify cluster replica", err.Error())
-			return
-		}
-		// Wait for SUSPENDED status
-		updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
+	if plan.isReplicaChanged(state) {
+		resp.Diagnostics.Append(r.handleReplicaUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	// Handle desired_status change
-	if !plan.DesiredStatus.IsNull() && plan.DesiredStatus.ValueString() != "" {
-		desiredStatus := plan.DesiredStatus.ValueString()
-		currentStatus := state.Status.ValueString()
-
-		// Check if desired_status is different from current status
-		if desiredStatus == "SUSPENDED" && currentStatus == "RUNNING" {
-			// Suspend the cluster
-			err := r.store.SuspendCluster(ctx, state.ClusterId.ValueString())
-			if err != nil {
-				resp.Diagnostics.AddError("Failed to suspend cluster", err.Error())
-				return
-			}
-			// Wait for SUSPENDED status
-			updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "SUSPENDED")...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		} else if desiredStatus == "RUNNING" && currentStatus == "SUSPENDED" {
-			// Resume the cluster
-			err := r.store.ResumeCluster(ctx, state.ClusterId.ValueString())
-			if err != nil {
-				resp.Diagnostics.AddError("Failed to resume cluster", err.Error())
-				return
-			}
-			// Wait for RUNNING status
-			updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		}
+	resp.Diagnostics.Append(r.handleStatusUpdate(ctx, plan, state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	// Handle the case where desired_status is not provided - default to RUNNING
-	if plan.DesiredStatus.IsNull() && state.Status.ValueString() == "SUSPENDED" {
-		// Resume the cluster to maintain default behavior
-		err := r.store.ResumeCluster(ctx, state.ClusterId.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to resume cluster", err.Error())
-			return
-		}
-		// Wait for RUNNING status
-		updateTimeout, diags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
-		resp.Diagnostics.Append(diags...)
+	if plan.isLabelsChanged(state) {
+		resp.Diagnostics.Append(r.handleLabelsUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
-			return
-		}
-		resp.Diagnostics.Append(r.waitForStatus(ctx, updateTimeout, state.ClusterId.ValueString(), "RUNNING")...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	// Handle labels update
-	if !plan.Labels.Equal(state.Labels) {
-		labels := convertTerraformMapToStringMap(plan.Labels)
-
-		err := r.store.UpdateLabels(ctx, state.ClusterId.ValueString(), labels)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to update cluster labels", err.Error())
 			return
 		}
 		state.Labels = plan.Labels
-
 	}
 
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
@@ -484,7 +484,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	state.populate(cluster, dummyUpdataFn)
+	state.populate(cluster)
 	state.Timeouts = plan.Timeouts
 
 	// Save updated data into Terraform state
@@ -547,58 +547,3 @@ func (r *ClusterResource) waitForStatus(ctx context.Context, timeout time.Durati
 
 	return diags
 }
-
-type ClusterResourceModel struct {
-	ClusterId          types.String   `tfsdk:"id"`
-	Plan               types.String   `tfsdk:"plan"`
-	ClusterName        types.String   `tfsdk:"cluster_name"`
-	CuSize             types.Int64    `tfsdk:"cu_size"`
-	CuType             types.String   `tfsdk:"cu_type"`
-	ProjectId          types.String   `tfsdk:"project_id"`
-	Username           types.String   `tfsdk:"username"`
-	Password           types.String   `tfsdk:"password"`
-	Prompt             types.String   `tfsdk:"prompt"`
-	Description        types.String   `tfsdk:"description"`
-	RegionId           types.String   `tfsdk:"region_id"`
-	Status             types.String   `tfsdk:"status"`
-	DesiredStatus      types.String   `tfsdk:"desired_status"`
-	ConnectAddress     types.String   `tfsdk:"connect_address"`
-	PrivateLinkAddress types.String   `tfsdk:"private_link_address"`
-	CreateTime         types.String   `tfsdk:"create_time"`
-	Labels             types.Map      `tfsdk:"labels"`
-	Replica            types.Int64    `tfsdk:"replica"`
-	Timeouts           timeouts.Value `tfsdk:"timeouts"`
-}
-
-// populate the ClusterResourceModel with the input which is the response from the API.
-func (data *ClusterResourceModel) populate(input *ClusterResourceModel, updateFn func(input *ClusterResourceModel)) {
-
-	data.ClusterId = input.ClusterId
-	data.ClusterName = input.ClusterName
-	data.ProjectId = input.ProjectId
-	data.Description = input.Description
-	data.Status = input.Status
-	data.DesiredStatus = input.Status
-	data.ConnectAddress = input.ConnectAddress
-	data.PrivateLinkAddress = input.PrivateLinkAddress
-	data.CreateTime = input.CreateTime
-	data.Plan = input.Plan
-	data.Replica = input.Replica
-	data.CuSize = input.CuSize
-	data.CuType = input.CuType
-
-	// only for free or serverless plan, set default value
-	plan := input.Plan.ValueString()
-	isFreeOrServerless := plan == string(zilliz.FreePlan) || plan == string(zilliz.ServerlessPlan)
-	if isFreeOrServerless {
-		data.CuSize = types.Int64Value(1)
-		data.CuType = types.StringValue("Performance-optimized")
-		data.Replica = types.Int64Value(1)
-	}
-
-	if updateFn != nil {
-		updateFn(data)
-	}
-}
-
-func dummyUpdataFn(input *ClusterResourceModel) {}
