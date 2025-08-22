@@ -162,9 +162,6 @@ func (c *Client) CreateCluster(params CreateClusterParams) (*CreateClusterRespon
 }
 
 func (c *Client) CreateDedicatedCluster(params CreateClusterParams) (*CreateClusterResponse, error) {
-	if params.RegionId == "" && c.RegionId == "" {
-		return nil, errRegionIdRequired
-	}
 	var clusterResponse zillizResponse[CreateClusterResponse]
 	err := c.do("POST", "clusters/createDedicated", params, &clusterResponse)
 	return &clusterResponse.Data, err

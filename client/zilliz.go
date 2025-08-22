@@ -100,7 +100,7 @@ func (client *Client) cluster(connectAddress string) (*Client, error) {
 
 func validate(c *Client) error {
 	checkFns := []func() error{
-		checkCloudRegionId(c),
+		// checkCloudRegionId(c),
 		checkApiKey(c),
 	}
 	for _, fn := range checkFns {
@@ -123,7 +123,6 @@ func applyOverride(c *Client) {
 func applyDefaults(c *Client) {
 	defaultOptions := []Option{
 		WithDefaultClient(),
-		WithDefaultRegion(),
 		WithDefaultBaseUrl(),
 		WithDefaultUserAgent(),
 		WithDefaultTraceID(),
@@ -223,14 +222,6 @@ func WithDefaultClient() Option {
 	return func(c *Client) {
 		if c.HttpClient == nil {
 			c.HttpClient = &http.Client{}
-		}
-	}
-}
-
-func WithDefaultRegion() Option {
-	return func(c *Client) {
-		if c.RegionId == "" {
-			c.RegionId = "gcp-us-west1"
 		}
 	}
 }
