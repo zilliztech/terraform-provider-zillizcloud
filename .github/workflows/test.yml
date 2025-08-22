@@ -58,6 +58,9 @@ jobs:
   unit-test:
     name: Unit Tests with Mock Server
     needs: build
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -83,7 +86,7 @@ jobs:
           timeout 30s bash -c 'until curl -f http://localhost:8080/v2/byoc/describe; do sleep 1; done'
       - name: Run unit tests
         env:
-          ZILLIZCLOUD_HOST_ADDRESS: "http://localhost:8080"
+          ZILLIZCLOUD_HOST_ADDRESS: "http://localhost:8080/v2"
           ZILLIZCLOUD_API_KEY: "xxxxxxxxxxx"
           TF_ACC: "1"
         run: go test -v ./internal/cluster   
