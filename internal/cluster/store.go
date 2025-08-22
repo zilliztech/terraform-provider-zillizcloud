@@ -11,13 +11,17 @@ import (
 
 type ClusterStore interface {
 	Get(ctx context.Context, clusterId string) (*ClusterResourceModel, error)
+	GetLabels(ctx context.Context, clusterId string) (types.Map, error)
 	Create(ctx context.Context, cluster *ClusterResourceModel) (*ClusterResourceModel, error)
 	Delete(ctx context.Context, clusterId string) error
 	UpgradeCuSize(ctx context.Context, clusterId string, cuSize int) error
 	ModifyReplica(ctx context.Context, clusterId string, replica int) error
 	SuspendCluster(ctx context.Context, clusterId string) error
 	ResumeCluster(ctx context.Context, clusterId string) error
+	UpdateLabels(ctx context.Context, clusterId string, labels map[string]string) error
 }
+
+var _ ClusterStore = (*ClusterStoreImpl)(nil)
 
 type ClusterStoreImpl struct {
 	client *zilliz.Client
@@ -29,14 +33,7 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		return nil, err
 	}
 
-	labels := types.MapNull(types.StringType)
-	if len(cluster.Labels) > 0 {
-		labelValues := make(map[string]attr.Value)
-		for k, v := range cluster.Labels {
-			labelValues[k] = types.StringValue(v)
-		}
-		labels, _ = types.MapValue(types.StringType, labelValues)
-	}
+	// labels := convertLabelsToTypesMap(cluster.Labels)
 
 	return &ClusterResourceModel{
 		ClusterId:   types.StringValue(cluster.ClusterId),
@@ -64,7 +61,6 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		),
 		ConnectAddress:     types.StringValue(cluster.ConnectAddress),
 		PrivateLinkAddress: types.StringValue(cluster.PrivateLinkAddress),
-		Labels:             labels,
 		Replica: types.Int64Value(func() int64 {
 			if cluster.Replica == 0 {
 				return 1
@@ -166,4 +162,33 @@ func (c *ClusterStoreImpl) SuspendCluster(ctx context.Context, clusterId string)
 func (c *ClusterStoreImpl) ResumeCluster(ctx context.Context, clusterId string) error {
 	_, err := c.client.ResumeCluster(clusterId)
 	return err
+}
+
+func (c *ClusterStoreImpl) UpdateLabels(ctx context.Context, clusterId string, labels map[string]string) error {
+	_, err := c.client.UpdateLabels(clusterId, &zilliz.UpdateLabelsParams{
+		Labels: labels,
+	})
+	return err
+}
+
+func (c *ClusterStoreImpl) GetLabels(ctx context.Context, clusterId string) (types.Map, error) {
+	labels, err := c.client.GetLabels(clusterId)
+	if err != nil {
+		return types.MapValueMust(types.StringType, map[string]attr.Value{}), err
+	}
+	return convertLabelsToTypesMap(labels), nil
+}
+
+// convertLabelsToTypesMap converts a map[string]string into a Terraform types.Map of strings.
+// Returns an empty map value when the input is nil or empty.
+func convertLabelsToTypesMap(src map[string]string) types.Map {
+	if len(src) == 0 {
+		return types.MapValueMust(types.StringType, map[string]attr.Value{})
+	}
+	values := make(map[string]attr.Value, len(src))
+	for k, v := range src {
+		values[k] = types.StringValue(v)
+	}
+	ret, _ := types.MapValue(types.StringType, values)
+	return ret
 }
