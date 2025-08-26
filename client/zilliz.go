@@ -203,8 +203,8 @@ func WithHttpTrafficLogging(enabled bool) Option {
 
 func WithDefaultBaseUrl() Option {
 	return func(c *Client) {
-		if c.baseUrl == "" && c.RegionId != "" {
-			c.baseUrl = BaseUrlFrom(c.RegionId)
+		if c.baseUrl == "" {
+			c.baseUrl = globalApiTemplateUrl
 		}
 	}
 }
