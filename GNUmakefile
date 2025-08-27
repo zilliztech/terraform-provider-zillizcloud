@@ -19,3 +19,7 @@ lint:
 
 fmt:
 	go fmt ./...
+
+.PHONY: mock-server
+mock-server:
+	cd mock-server && go run main.go
