@@ -295,9 +295,12 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	data.ClusterId = cluster.ClusterId
 	data.Username = cluster.Username
 	data.Password = cluster.Password
 	data.Prompt = cluster.Prompt
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
 	// Wait for cluster to be RUNNING
 	// Create() is passed a default timeout to use if no value
