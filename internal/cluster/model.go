@@ -48,7 +48,6 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	c.ConnectAddress = input.ConnectAddress
 	c.PrivateLinkAddress = input.PrivateLinkAddress
 	c.CreateTime = input.CreateTime
-	c.Plan = input.Plan
 	c.Replica = input.Replica
 	c.CuSize = input.CuSize
 	c.CuType = input.CuType
@@ -67,6 +66,10 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 // Comparison methods for ClusterResourceModel
 func (c *ClusterResourceModel) isCuSizeChanged(other ClusterResourceModel) bool {
 	return c.CuSize.ValueInt64() != other.CuSize.ValueInt64()
+}
+
+func (c *ClusterResourceModel) isClusterPlanChanged(other ClusterResourceModel) bool {
+	return c.Plan.ValueString() != other.Plan.ValueString()
 }
 
 func (c *ClusterResourceModel) isReplicaChanged(other ClusterResourceModel) bool {
