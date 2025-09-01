@@ -88,6 +88,8 @@ jobs:
         env:
           ZILLIZCLOUD_HOST_ADDRESS: "http://localhost:8080/v2"
           ZILLIZCLOUD_API_KEY: "xxxxxxxxxxx"
+          ZILLIZCLOUD_QPS: "1000"
+          ZILLIZCLOUD_BURST: "1000"
           TF_ACC: "1"
         run: go test -v ./internal/cluster   
         timeout-minutes: 10
