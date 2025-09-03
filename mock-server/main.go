@@ -25,6 +25,7 @@ func main() {
 			clusters.POST("/:clusterId/suspend", byoc_project.SuspendCluster)
 			clusters.POST("/:clusterId/modifyReplica", byoc_project.ModifyClusterReplica)
 			clusters.POST("/:clusterId/modify", byoc_project.ModifyCluster)
+			clusters.POST("/:clusterId/modifyProperties", byoc_project.ModifyClusterProperties)
 			clusters.GET("/:clusterId/labels", byoc_project.GetLabels)
 			clusters.PUT("/:clusterId/labels", byoc_project.UpdateLabels)
 			clusters.DELETE("/:clusterId/drop", byoc_project.DropCluster)

@@ -420,3 +420,36 @@ func UpdateLabels(c *gin.Context) {
 	})
 }
 
+func ModifyClusterProperties(c *gin.Context) {
+	clusterId := c.Param("clusterId")
+
+	if clusterId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "clusterId is required"})
+		return
+	}
+
+	var request ModifyPropertiesRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	cluster := clusterStore.Get(clusterId)
+	if cluster == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "cluster not found"})
+		return
+	}
+
+	log.Printf("[ModifyClusterProperties] clusterId: %s, changing cluster name from %s to %s", clusterId, cluster.ClusterName, request.ClusterName)
+
+	cluster.ClusterName = request.ClusterName
+	clusterStore.Set(clusterId, cluster)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": gin.H{
+			"clusterId": clusterId,
+		},
+	})
+}
+

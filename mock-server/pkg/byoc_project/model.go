@@ -403,6 +403,10 @@ type UpdateLabelsRequest struct {
 	Labels map[string]string `json:"labels"`
 }
 
+type ModifyPropertiesRequest struct {
+	ClusterName string `json:"clusterName"`
+}
+
 // Serverless cluster types
 type CreateServerlessClusterRequest struct {
 	ClusterId   string            `json:"clusterId"`
