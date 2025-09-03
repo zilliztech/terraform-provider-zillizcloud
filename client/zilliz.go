@@ -346,12 +346,13 @@ func (c *Client) doRequest(req *http.Request, v any) error {
 	if c.logHttpTraffic {
 		c.logger.LogResponse(res, bodyBytes)
 	}
+	requestId := res.Header.Get("requestid")
 
 	if res.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("http status code: %d, error: %w", res.StatusCode, parseError(bytes.NewReader(bodyBytes)))
+		return fmt.Errorf("http status code: %d, error: %w, requestId: %s", res.StatusCode, parseError(bytes.NewReader(bodyBytes)), requestId)
 	}
 
-	return c.decodeResponse(bytes.NewReader(bodyBytes), res.Header.Get("requestid"), v)
+	return c.decodeResponse(bytes.NewReader(bodyBytes), requestId, v)
 }
 
 func parseError(body io.Reader) error {
