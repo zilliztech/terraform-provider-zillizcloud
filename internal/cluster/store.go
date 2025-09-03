@@ -19,6 +19,7 @@ type ClusterStore interface {
 	SuspendCluster(ctx context.Context, clusterId string) error
 	ResumeCluster(ctx context.Context, clusterId string) error
 	UpdateLabels(ctx context.Context, clusterId string, labels map[string]string) error
+	ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -177,6 +178,13 @@ func (c *ClusterStoreImpl) GetLabels(ctx context.Context, clusterId string) (typ
 		return types.MapValueMust(types.StringType, map[string]attr.Value{}), err
 	}
 	return convertLabelsToTypesMap(labels), nil
+}
+
+func (c *ClusterStoreImpl) ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error {
+	_, err := c.client.ModifyClusterProperties(clusterId, &zilliz.ModifyPropertiesParams{
+		ClusterName: clusterName,
+	})
+	return err
 }
 
 // convertLabelsToTypesMap converts a map[string]string into a Terraform types.Map of strings.
