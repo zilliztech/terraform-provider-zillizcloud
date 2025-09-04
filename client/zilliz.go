@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,11 +11,15 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"golang.org/x/time/rate"
 )
 
 const (
-	globalApiTemplateUrl string = "https://api.cloud.zilliz.com/v2"
-	cnApiTemplateUrl     string = "https://api.cloud.zilliz.com.cn/v2"
+	globalApiTemplateUrl string  = "https://api.cloud.zilliz.com/v2"
+	cnApiTemplateUrl     string  = "https://api.cloud.zilliz.com.cn/v2"
+	DefaultQPS           float64 = 10.0 // default 10.0 requests per second
+	DefaultBurst         int64   = 10   // default 10 burst
 )
 
 type HttpClient interface {
@@ -31,6 +36,7 @@ type Client struct {
 	logger         *LoggerWrapper
 	traceId        string
 	logHttpTraffic bool
+	rateLimiter    *rate.Limiter
 }
 
 var (
@@ -266,6 +272,14 @@ func WithDefaultHttpTrafficLogging() Option {
 	}
 }
 
+func WithRateLimiter(qps float64, burst int64) Option {
+	return func(c *Client) {
+		if c.rateLimiter == nil {
+			c.rateLimiter = rate.NewLimiter(rate.Limit(qps), int(burst))
+		}
+	}
+}
+
 type zillizResponse[T any] struct {
 	Error
 	Data T `json:"data"`
@@ -321,6 +335,20 @@ func (c *Client) doRequest(req *http.Request, v any) error {
 	// Log the request if HTTP traffic logging is enabled
 	if c.logHttpTraffic {
 		c.logger.LogRequest(req)
+	}
+
+	// Apply rate limiting
+	if c.rateLimiter != nil {
+		ctx := req.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		if err := c.rateLimiter.Wait(ctx); err != nil {
+			if c.logHttpTraffic {
+				c.logger.Errorf("Rate limiter wait failed: %v", err)
+			}
+			return err
+		}
 	}
 
 	res, err := c.HttpClient.Do(req)

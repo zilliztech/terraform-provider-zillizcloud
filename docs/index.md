@@ -31,5 +31,7 @@ provider "zillizcloud" {
 ### Optional
 
 - `api_key` (String, Sensitive) Zilliz Cloud API Key
+- `burst` (Number) The maximum burst for throttle. Defaults to 10.
 - `host_address` (String) Zilliz Cloud Host Address
+- `qps` (Number) The maximum queries per second (QPS) to the Zilliz Cloud API for each resource. Defaults to 10.0.
 - `region_id` (String) Zilliz Cloud Region Id
