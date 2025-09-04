@@ -427,6 +427,43 @@ func (r *ClusterResource) handleLabelsUpdate(ctx context.Context, plan, state Cl
 	return diags
 }
 
+func getPlanRank(plan string) int {
+	switch zilliz.Plan(plan) {
+	case zilliz.FreePlan:
+		return 0
+	case zilliz.ServerlessPlan:
+		return 1
+	case zilliz.StandardPlan:
+		return 2
+	case zilliz.EnterprisePlan:
+		return 3
+	default:
+		return -1
+	}
+}
+
+func validatePlanUpgrade(currentPlan, newPlan string) error {
+	if currentPlan == newPlan {
+		return nil
+	}
+
+	currentRank := getPlanRank(currentPlan)
+	newRank := getPlanRank(newPlan)
+
+	if currentRank == -1 {
+		return fmt.Errorf("invalid current plan: %s", currentPlan)
+	}
+	if newRank == -1 {
+		return fmt.Errorf("invalid new plan: %s", newPlan)
+	}
+
+	if newRank < currentRank {
+		return fmt.Errorf("plan downgrade is not allowed. Cannot change from %s to %s. Only plan upgrades are supported", currentPlan, newPlan)
+	}
+
+	return nil
+}
+
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	tflog.Info(ctx, "Update Cluster...")
 
@@ -452,6 +489,18 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if plan.isClusterPlanChanged(state) {
+		// Validate plan upgrade - only allow upgrades, not downgrades
+		if err := validatePlanUpgrade(state.Plan.ValueString(), plan.Plan.ValueString()); err != nil {
+			resp.Diagnostics.AddError("Invalid Plan Change", err.Error())
+			return
+		}
+		// no op - plan changes are not yet supported by the API
+		// directly set the plan to the new plan
+		// TODO: implement later on when openapi is ready
+		state.Plan = plan.Plan
 	}
 
 	if plan.isCuSizeChanged(state) {

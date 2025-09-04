@@ -2,6 +2,7 @@ package cluster_test
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -16,6 +17,11 @@ func TestAccClusterResource(t *testing.T) {
 		t.Run("FreePlan", testAccClusterResourceFreePlan)
 		t.Run("ServerlessPlan", testAccClusterResourceServerlessPlan)
 		t.Run("StandardPlan", testAccClusterResourceStandardPlan)
+
+		t.Run("Plan", func(t *testing.T) {
+			t.Run("UpdatePlan", testAccClusterResourceUpdatePlan)
+			t.Run("PreventPlanDowngrade", testAccClusterResourcePreventPlanDowngrade)
+		})
 	})
 	t.Run("BYOCEnv", func(t *testing.T) {
 		t.Run("UpdateLabels", testAccClusterResourceUpdateLabels)
@@ -53,7 +59,7 @@ resource "zillizcloud_cluster" "test" {
 				ResourceName:            "zillizcloud_cluster.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"password", "prompt", "username", "replica"},
+				ImportStateVerifyIgnore: []string{"password", "prompt", "username", "replica", "plan"},
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					rs, ok := state.RootModule().Resources["zillizcloud_cluster.test"]
 					if !ok {
@@ -100,7 +106,7 @@ resource "zillizcloud_cluster" "test" {
 				ResourceName:            "zillizcloud_cluster.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"password", "prompt", "username", "replica"},
+				ImportStateVerifyIgnore: []string{"password", "prompt", "username", "replica", "plan"},
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					rs, ok := state.RootModule().Resources["zillizcloud_cluster.test"]
 					if !ok {
@@ -158,7 +164,7 @@ resource "zillizcloud_cluster" "test" {
 				ResourceName:            "zillizcloud_cluster.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"password", "prompt", "username"},
+				ImportStateVerifyIgnore: []string{"password", "prompt", "username", "plan"},
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					rs, ok := state.RootModule().Resources["zillizcloud_cluster.test"]
 					if !ok {
@@ -312,6 +318,135 @@ func testAccClusterResourceUpdateLabels(t *testing.T) {
 					// no attribute should be set
 					resource.TestCheckNoResourceAttr("zillizcloud_cluster.test", "labels.%"),
 				),
+			},
+		},
+	})
+}
+
+// test update plan field
+func testAccClusterResourceUpdatePlan(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name = "test-plan-update-cluster"
+						project_id   = data.zillizcloud_project.default.id
+						plan         = "Standard"
+						cu_size      = 1
+						cu_type      = "Performance-optimized"
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "test-plan-update-cluster"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Standard"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
+				),
+			},
+			// update plan from Standard to Enterprise
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name = "test-plan-update-cluster"
+						project_id   = data.zillizcloud_project.default.id
+						plan         = "Enterprise"
+						cu_size      = 1
+						cu_type      = "Performance-optimized"
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "test-plan-update-cluster"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
+				),
+			},
+		},
+	})
+}
+
+// test to prevent plan downgrade
+func testAccClusterResourcePreventPlanDowngrade(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name = "test-plan-downgrade-prevention"
+						project_id   = data.zillizcloud_project.default.id
+						plan         = "Enterprise"
+						cu_size      = 1
+						cu_type      = "Performance-optimized"
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "test-plan-downgrade-prevention"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
+				),
+			},
+			// attempt to downgrade plan from Enterprise to Standard - should fail
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name = "test-plan-downgrade-prevention"
+						project_id   = data.zillizcloud_project.default.id
+						plan         = "Standard"
+						cu_size      = 1
+						cu_type      = "Performance-optimized"
+					}
+				`,
+				ExpectError: regexp.MustCompile("plan downgrade is not allowed.*"),
+			},
+			// attempt to downgrade plan from Enterprise to Serverless - should fail
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name = "test-plan-downgrade-prevention"
+						project_id   = data.zillizcloud_project.default.id
+						plan         = "Serverless"
+						cu_size      = 1
+						cu_type      = "Performance-optimized"
+					}
+				`,
+				ExpectError: regexp.MustCompile("plan downgrade is not allowed.*"),
+			},
+			// attempt to downgrade plan from Enterprise to Free - should fail
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name = "test-plan-downgrade-prevention"
+						project_id   = data.zillizcloud_project.default.id
+						plan         = "Free"
+						cu_size      = 1
+						cu_type      = "Performance-optimized"
+					}
+				`,
+				ExpectError: regexp.MustCompile("plan downgrade is not allowed.*"),
 			},
 		},
 	})
