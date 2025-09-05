@@ -224,7 +224,7 @@ resource "zillizcloud_cluster" "test" {
 				}
 
 				resource "zillizcloud_cluster" "test" {
-					cluster_name = "a-standard-cluster"
+					cluster_name = "a-standard-cluster-renamed"        # change the cluster name
 					region_id    = "aws-us-west-2"
 					plan         = "Standard"
 					cu_size      = "2"                                 # change the cu_size
@@ -238,7 +238,7 @@ resource "zillizcloud_cluster" "test" {
 				}
 				`,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "a-standard-cluster"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "a-standard-cluster-renamed"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Standard"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "2"),

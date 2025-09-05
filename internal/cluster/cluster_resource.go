@@ -67,9 +67,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"cluster_name": schema.StringAttribute{
 				MarkdownDescription: "The name of the cluster to be created. It is a string of no more than 32 characters.",
 				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
 			},
 			"project_id": schema.StringAttribute{
 				MarkdownDescription: "The ID of the project where the cluster is to be created.",
@@ -427,6 +424,18 @@ func (r *ClusterResource) handleLabelsUpdate(ctx context.Context, plan, state Cl
 	return diags
 }
 
+func (r *ClusterResource) handleClusterNameUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	err := r.store.ModifyClusterProperties(ctx, state.ClusterId.ValueString(), plan.ClusterName.ValueString())
+	if err != nil {
+		diags.AddError("Failed to modify cluster name", err.Error())
+		return diags
+	}
+
+	return diags
+}
+
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	tflog.Info(ctx, "Update Cluster...")
 
@@ -479,6 +488,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 			return
 		}
 		state.Labels = plan.Labels
+	}
+
+	if plan.isClusterNameChanged(state) {
+		resp.Diagnostics.Append(r.handleClusterNameUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())

@@ -48,6 +48,20 @@ func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*
 	return &response.Data.ClusterId, err
 }
 
+// add or remove cu
+type ModifyPropertiesParams struct {
+	ClusterName string `json:"clusterName"`
+}
+
+func (c *Client) ModifyClusterProperties(clusterId string, params *ModifyPropertiesParams) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/modifyProperties", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
 // modifyReplica.
 type ModifyReplicaParams struct {
 	Replica int `json:"replica"`

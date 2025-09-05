@@ -77,6 +77,10 @@ func (c *ClusterResourceModel) isLabelsChanged(other ClusterResourceModel) bool 
 	return !c.Labels.Equal(other.Labels)
 }
 
+func (c *ClusterResourceModel) isClusterNameChanged(other ClusterResourceModel) bool {
+	return c.ClusterName.ValueString() != other.ClusterName.ValueString()
+}
+
 func (c *ClusterResourceModel) isStatusChangeRequired(other ClusterResourceModel) bool {
 	if !c.DesiredStatus.IsNull() && c.DesiredStatus.ValueString() != "" {
 		desiredStatus := c.DesiredStatus.ValueString()
