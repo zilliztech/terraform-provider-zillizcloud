@@ -20,6 +20,8 @@ type ClusterStore interface {
 	ResumeCluster(ctx context.Context, clusterId string) error
 	UpdateLabels(ctx context.Context, clusterId string, labels map[string]string) error
 	ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error
+	UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error
+	GetSecurityGroups(ctx context.Context, clusterId string) (types.Set, error)
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -128,10 +130,11 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 	}
 
 	ret = &ClusterResourceModel{
-		ClusterId: types.StringValue(response.ClusterId),
-		Username:  types.StringValue(response.Username),
-		Password:  types.StringValue(response.Password),
-		Prompt:    types.StringValue(response.Prompt),
+		ClusterId:      types.StringValue(response.ClusterId),
+		Username:       types.StringValue(response.Username),
+		Password:       types.StringValue(response.Password),
+		Prompt:         types.StringValue(response.Prompt),
+		SecurityGroups: cluster.SecurityGroups, // Pass through security groups for later processing
 	}
 	return ret, nil
 }
@@ -187,6 +190,21 @@ func (c *ClusterStoreImpl) ModifyClusterProperties(ctx context.Context, clusterI
 	return err
 }
 
+func (c *ClusterStoreImpl) UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error {
+	_, err := c.client.UpsertSecurityGroups(clusterId, &zilliz.UpsertSecurityGroupsParams{
+		Ids: securityGroupIds,
+	})
+	return err
+}
+
+func (c *ClusterStoreImpl) GetSecurityGroups(ctx context.Context, clusterId string) (types.Set, error) {
+	securityGroups, err := c.client.GetSecurityGroups(clusterId)
+	if err != nil {
+		return types.SetValueMust(types.StringType, []attr.Value{}), err
+	}
+	return convertStringSliceToTypesSet(securityGroups), nil
+}
+
 // convertLabelsToTypesMap converts a map[string]string into a Terraform types.Map of strings.
 // Returns an empty map value when the input is nil or empty.
 func convertLabelsToTypesMap(src map[string]string) types.Map {
@@ -198,5 +216,19 @@ func convertLabelsToTypesMap(src map[string]string) types.Map {
 		values[k] = types.StringValue(v)
 	}
 	ret, _ := types.MapValue(types.StringType, values)
+	return ret
+}
+
+// convertStringSliceToTypesSet converts a []string into a Terraform types.Set of strings.
+// Returns an empty set value when the input is nil or empty.
+func convertStringSliceToTypesSet(src []string) types.Set {
+	if len(src) == 0 {
+		return types.SetValueMust(types.StringType, []attr.Value{})
+	}
+	values := make([]attr.Value, len(src))
+	for i, v := range src {
+		values[i] = types.StringValue(v)
+	}
+	ret, _ := types.SetValue(types.StringType, values)
 	return ret
 }

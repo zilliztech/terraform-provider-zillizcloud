@@ -32,6 +32,7 @@ type ClusterResourceModel struct {
 	PrivateLinkAddress types.String   `tfsdk:"private_link_address"`
 	CreateTime         types.String   `tfsdk:"create_time"`
 	Labels             types.Map      `tfsdk:"labels"`
+	SecurityGroups     types.Set      `tfsdk:"load_balancer_security_groups"`
 	Replica            types.Int64    `tfsdk:"replica"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
@@ -79,6 +80,10 @@ func (c *ClusterResourceModel) isLabelsChanged(other ClusterResourceModel) bool 
 
 func (c *ClusterResourceModel) isClusterNameChanged(other ClusterResourceModel) bool {
 	return c.ClusterName.ValueString() != other.ClusterName.ValueString()
+}
+
+func (c *ClusterResourceModel) isSecurityGroupsChanged(other ClusterResourceModel) bool {
+	return !c.SecurityGroups.Equal(other.SecurityGroups)
 }
 
 func (c *ClusterResourceModel) isStatusChangeRequired(other ClusterResourceModel) bool {

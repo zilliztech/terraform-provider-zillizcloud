@@ -19,7 +19,35 @@ type ClusterResponse struct {
 	ClusterId string `json:"clusterId"`
 }
 
-//suspend cluster
+type UpsertSecurityGroupsParams struct {
+	Ids []string `json:"ids"`
+}
+
+// upsert security groups
+func (c *Client) UpsertSecurityGroups(clusterId string, params *UpsertSecurityGroupsParams) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("PUT", "clusters/"+clusterId+"/securityGroups", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, nil
+}
+
+type GetSecurityGroupsResponse struct {
+	Ids []string `json:"ids"`
+}
+
+// get security groups
+func (c *Client) GetSecurityGroups(clusterId string) ([]string, error) {
+	var response zillizResponse[GetSecurityGroupsResponse]
+	err := c.do("GET", "clusters/"+clusterId+"/securityGroups", nil, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Data.Ids, nil
+}
+
+// suspend cluster
 
 func (c *Client) SuspendCluster(clusterId string) (*string, error) {
 	var response zillizResponse[ClusterResponse]

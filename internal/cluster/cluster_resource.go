@@ -191,6 +191,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Computed:            true,
 				Default:             int64default.StaticInt64(1),
 			},
+			"load_balancer_security_groups": schema.SetAttribute{
+				MarkdownDescription: "A set of security group IDs to associate with the load balancer of the cluster.",
+				Optional:            true,
+				ElementType:         types.StringType,
+			},
 		},
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx,
@@ -313,6 +318,14 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	// Apply security groups after cluster is running
+	if !data.SecurityGroups.IsNull() && !data.SecurityGroups.IsUnknown() {
+		resp.Diagnostics.Append(r.handleSecurityGroupsUpdate(ctx, data, data)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	cluster, err = r.store.Get(ctx, cluster.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
@@ -345,7 +358,14 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
+	securityGroups, err := r.store.GetSecurityGroups(ctx, state.ClusterId.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
+		return
+	}
+
 	state.Labels = labels
+	state.SecurityGroups = securityGroups
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -436,6 +456,29 @@ func (r *ClusterResource) handleClusterNameUpdate(ctx context.Context, plan, sta
 	return diags
 }
 
+func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	// Convert Terraform set to Go slice
+	var securityGroupIds []string
+	if !plan.SecurityGroups.IsNull() && !plan.SecurityGroups.IsUnknown() {
+		elements := plan.SecurityGroups.Elements()
+		for _, elem := range elements {
+			if strValue, ok := elem.(types.String); ok {
+				securityGroupIds = append(securityGroupIds, strValue.ValueString())
+			}
+		}
+	}
+
+	err := r.store.UpsertSecurityGroups(ctx, state.ClusterId.ValueString(), securityGroupIds)
+	if err != nil {
+		diags.AddError("Failed to update cluster security groups", err.Error())
+		return diags
+	}
+
+	return diags
+}
+
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	tflog.Info(ctx, "Update Cluster...")
 
@@ -495,6 +538,14 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	}
+
+	if plan.isSecurityGroupsChanged(state) {
+		resp.Diagnostics.Append(r.handleSecurityGroupsUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.SecurityGroups = plan.SecurityGroups
 	}
 
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
