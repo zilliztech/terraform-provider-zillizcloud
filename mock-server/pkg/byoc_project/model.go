@@ -382,6 +382,7 @@ type DedicatedClusterResponse struct {
 	SnapshotNumber     int               `json:"snapshotNumber"`
 	CreateProgress     int               `json:"createProgress"`
 	Labels             map[string]string `json:"labels"`
+	SecurityGroups     []string          `json:"securityGroups"`
 }
 
 type Project struct {
@@ -461,4 +462,13 @@ type FreeClusterResponse struct {
 	SnapshotNumber     int               `json:"snapshotNumber"`
 	CreateProgress     int               `json:"createProgress"`
 	Labels             map[string]string `json:"labels"`
+}
+
+// Security Groups request/response types
+type UpsertSecurityGroupsRequest struct {
+	Ids []string `json:"ids"`
+}
+
+type GetSecurityGroupsResponse struct {
+	Ids []string `json:"ids,omitempty"`
 }

@@ -28,6 +28,8 @@ func main() {
 			clusters.POST("/:clusterId/modifyProperties", byoc_project.ModifyClusterProperties)
 			clusters.GET("/:clusterId/labels", byoc_project.GetLabels)
 			clusters.PUT("/:clusterId/labels", byoc_project.UpdateLabels)
+			clusters.GET("/:clusterId/securityGroups", byoc_project.GetSecurityGroups)
+			clusters.PUT("/:clusterId/securityGroups", byoc_project.UpsertSecurityGroups)
 			clusters.DELETE("/:clusterId/drop", byoc_project.DropCluster)
 		}
 		byoc := v2.Group("/byoc")
