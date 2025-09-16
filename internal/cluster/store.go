@@ -21,7 +21,7 @@ type ClusterStore interface {
 	UpdateLabels(ctx context.Context, clusterId string, labels map[string]string) error
 	ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error
 	UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error
-	GetSecurityGroups(ctx context.Context, clusterId string) (types.Set, error)
+	GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error)
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -197,12 +197,8 @@ func (c *ClusterStoreImpl) UpsertSecurityGroups(ctx context.Context, clusterId s
 	return err
 }
 
-func (c *ClusterStoreImpl) GetSecurityGroups(ctx context.Context, clusterId string) (types.Set, error) {
-	securityGroups, err := c.client.GetSecurityGroups(clusterId)
-	if err != nil {
-		return types.SetValueMust(types.StringType, []attr.Value{}), err
-	}
-	return convertStringSliceToTypesSet(securityGroups), nil
+func (c *ClusterStoreImpl) GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error) {
+	return c.client.GetSecurityGroups(clusterId)
 }
 
 // convertLabelsToTypesMap converts a map[string]string into a Terraform types.Map of strings.
