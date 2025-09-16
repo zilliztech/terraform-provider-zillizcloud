@@ -453,3 +453,62 @@ func ModifyClusterProperties(c *gin.Context) {
 	})
 }
 
+func GetSecurityGroups(c *gin.Context) {
+	clusterId := c.Param("clusterId")
+
+	if clusterId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "clusterId is required"})
+		return
+	}
+
+	cluster := clusterStore.Get(clusterId)
+	if cluster == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "cluster not found"})
+		return
+	}
+
+	log.Printf("[GetSecurityGroups] clusterId: %s", clusterId)
+
+	response := GetSecurityGroupsResponse{
+		Ids: cluster.SecurityGroups,
+	}
+
+	c.JSON(http.StatusOK, Response[GetSecurityGroupsResponse]{
+		Code: 0,
+		Data: response,
+	})
+}
+
+func UpsertSecurityGroups(c *gin.Context) {
+	clusterId := c.Param("clusterId")
+
+	if clusterId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "clusterId is required"})
+		return
+	}
+
+	var request UpsertSecurityGroupsRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	cluster := clusterStore.Get(clusterId)
+	if cluster == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "cluster not found"})
+		return
+	}
+
+	log.Printf("[UpsertSecurityGroups] clusterId: %s, updating security groups from %v to %v", clusterId, cluster.SecurityGroups, request.Ids)
+
+	cluster.SecurityGroups = request.Ids
+	clusterStore.Set(clusterId, cluster)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": gin.H{
+			"clusterId": clusterId,
+		},
+	})
+}
+
