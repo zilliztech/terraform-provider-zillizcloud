@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 	util "github.com/zilliztech/terraform-provider-zillizcloud/client/retry"
+	"github.com/zilliztech/terraform-provider-zillizcloud/internal/util/conv"
 	customvalidator "github.com/zilliztech/terraform-provider-zillizcloud/internal/validator"
 )
 
@@ -357,15 +358,16 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		resp.Diagnostics.AddError("Failed to get cluster labels", err.Error())
 		return
 	}
+	state.Labels = labels
 
 	securityGroups, err := r.store.GetSecurityGroups(ctx, state.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
 		return
 	}
+	securityGroupsSet := conv.SliceToSet[string](securityGroups)
 
-	state.Labels = labels
-	state.SecurityGroups = securityGroups
+	state.SecurityGroups = securityGroupsSet
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
