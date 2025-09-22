@@ -195,7 +195,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"load_balancer_security_groups": schema.SetAttribute{
 				MarkdownDescription: "A set of security group IDs to associate with the load balancer of the cluster.",
 				Optional:            true,
+				Computed:            true,
 				ElementType:         types.StringType,
+				DeprecationMessage:  "This field is deprecated. Use the zillizcloud_cluster_load_balancer_security_groups resource instead.",
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -335,6 +337,15 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	data.populate(cluster)
 
+	// Refresh security groups since it's a computed field
+	securityGroups, err := r.store.GetSecurityGroups(ctx, cluster.ClusterId.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
+		return
+	}
+	securityGroupsSet := conv.SliceToSet(securityGroups)
+	data.SecurityGroups = securityGroupsSet
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -365,7 +376,7 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
 		return
 	}
-	securityGroupsSet := conv.SliceToSet[string](securityGroups)
+	securityGroupsSet := conv.SliceToSet(securityGroups)
 
 	state.SecurityGroups = securityGroupsSet
 
@@ -558,6 +569,15 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	state.populate(cluster)
 	state.Timeouts = plan.Timeouts
+
+	// Refresh security groups since it's a computed field
+	securityGroups, err := r.store.GetSecurityGroups(ctx, state.ClusterId.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
+		return
+	}
+	securityGroupsSet := conv.SliceToSet(securityGroups)
+	state.SecurityGroups = securityGroupsSet
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
