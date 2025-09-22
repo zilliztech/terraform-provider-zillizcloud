@@ -75,7 +75,7 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
 - `cu_type` (String) The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Extended-capacity.
 - `desired_status` (String) The desired status of the cluster. Possible values are RUNNING and SUSPENDED. Defaults to RUNNING.
 - `labels` (Map of String) A map of labels to assign to the cluster. Labels are key-value pairs that can be used to organize and categorize clusters.
-- `load_balancer_security_groups` (Set of String) A set of security group IDs to associate with the load balancer of the cluster.
+- `load_balancer_security_groups` (Set of String, Deprecated) A set of security group IDs to associate with the load balancer of the cluster.
 - `plan` (String) The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.
 - `region_id` (String) The ID of the region where the cluster exists.
 - `replica` (Number) The number of replicas for the cluster. Defaults to 1.

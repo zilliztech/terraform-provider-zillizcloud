@@ -161,6 +161,7 @@ func (p *ZillizProvider) parseBurst(burstValue types.Int64) (int64, error) {
 func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		cluster.NewClusterResource,
+		cluster.NewClusterLoadBalancerSecurityGroupsResource,
 		byoc.NewBYOCProjectResource,
 		byoc_op.NewBYOCOpProjectSettingsResource,
 		byoc_op.NewBYOCOpProjectResource,
