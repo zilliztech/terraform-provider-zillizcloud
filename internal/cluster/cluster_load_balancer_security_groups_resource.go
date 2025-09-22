@@ -27,6 +27,7 @@ type ClusterLoadBalancerSecurityGroupsResource struct {
 }
 
 type ClusterLoadBalancerSecurityGroupsResourceModel struct {
+	Id               types.String `tfsdk:"id"`
 	ClusterId        types.String `tfsdk:"cluster_id"`
 	SecurityGroupIds types.Set    `tfsdk:"security_group_ids"`
 }
@@ -43,6 +44,13 @@ This resource allows you to associate security groups with the load balancer of 
 
 Typical use case: Configure network access controls and security boundaries for cluster load balancers in cloud environments.`,
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: `The ID of the cluster load balancer security groups.`,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"cluster_id": schema.StringAttribute{
 				Required: true,
 				MarkdownDescription: `The ID of the cluster to associate security groups with.
@@ -117,6 +125,9 @@ func (r *ClusterLoadBalancerSecurityGroupsResource) Create(ctx context.Context, 
 		return
 	}
 
+	// Set ID to cluster_id
+	data.Id = data.ClusterId
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -129,7 +140,7 @@ func (r *ClusterLoadBalancerSecurityGroupsResource) Read(ctx context.Context, re
 	}
 
 	// Get current security groups from API
-	securityGroups, err := r.client.GetSecurityGroups(state.ClusterId.ValueString())
+	securityGroups, err := r.client.GetSecurityGroups(state.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to read cluster load balancer security groups", err.Error())
 		return
@@ -138,6 +149,8 @@ func (r *ClusterLoadBalancerSecurityGroupsResource) Read(ctx context.Context, re
 	// Convert to Terraform set
 	securityGroupsSet := conv.SliceToSet(securityGroups)
 	state.SecurityGroupIds = securityGroupsSet
+
+	state.ClusterId = state.Id
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -150,19 +163,14 @@ func (r *ClusterLoadBalancerSecurityGroupsResource) Update(ctx context.Context, 
 		return
 	}
 
-	// Convert Terraform set to Go slice
-	var securityGroupIds []string
-	if !plan.SecurityGroupIds.IsNull() && !plan.SecurityGroupIds.IsUnknown() {
-		elements := plan.SecurityGroupIds.Elements()
-		for _, elem := range elements {
-			if strValue, ok := elem.(types.String); ok {
-				securityGroupIds = append(securityGroupIds, strValue.ValueString())
-			}
-		}
+	securityGroupIds, err := conv.SetToSlice[string](ctx, plan.SecurityGroupIds)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to convert security group ids", err.Error())
+		return
 	}
 
 	// Call the API to upsert security groups
-	_, err := r.client.UpsertSecurityGroups(plan.ClusterId.ValueString(), &zilliz.UpsertSecurityGroupsParams{
+	_, err = r.client.UpsertSecurityGroups(plan.ClusterId.ValueString(), &zilliz.UpsertSecurityGroupsParams{
 		Ids: securityGroupIds,
 	})
 	if err != nil {
@@ -192,6 +200,6 @@ func (r *ClusterLoadBalancerSecurityGroupsResource) Delete(ctx context.Context, 
 }
 
 func (r *ClusterLoadBalancerSecurityGroupsResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Import by cluster ID
-	resource.ImportStatePassthroughID(ctx, path.Root("cluster_id"), req, resp)
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+
 }

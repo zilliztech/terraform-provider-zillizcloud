@@ -86,3 +86,7 @@ You can obtain this value from the output of the `zillizcloud_cluster` resource,
 `["sg-1234567890abcdef0"]`
 
 > **Note:** The security groups must exist in the same VPC as the cluster and be accessible to the Zilliz Cloud service.
+
+### Read-Only
+
+- `id` (String) The ID of the cluster load balancer security groups.

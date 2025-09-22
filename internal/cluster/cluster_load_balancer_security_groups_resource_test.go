@@ -1,11 +1,9 @@
 package cluster_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/zilliztech/terraform-provider-zillizcloud/internal/provider"
 )
 
@@ -33,7 +31,7 @@ resource "zillizcloud_cluster_load_balancer_security_groups" "test" {
 
   security_group_ids = [
     "sg-test123456789abcdef0",
-    "sg-test987654321fedcba1",
+    "sg-test987654321fedcba",
   ]
 }
 `,
@@ -49,14 +47,6 @@ resource "zillizcloud_cluster_load_balancer_security_groups" "test" {
 				ResourceName:      "zillizcloud_cluster_load_balancer_security_groups.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: func(state *terraform.State) (string, error) {
-					rs, ok := state.RootModule().Resources["zillizcloud_cluster_load_balancer_security_groups.test"]
-					if !ok {
-						return "", fmt.Errorf("zillizcloud_cluster_load_balancer_security_groups.test not found")
-					}
-					clusterId := rs.Primary.Attributes["cluster_id"]
-					return clusterId, nil
-				},
 			},
 			// Update and Read testing
 			{
