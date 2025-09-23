@@ -154,7 +154,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The current status of the cluster. Possible values are RUNNING, SUSPENDING, SUSPENDED, and RESUMING.",
 				Computed:            true,
 				Optional:            true,
-				Default:             stringdefault.StaticString("UNKNOWN"),
 			},
 			"connect_address": schema.StringAttribute{
 				MarkdownDescription: "The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.",
@@ -162,12 +161,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
-				Default: stringdefault.StaticString("UNKNOWN"),
 			},
 			"private_link_address": schema.StringAttribute{
 				MarkdownDescription: "The private endpoint of the cluster. You can set up a private link to allow your VPS in the same cloud region to access your cluster.",
 				Computed:            true,
-				Default:             stringdefault.StaticString("UNKNOWN"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -175,7 +172,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"create_time": schema.StringAttribute{
 				MarkdownDescription: "The time at which the cluster has been created.",
 				Computed:            true,
-				Default:             stringdefault.StaticString("UNKNOWN"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -311,6 +307,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	data.Username = cluster.Username
 	data.Password = cluster.Password
 	data.Prompt = cluster.Prompt
+	data.setUnknown()
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 

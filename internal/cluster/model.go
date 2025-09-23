@@ -37,6 +37,16 @@ type ClusterResourceModel struct {
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
+func (c *ClusterResourceModel) setUnknown() {
+	unknown := types.StringValue("UNKNOWN")
+
+	c.ConnectAddress = unknown
+	c.PrivateLinkAddress = unknown
+	c.CreateTime = unknown
+	c.Status = unknown
+	c.Description = unknown
+}
+
 // populate the ClusterResourceModel with the input which is the response from the API.
 func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 
