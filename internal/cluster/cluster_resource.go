@@ -132,7 +132,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"description": schema.StringAttribute{
 				MarkdownDescription: "An optional description about the cluster.",
 				Computed:            true,
-				Default:             stringdefault.StaticString("UNKNOWN"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -386,15 +385,6 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 	state.Labels = labels
 
-	securityGroups, err := r.store.GetSecurityGroups(ctx, state.ClusterId.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
-		return
-	}
-	securityGroupsSet := conv.SliceToSet(securityGroups)
-
-	state.SecurityGroups = securityGroupsSet
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -577,14 +567,6 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
-	if plan.isSecurityGroupsChanged(state) {
-		resp.Diagnostics.Append(r.handleSecurityGroupsUpdate(ctx, plan, state)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.SecurityGroups = plan.SecurityGroups
-	}
-
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
@@ -593,15 +575,6 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	state.populate(cluster)
 	state.Timeouts = plan.Timeouts
-
-	// Refresh security groups since it's a computed field
-	securityGroups, err := r.store.GetSecurityGroups(ctx, state.ClusterId.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
-		return
-	}
-	securityGroupsSet := conv.SliceToSet(securityGroups)
-	state.SecurityGroups = securityGroupsSet
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
