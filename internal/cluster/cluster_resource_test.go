@@ -45,12 +45,15 @@ resource "zillizcloud_cluster" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "TestCluster"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Free"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "CREATING"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+					waitForClusterRunning("zillizcloud_cluster.test"),
 				),
 				PreventPostDestroyRefresh: true,
+			},
+			{
+				RefreshState: true,
 			},
 			{
 				ResourceName:            "zillizcloud_cluster.test",
@@ -92,12 +95,15 @@ resource "zillizcloud_cluster" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "TestCluster"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Serverless"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "CREATING"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+					waitForClusterRunning("zillizcloud_cluster.test"),
 				),
 				PreventPostDestroyRefresh: true,
+			},
+			{
+				RefreshState: true,
 			},
 			{
 				ResourceName:            "zillizcloud_cluster.test",
@@ -146,7 +152,7 @@ resource "zillizcloud_cluster" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "a-standard-cluster"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Standard"),
-					// resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "CREATING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "CREATING"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica", "1"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "1"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
