@@ -45,7 +45,6 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	c.ProjectId = input.ProjectId
 	c.Description = input.Description
 	c.Status = input.Status
-	c.DesiredStatus = input.Status
 	c.ConnectAddress = input.ConnectAddress
 	c.PrivateLinkAddress = input.PrivateLinkAddress
 	c.CreateTime = input.CreateTime
@@ -53,6 +52,12 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	c.Replica = input.Replica
 	c.CuSize = input.CuSize
 	c.CuType = input.CuType
+	c.DesiredStatus = func() types.String {
+		if input.DesiredStatus.IsNull() || input.DesiredStatus.IsUnknown() {
+			return types.StringValue("RUNNING")
+		}
+		return input.DesiredStatus
+	}()
 
 	// only for free or serverless plan, set default value
 	plan := input.Plan.ValueString()
