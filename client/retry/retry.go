@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var maxWait = 10 * time.Second
@@ -35,9 +37,15 @@ func Backoff(attempts int) time.Duration {
 }
 
 func Poll[T any](pctx context.Context, timeout time.Duration, fn func() (*T, *Err)) (*T, error) {
+	return PollWithNetworkResilience(pctx, timeout, fn, DefaultMaxNetworkFailures)
+}
+
+// PollWithNetworkResilience allows configuring the maximum number of network failures before giving up
+func PollWithNetworkResilience[T any](pctx context.Context, timeout time.Duration, fn func() (*T, *Err), maxNetworkFailures int) (*T, error) {
 	ctx, cancel := context.WithTimeout(pctx, timeout)
 	defer cancel()
 	var attempt int
+	var networkFailureCount int
 	var lastErr error
 	for {
 		attempt++
@@ -49,7 +57,29 @@ func Poll[T any](pctx context.Context, timeout time.Duration, fn func() (*T, *Er
 			return nil, err.Err
 		}
 		lastErr = err.Err
-		wait := Backoff(attempt)
+
+		// Track network failures
+		if IsNetworkError(err.Err) {
+			networkFailureCount++
+			tflog.Info(pctx, fmt.Sprintf("Network failure count: %d", networkFailureCount))
+			// If we've hit the network failure limit, return give-up error
+			if networkFailureCount > maxNetworkFailures {
+				tflog.Info(pctx, fmt.Sprintf("Network failure limit reached: %d", networkFailureCount))
+				giveUpErr := &NetworkGiveUpError{
+					Attempts: networkFailureCount,
+					Message:  fmt.Sprintf("network errors exceeded limit of %d", maxNetworkFailures),
+				}
+				return nil, giveUpErr
+			}
+		}
+
+		// Use network-specific backoff for network errors
+		var wait time.Duration
+		if IsNetworkError(err.Err) {
+			wait = NetworkBackoff(attempt)
+		} else {
+			wait = Backoff(attempt)
+		}
 		timer := time.NewTimer(wait)
 		select {
 		// stop when either this or parent context times out
@@ -61,8 +91,14 @@ func Poll[T any](pctx context.Context, timeout time.Duration, fn func() (*T, *Er
 	}
 }
 
-// Err represents a retriable error.
 type Err struct {
 	Err  error
 	Halt bool
+}
+
+// NetworkResilientPoll is a variant of Poll that allows network failures up to a specified limit
+// before giving up gracefully. This is useful for operations that can tolerate some network
+// instability but should eventually succeed or fail gracefully.
+func NetworkResilientPoll[T any](pctx context.Context, timeout time.Duration, fn func() (*T, *Err), maxNetworkFailures int) (*T, error) {
+	return PollWithNetworkResilience(pctx, timeout, fn, maxNetworkFailures)
 }

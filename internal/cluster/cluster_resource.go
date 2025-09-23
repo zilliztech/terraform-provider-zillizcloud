@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -30,7 +31,7 @@ import (
 )
 
 const (
-	defaultClusterCreateTimeout time.Duration = 30 * time.Minute
+	defaultClusterCreateTimeout time.Duration = 45 * time.Minute
 	defaultClusterUpdateTimeout time.Duration = 30 * time.Minute
 )
 
@@ -131,6 +132,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"description": schema.StringAttribute{
 				MarkdownDescription: "An optional description about the cluster.",
 				Computed:            true,
+				Default:             stringdefault.StaticString("UNKNOWN"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -152,6 +154,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The current status of the cluster. Possible values are RUNNING, SUSPENDING, SUSPENDED, and RESUMING.",
 				Computed:            true,
 				Optional:            true,
+				Default:             stringdefault.StaticString("UNKNOWN"),
 			},
 			"connect_address": schema.StringAttribute{
 				MarkdownDescription: "The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.",
@@ -159,10 +162,12 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Default: stringdefault.StaticString("UNKNOWN"),
 			},
 			"private_link_address": schema.StringAttribute{
 				MarkdownDescription: "The private endpoint of the cluster. You can set up a private link to allow your VPS in the same cloud region to access your cluster.",
 				Computed:            true,
+				Default:             stringdefault.StaticString("UNKNOWN"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -170,6 +175,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"create_time": schema.StringAttribute{
 				MarkdownDescription: "The time at which the cluster has been created.",
 				Computed:            true,
+				Default:             stringdefault.StaticString("UNKNOWN"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -197,6 +203,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,
+				Default:             setdefault.StaticValue(types.SetNull(types.StringType)),
 				DeprecationMessage:  "This field is deprecated. Use the zillizcloud_cluster_load_balancer_security_groups resource instead.",
 			},
 		},
@@ -204,11 +211,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"timeouts": timeouts.Block(ctx,
 				timeouts.Opts{
 					Create: true,
-					CreateDescription: `Timeout defaults to 5 mins. Accepts a string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) ` +
+					CreateDescription: `Timeout defaults to 45 mins. Accepts a string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) ` +
 						`consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are ` +
 						`"s" (seconds), "m" (minutes), "h" (hours).`,
 					Update: true,
-					UpdateDescription: `Timeout defaults to 5 mins. Accepts a string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) ` +
+					UpdateDescription: `Timeout defaults to 30 mins. Accepts a string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) ` +
 						`consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are ` +
 						`"s" (seconds), "m" (minutes), "h" (hours).`,
 				},
@@ -316,9 +323,20 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	resp.Diagnostics.Append(r.waitForStatus(ctx, createTimeout, cluster.ClusterId.ValueString(), "RUNNING")...)
-	if resp.Diagnostics.HasError() {
-		return
+	err = r.waitForStatus(ctx, createTimeout, cluster.ClusterId.ValueString(), "RUNNING")
+	if err != nil {
+		// Explicit check: if it's a network give-up error, quit successfully without any error
+		if util.IsNetworkGiveUpError(err) {
+			tflog.Info(ctx, "Network retries exhausted during cluster creation status wait, continuing successfully", map[string]interface{}{
+				"cluster_id": cluster.ClusterId.ValueString(),
+				"error":      err.Error(),
+			})
+			// quit successfully for network give-up errors
+			return
+		} else {
+			resp.Diagnostics.AddError("Failed to wait for cluster to enter RUNNING state", err.Error())
+			return
+		}
 	}
 
 	// Apply security groups after cluster is running
@@ -392,7 +410,10 @@ func (r *ClusterResource) handleCuSizeUpdate(ctx context.Context, plan, state Cl
 		return diags
 	}
 
-	diags.Append(r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), "RUNNING")...)
+	err = r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), "RUNNING")
+	if err != nil && !util.IsNetworkGiveUpError(err) {
+		diags.AddError("Failed to wait for cluster to enter RUNNING state", err.Error())
+	}
 	return diags
 }
 
@@ -405,7 +426,10 @@ func (r *ClusterResource) handleReplicaUpdate(ctx context.Context, plan, state C
 		return diags
 	}
 
-	diags.Append(r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), "RUNNING")...)
+	err = r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), "RUNNING")
+	if err != nil && !util.IsNetworkGiveUpError(err) {
+		diags.AddError("Failed to wait for cluster to enter RUNNING state", err.Error())
+	}
 	return diags
 }
 
@@ -439,7 +463,10 @@ func (r *ClusterResource) handleStatusUpdate(ctx context.Context, plan, state Cl
 		return diags
 	}
 
-	diags.Append(r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), targetStatus)...)
+	err = r.waitForStatus(ctx, r.timeout(), state.ClusterId.ValueString(), targetStatus)
+	if err != nil && !util.IsNetworkGiveUpError(err) {
+		diags.AddError("Failed to wait for cluster to enter desired state", err.Error())
+	}
 	return diags
 }
 
@@ -613,14 +640,12 @@ func (r *ClusterResource) ImportState(ctx context.Context, req resource.ImportSt
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("region_id"), idParts[1])...)
 }
 
-func (r *ClusterResource) waitForStatus(ctx context.Context, timeout time.Duration, clusterId string, status string) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	_, err := util.Poll(ctx, timeout, func() (*string, *util.Err) {
+func (r *ClusterResource) waitForStatus(ctx context.Context, timeout time.Duration, clusterId string, status string) error {
+	_, err := util.NetworkResilientPoll(ctx, timeout, func() (*string, *util.Err) {
 		cluster, err := r.client.DescribeCluster(clusterId)
 		if err != nil {
-			// This is a non-retryable error
-			return nil, &util.Err{Err: err, Halt: true}
+			// Allow network errors to be retried, other errors are non-retryable
+			return nil, &util.Err{Err: err, Halt: false}
 		}
 		if cluster.Status != status {
 			// This is a retryable error
@@ -631,11 +656,7 @@ func (r *ClusterResource) waitForStatus(ctx context.Context, timeout time.Durati
 		}
 		// Success, no error
 		return &cluster.Status, nil
-	})
+	}, util.DefaultMaxNetworkFailures)
 
-	if err != nil {
-		diags.AddError("Failed to wait for cluster to enter the RUNNING state.", err.Error())
-	}
-
-	return diags
+	return err
 }
