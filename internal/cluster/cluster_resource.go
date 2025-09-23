@@ -30,7 +30,6 @@ import (
 )
 
 const (
-	defaultClusterCreateTimeout time.Duration = 30 * time.Minute
 	defaultClusterUpdateTimeout time.Duration = 30 * time.Minute
 )
 
@@ -307,20 +306,6 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
-	// Wait for cluster to be RUNNING
-	// Create() is passed a default timeout to use if no value
-	// has been supplied in the Terraform configuration.
-	createTimeout, diags := data.Timeouts.Create(ctx, defaultClusterCreateTimeout)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(r.waitForStatus(ctx, createTimeout, cluster.ClusterId.ValueString(), "RUNNING")...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
 	// Apply security groups after cluster is running
 	if !data.SecurityGroups.IsNull() && !data.SecurityGroups.IsUnknown() {
 		resp.Diagnostics.Append(r.handleSecurityGroupsUpdate(ctx, data, data)...)
@@ -335,6 +320,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	cluster.DesiredStatus = data.DesiredStatus
 	data.populate(cluster)
 
 	// Refresh security groups since it's a computed field
@@ -356,11 +342,14 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
 		return
+	}
+
+	if state.DesiredStatus.ValueString() != "" {
+		cluster.DesiredStatus = state.DesiredStatus
 	}
 	state.populate(cluster)
 
@@ -567,6 +556,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	cluster.DesiredStatus = plan.DesiredStatus
 	state.populate(cluster)
 	state.Timeouts = plan.Timeouts
 
