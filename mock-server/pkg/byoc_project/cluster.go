@@ -19,7 +19,12 @@ func CreateDedicatedCluster(c *gin.Context) {
 
 	log.Printf("[CreateDedicatedCluster request]: %+v", request)
 
-	clusterId := "in01-" + uuid.New().String()[:15]
+	var clusterId string
+	if request.ClusterId == "" {
+		clusterId = "in01-" + uuid.New().String()[:15]
+	} else {
+		clusterId = request.ClusterId
+	}
 	connectAddress := fmt.Sprintf("https://%s.%s.vectordb-uat3.zillizcloud.com:19540", clusterId, request.RegionId)
 
 	cluster := &DedicatedClusterResponse{
