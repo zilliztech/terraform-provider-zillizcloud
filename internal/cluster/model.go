@@ -45,6 +45,7 @@ func (c *ClusterResourceModel) setUnknown() {
 	c.CreateTime = unknown
 	c.Status = unknown
 	c.Description = unknown
+	c.SecurityGroups = types.SetNull(types.StringType)
 }
 
 // populate the ClusterResourceModel with the input which is the response from the API.
@@ -53,6 +54,9 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	c.ClusterId = input.ClusterId
 	c.ClusterName = input.ClusterName
 	c.ProjectId = input.ProjectId
+	if !input.RegionId.IsNull() && input.RegionId.ValueString() != "" {
+		c.RegionId = input.RegionId
+	}
 	c.Description = input.Description
 	c.Status = input.Status
 	c.DesiredStatus = input.Status
@@ -92,8 +96,8 @@ func (c *ClusterResourceModel) isClusterNameChanged(other ClusterResourceModel) 
 	return c.ClusterName.ValueString() != other.ClusterName.ValueString()
 }
 
-func (c *ClusterResourceModel) isSecurityGroupsChanged(other ClusterResourceModel) bool {
-	return !c.SecurityGroups.Equal(other.SecurityGroups)
+func (plan *ClusterResourceModel) isSecurityGroupsChanged(state ClusterResourceModel) bool {
+	return !plan.SecurityGroups.Equal(state.SecurityGroups)
 }
 
 func (c *ClusterResourceModel) isStatusChangeRequired(other ClusterResourceModel) bool {

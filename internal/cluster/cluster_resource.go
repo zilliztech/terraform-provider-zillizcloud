@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 	util "github.com/zilliztech/terraform-provider-zillizcloud/client/retry"
-	"github.com/zilliztech/terraform-provider-zillizcloud/internal/util/conv"
 	customvalidator "github.com/zilliztech/terraform-provider-zillizcloud/internal/validator"
 )
 
@@ -267,100 +266,99 @@ func convertTerraformMapToStringMap(terraformMap types.Map) map[string]string {
 
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "Create Cluster...")
-	var data ClusterResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
+	tfPlan := new(ClusterResourceModel)
+
+	createTimeout, diags := tfPlan.Timeouts.Create(ctx, defaultClusterCreateTimeout)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	diags = req.Plan.Get(ctx, tfPlan)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 
-	checkPlan := func(data ClusterResourceModel) (bool, error) {
-
-		// plan could be empty in byoc env
-		if data.Plan.IsNull() || data.Plan.IsUnknown() {
-			return true, nil
-		}
-
-		switch zilliz.Plan(data.Plan.ValueString()) {
-		case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan:
-			return true, nil
-		default:
-			return false, fmt.Errorf("invalid plan: %s", data.Plan.ValueString())
-		}
-
-	}
-
-	if _, err := checkPlan(data); err != nil {
-		resp.Diagnostics.AddError("Invalid plan", err.Error())
+	err := checkZillizClusterPlan(*tfPlan)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid zilliz cluster plan", err.Error())
 		return
 	}
 
-	var err error
-
-	cluster, err := r.store.Create(ctx, &data)
+	tfState := new(ClusterResourceModel)
+	tfState.populate(tfPlan)
+	tfState.setUnknown()
+	tfState.Labels = tfPlan.Labels
+	tfState.Timeouts = tfPlan.Timeouts
+	newState, err := r.store.Create(ctx, tfPlan)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create cluster", err.Error())
 		return
 	}
+	tfState.ClusterId = newState.ClusterId
+	tfState.Username = newState.Username
+	tfState.Password = newState.Password
+	tfState.Prompt = newState.Prompt
 
-	data.ClusterId = cluster.ClusterId
-	data.Username = cluster.Username
-	data.Password = cluster.Password
-	data.Prompt = cluster.Prompt
-	data.setUnknown()
+	resp.Diagnostics.Append(resp.State.Set(ctx, tfState)...)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	r.tryBestUpdateStatesAfterCreation(ctx, tfPlan, tfState, resp)
+}
 
-	// Wait for cluster to be RUNNING
-	// Create() is passed a default timeout to use if no value
-	// has been supplied in the Terraform configuration.
-	createTimeout, diags := data.Timeouts.Create(ctx, defaultClusterCreateTimeout)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
+func checkZillizClusterPlan(data ClusterResourceModel) error {
+	// plan could be empty in byoc env
+	if data.Plan.IsNull() || data.Plan.IsUnknown() {
+		return nil
+	}
+
+	switch zilliz.Plan(data.Plan.ValueString()) {
+	case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan:
+		return nil
+	default:
+		return fmt.Errorf("invalid plan: %s", data.Plan.ValueString())
+	}
+}
+
+// tryBestUpdateStatesAfterCreation is called after resource already created, so there're just warnings if anything wrong.
+func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, plan, state *ClusterResourceModel, resp *resource.CreateResponse) {
+	newState, isRunning := r.getStateAndWaitForRunning(ctx, state.ClusterId.ValueString())
+	if !isRunning {
+		resp.Diagnostics.AddWarning("Cluster created but not in RUNNING state", "The cluster was created successfully, but it is not in the RUNNING state after waiting for the specified timeout. Please check the Zilliz Cloud console for more details or contact support.")
+	}
+	if newState != nil {
+		state.populate(newState)
+	} else {
+		state.setUnknown()
+	}
+
+	diags := resp.State.Set(ctx, state)
+	if diags.HasError() {
+		errorToWarning(resp, diags)
 		return
 	}
 
-	err = r.waitForStatus(ctx, createTimeout, cluster.ClusterId.ValueString(), "RUNNING")
-	if err != nil {
-		// Explicit check: if it's a network give-up error, quit successfully without any error
-		if util.IsNetworkGiveUpError(err) {
-			tflog.Info(ctx, "Network retries exhausted during cluster creation status wait, continuing successfully", map[string]interface{}{
-				"cluster_id": cluster.ClusterId.ValueString(),
-				"error":      err.Error(),
-			})
-			// quit successfully for network give-up errors
-			return
-		} else {
-			resp.Diagnostics.AddError("Failed to wait for cluster to enter RUNNING state", err.Error())
+	if len(plan.SecurityGroups.Elements()) != 0 {
+		err := r.handleSecurityGroupsUpdate(ctx, *plan, *state)
+		if err != nil {
+			resp.Diagnostics.AddWarning("Failed to update cluster security groups", err.Error())
 			return
 		}
+		state.SecurityGroups = plan.SecurityGroups
 	}
 
-	// Apply security groups after cluster is running
-	if !data.SecurityGroups.IsNull() && !data.SecurityGroups.IsUnknown() {
-		resp.Diagnostics.Append(r.handleSecurityGroupsUpdate(ctx, data, data)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
+	diags = resp.State.Set(ctx, state)
+	if diags.HasError() {
+		errorToWarning(resp, diags)
 	}
+}
 
-	cluster, err = r.store.Get(ctx, cluster.ClusterId.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
-		return
+func errorToWarning(resp *resource.CreateResponse, diagnostics diag.Diagnostics) {
+	for _, diag := range diagnostics.Errors() {
+		resp.Diagnostics.AddWarning(diag.Summary(), diag.Detail())
 	}
-
-	data.populate(cluster)
-
-	// Refresh security groups since it's a computed field
-	securityGroups, err := r.store.GetSecurityGroups(ctx, cluster.ClusterId.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to get cluster security groups", err.Error())
-		return
-	}
-	securityGroupsSet := conv.SliceToSet(securityGroups)
-	data.SecurityGroups = securityGroupsSet
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -483,27 +481,21 @@ func (r *ClusterResource) handleClusterNameUpdate(ctx context.Context, plan, sta
 	return diags
 }
 
-func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
-	var diags diag.Diagnostics
-
+func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, state ClusterResourceModel) error {
 	// Convert Terraform set to Go slice
 	var securityGroupIds []string
-	if !plan.SecurityGroups.IsNull() && !plan.SecurityGroups.IsUnknown() {
-		elements := plan.SecurityGroups.Elements()
-		for _, elem := range elements {
-			if strValue, ok := elem.(types.String); ok {
-				securityGroupIds = append(securityGroupIds, strValue.ValueString())
-			}
+	elements := plan.SecurityGroups.Elements()
+	for _, elem := range elements {
+		if strValue, ok := elem.(types.String); ok {
+			securityGroupIds = append(securityGroupIds, strValue.ValueString())
 		}
 	}
-
 	err := r.store.UpsertSecurityGroups(ctx, state.ClusterId.ValueString(), securityGroupIds)
 	if err != nil {
-		diags.AddError("Failed to update cluster security groups", err.Error())
-		return diags
+		return fmt.Errorf("failed to update cluster security groups: %w", err)
 	}
 
-	return diags
+	return nil
 }
 
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -629,4 +621,31 @@ func (r *ClusterResource) waitForStatus(ctx context.Context, timeout time.Durati
 	}, util.DefaultMaxNetworkFailures)
 
 	return err
+}
+
+func (r *ClusterResource) getStateAndWaitForRunning(ctx context.Context, clusterId string) (lastState *ClusterResourceModel, isRunning bool) {
+	const retryInterval = 10 * time.Second
+	for {
+		lastRet, isRunning := r.getStateAndCheckRunningOnce(ctx, clusterId)
+		if isRunning {
+			return lastRet, true
+		}
+		select {
+		case <-ctx.Done():
+			return lastRet, false
+		case <-time.After(retryInterval):
+		}
+	}
+}
+
+func (r *ClusterResource) getStateAndCheckRunningOnce(ctx context.Context, clusterId string) (lastState *ClusterResourceModel, isRunning bool) {
+	ret, err := r.store.Get(ctx, clusterId)
+	if err != nil {
+		tflog.Warn(ctx, "Failed to get cluster state", map[string]interface{}{
+			"cluster_id": clusterId,
+			"error":      err.Error(),
+		})
+		return nil, false
+	}
+	return ret, ret.Status.ValueString() == "RUNNING"
 }

@@ -1,6 +1,9 @@
 package client
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type Plan string
 
@@ -9,6 +12,7 @@ var (
 	ServerlessPlan Plan = "Serverless"
 	StandardPlan   Plan = "Standard"
 	EnterprisePlan Plan = "Enterprise"
+	BuiltInPlan    Plan = "" // one can leave plan empty for BYOC env
 )
 
 type ModifyClusterParams struct {
@@ -169,6 +173,9 @@ func (c *Client) ListClusters() (Clusters, error) {
 }
 
 func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
+	if clusterId == "" {
+		return Cluster{}, fmt.Errorf("clusterId is required")
+	}
 	var response zillizResponse[Cluster]
 	err := c.do("GET", "clusters/"+clusterId, nil, &response)
 	if err != nil {
