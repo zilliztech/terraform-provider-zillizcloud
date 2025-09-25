@@ -36,8 +36,6 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		return nil, err
 	}
 
-	// labels := convertLabelsToTypesMap(cluster.Labels)
-
 	return &ClusterResourceModel{
 		ClusterId:   types.StringValue(cluster.ClusterId),
 		Plan:        types.StringValue(string(cluster.Plan)),
@@ -45,9 +43,11 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		CuSize:      types.Int64Value(cluster.CuSize),
 		CuType:      types.StringValue(cluster.CuType),
 		ProjectId:   types.StringValue(cluster.ProjectId),
+		// state fixed by input
 		// Username:           types.StringValue(cluster.Username),
 		// Password:           types.StringValue(cluster.Password),
 		// Prompt:             types.StringValue(cluster.Prompt),
+		Labels:      types.MapUnknown(types.StringType), // read by GetLabels api
 		Description: types.StringValue(cluster.Description),
 		RegionId:    types.StringValue(cluster.RegionId),
 		Status: types.StringValue(
@@ -91,32 +91,25 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			}
 		}
 	}
-
-	if zilliz.Plan(cluster.Plan.ValueString()) == zilliz.FreePlan {
+	zillizPlan := zilliz.Plan(cluster.Plan.ValueString())
+	switch zillizPlan {
+	case zilliz.FreePlan:
 		response, err = c.client.CreateFreeCluster(zilliz.CreateServerlessClusterParams{
 			RegionId:    regionId,
 			ClusterName: cluster.ClusterName.ValueString(),
 			ProjectId:   cluster.ProjectId.ValueString(),
 		})
-	} else if zilliz.Plan(cluster.Plan.ValueString()) == zilliz.ServerlessPlan {
+	case zilliz.ServerlessPlan:
 		response, err = c.client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
 			RegionId:    regionId,
 			ClusterName: cluster.ClusterName.ValueString(),
 			ProjectId:   cluster.ProjectId.ValueString(),
 		})
-	} else if zilliz.Plan(cluster.Plan.ValueString()) == zilliz.StandardPlan || zilliz.Plan(cluster.Plan.ValueString()) == zilliz.EnterprisePlan {
+	default:
+		// dedicated:
 		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
 			RegionId:    regionId,
 			Plan:        zilliz.Plan(cluster.Plan.ValueString()),
-			ClusterName: cluster.ClusterName.ValueString(),
-			CUSize:      int(cluster.CuSize.ValueInt64()),
-			CUType:      cluster.CuType.ValueString(),
-			ProjectId:   cluster.ProjectId.ValueString(),
-			Labels:      labels,
-		})
-	} else {
-		// byoc env if plan is not set
-		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
 			ClusterName: cluster.ClusterName.ValueString(),
 			CUSize:      int(cluster.CuSize.ValueInt64()),
 			CUType:      cluster.CuType.ValueString(),
@@ -130,11 +123,10 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 	}
 
 	ret = &ClusterResourceModel{
-		ClusterId:      types.StringValue(response.ClusterId),
-		Username:       types.StringValue(response.Username),
-		Password:       types.StringValue(response.Password),
-		Prompt:         types.StringValue(response.Prompt),
-		SecurityGroups: cluster.SecurityGroups, // Pass through security groups for later processing
+		ClusterId: types.StringValue(response.ClusterId),
+		Username:  types.StringValue(response.Username),
+		Password:  types.StringValue(response.Password),
+		Prompt:    types.StringValue(response.Prompt),
 	}
 	return ret, nil
 }
