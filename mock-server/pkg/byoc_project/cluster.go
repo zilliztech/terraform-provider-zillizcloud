@@ -75,7 +75,7 @@ func CreateServerlessCluster(c *gin.Context) {
 
 	log.Printf("[CreateServerlessCluster request]: %+v", request)
 
-	clusterId := "sl01-" + uuid.New().String()[:15]
+	clusterId := "in05-" + uuid.New().String()[:15]
 	connectAddress := fmt.Sprintf("https://%s.%s.vectordb-uat3.zillizcloud.com:19540", clusterId, request.RegionId)
 
 	cluster := &ServerlessClusterResponse{
@@ -112,9 +112,9 @@ func CreateServerlessCluster(c *gin.Context) {
 		SnapshotNumber:     cluster.SnapshotNumber,
 		CreateProgress:     cluster.CreateProgress,
 		Labels:             cluster.Labels,
-		CuType:             "Serverless",
+		CuType:             "",
 		CuSize:             0,
-		Replica:            0,
+		Replica:            1,
 	}
 	clusterStore.Set(clusterId, dedicatedCluster)
 
@@ -143,7 +143,7 @@ func CreateFreeCluster(c *gin.Context) {
 
 	log.Printf("[CreateFreeCluster request]: %+v", request)
 
-	clusterId := "fr01-" + uuid.New().String()[:15]
+	clusterId := "in03-" + uuid.New().String()[:15]
 	connectAddress := fmt.Sprintf("https://%s.%s.vectordb-uat3.zillizcloud.com:19540", clusterId, request.RegionId)
 
 	cluster := &FreeClusterResponse{
@@ -152,7 +152,7 @@ func CreateFreeCluster(c *gin.Context) {
 		ProjectId:          request.ProjectId,
 		Description:        request.Description,
 		RegionId:           request.RegionId,
-		Plan:               "Free",
+		Plan:               "Serverless",
 		ConnectAddress:     connectAddress,
 		PrivateLinkAddress: "",
 		CreateTime:         time.Now().Format(time.RFC3339),
@@ -180,9 +180,9 @@ func CreateFreeCluster(c *gin.Context) {
 		SnapshotNumber:     cluster.SnapshotNumber,
 		CreateProgress:     cluster.CreateProgress,
 		Labels:             cluster.Labels,
-		CuType:             "Free",
+		CuType:             "",
 		CuSize:             0,
-		Replica:            0,
+		Replica:            1,
 	}
 	clusterStore.Set(clusterId, dedicatedCluster)
 
