@@ -138,6 +138,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"region_id": schema.StringAttribute{
 				MarkdownDescription: "The ID of the region where the cluster exists.",
 				Optional:            true,
+				Computed:            true,
 			},
 			"desired_status": schema.StringAttribute{
 				MarkdownDescription: "The desired status of the cluster. Possible values are RUNNING and SUSPENDED. Defaults to RUNNING.",
@@ -266,7 +267,7 @@ func convertTerraformMapToStringMap(terraformMap types.Map) map[string]string {
 
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "Create Cluster...")
-	tfPlan := new(ClusterResourceModel)
+	tfPlan := ClusterResourceModel{}
 
 	createTimeout, diags := tfPlan.Timeouts.Create(ctx, defaultClusterCreateTimeout)
 	if diags.HasError() {
@@ -276,24 +277,24 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	diags = req.Plan.Get(ctx, tfPlan)
+	diags = req.Plan.Get(ctx, &tfPlan)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
 	}
 
-	err := checkZillizClusterPlan(*tfPlan)
+	err := checkZillizClusterPlan(tfPlan)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid zilliz cluster plan", err.Error())
 		return
 	}
 
-	tfState := new(ClusterResourceModel)
-	tfState.populate(tfPlan)
+	tfState := tfPlan
+
+	tfState.completeForFreeOrServerless(&tfPlan)
 	tfState.setUnknown()
-	tfState.Labels = tfPlan.Labels
-	tfState.Timeouts = tfPlan.Timeouts
-	newState, err := r.store.Create(ctx, tfPlan)
+
+	newState, err := r.store.Create(ctx, &tfPlan)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create cluster", err.Error())
 		return
@@ -305,7 +306,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, tfState)...)
 
-	r.tryBestUpdateStatesAfterCreation(ctx, tfPlan, tfState, resp)
+	r.tryBestUpdateStatesAfterCreation(ctx, &tfPlan, &tfState, resp)
 }
 
 func checkZillizClusterPlan(data ClusterResourceModel) error {
@@ -329,9 +330,12 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		resp.Diagnostics.AddWarning("Cluster created but not in RUNNING state", "The cluster was created successfully, but it is not in the RUNNING state after waiting for the specified timeout. Please check the Zilliz Cloud console for more details or contact support.")
 	}
 	if newState != nil {
-		state.populate(newState)
-	} else {
-		state.setUnknown()
+		state.Status = newState.Status
+		state.ConnectAddress = newState.ConnectAddress
+		state.PrivateLinkAddress = newState.PrivateLinkAddress
+		state.CreateTime = newState.CreateTime
+		state.Description = newState.Description
+		state.RegionId = newState.RegionId
 	}
 
 	diags := resp.State.Set(ctx, state)
@@ -374,7 +378,26 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
 		return
 	}
-	state.populate(cluster)
+
+	state.ClusterId = cluster.ClusterId
+	state.ClusterName = cluster.ClusterName
+	state.ProjectId = cluster.ProjectId
+	state.RegionId = cluster.RegionId
+	state.Description = cluster.Description
+	state.Status = cluster.Status
+	state.ConnectAddress = cluster.ConnectAddress
+	state.PrivateLinkAddress = cluster.PrivateLinkAddress
+	state.CreateTime = cluster.CreateTime
+	state.Plan = cluster.Plan
+	state.Replica = cluster.Replica
+	state.CuSize = cluster.CuSize
+	state.CuType = cluster.CuType
+
+	if state.DesiredStatus.IsNull() {
+		state.DesiredStatus = cluster.Status
+	}
+
+	state.completeForFreeOrServerless(cluster)
 
 	labels, err := r.store.GetLabels(ctx, state.ClusterId.ValueString())
 	if err != nil {
