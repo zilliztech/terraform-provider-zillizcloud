@@ -10,6 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	TimeToChange time.Duration
+)
+
 func CreateDedicatedCluster(c *gin.Context) {
 	var request CreateDedicatedClusterRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -32,7 +36,13 @@ func CreateDedicatedCluster(c *gin.Context) {
 		ClusterName:        request.ClusterName,
 		ProjectId:          request.ProjectId,
 		Description:        request.Description,
-		RegionId:           request.RegionId,
+		RegionId:           func() string {
+			if request.RegionId == "" {
+				// byoc case, use default region id
+				return "aws-us-west-2"
+			}
+			return request.RegionId
+		}(),
 		CuType:             request.CuType,
 		Plan:               request.Plan,
 		ConnectAddress:     connectAddress,
@@ -43,6 +53,9 @@ func CreateDedicatedCluster(c *gin.Context) {
 		SnapshotNumber:     0,
 		CreateProgress:     100,
 		Labels:             request.Labels,
+		Username:           "db_admin",
+		Password:           "password",
+		Prompt:             "Successfully Submitted",
 	}
 	if cluster.Plan == "Standard" || cluster.Plan == "Enterprise" {
 		cluster.Replica = 1
@@ -51,7 +64,7 @@ func CreateDedicatedCluster(c *gin.Context) {
 	clusterStore.Set(clusterId, cluster)
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(TimeToChange)
 		cluster := clusterStore.Get(clusterId)
 		if cluster != nil {
 			cluster.Status = "RUNNING"
@@ -62,7 +75,13 @@ func CreateDedicatedCluster(c *gin.Context) {
 
 	c.JSON(http.StatusOK, Response[*DedicatedClusterResponse]{
 		Code: 0,
-		Data: cluster,
+		Data: &DedicatedClusterResponse{
+			ClusterId: clusterId,
+			Description: cluster.Description,
+			Username:  cluster.Username,
+			Password:  cluster.Password,
+			Prompt:    cluster.Prompt,
+		},
 	})
 }
 
@@ -75,7 +94,7 @@ func CreateServerlessCluster(c *gin.Context) {
 
 	log.Printf("[CreateServerlessCluster request]: %+v", request)
 
-	clusterId := "sl01-" + uuid.New().String()[:15]
+	clusterId := "in05-" + uuid.New().String()[:15]
 	connectAddress := fmt.Sprintf("https://%s.%s.vectordb-uat3.zillizcloud.com:19540", clusterId, request.RegionId)
 
 	cluster := &ServerlessClusterResponse{
@@ -112,14 +131,17 @@ func CreateServerlessCluster(c *gin.Context) {
 		SnapshotNumber:     cluster.SnapshotNumber,
 		CreateProgress:     cluster.CreateProgress,
 		Labels:             cluster.Labels,
-		CuType:             "Serverless",
+		CuType:             "",
 		CuSize:             0,
-		Replica:            0,
+		Replica:            1,
+		Username:           "db_admin",
+		Password:           "password",
+		Prompt:             "Successfully Submitted",
 	}
 	clusterStore.Set(clusterId, dedicatedCluster)
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(TimeToChange)
 		cluster := clusterStore.Get(clusterId)
 		if cluster != nil {
 			cluster.Status = "RUNNING"
@@ -130,7 +152,12 @@ func CreateServerlessCluster(c *gin.Context) {
 
 	c.JSON(http.StatusOK, Response[*ServerlessClusterResponse]{
 		Code: 0,
-		Data: cluster,
+		Data: &ServerlessClusterResponse{
+			ClusterId: clusterId,
+			Username: cluster.Username,
+			Password: cluster.Password,
+			Prompt: cluster.Prompt,
+		},
 	})
 }
 
@@ -143,7 +170,7 @@ func CreateFreeCluster(c *gin.Context) {
 
 	log.Printf("[CreateFreeCluster request]: %+v", request)
 
-	clusterId := "fr01-" + uuid.New().String()[:15]
+	clusterId := "in03-" + uuid.New().String()[:15]
 	connectAddress := fmt.Sprintf("https://%s.%s.vectordb-uat3.zillizcloud.com:19540", clusterId, request.RegionId)
 
 	cluster := &FreeClusterResponse{
@@ -152,7 +179,7 @@ func CreateFreeCluster(c *gin.Context) {
 		ProjectId:          request.ProjectId,
 		Description:        request.Description,
 		RegionId:           request.RegionId,
-		Plan:               "Free",
+		Plan:               "Serverless",
 		ConnectAddress:     connectAddress,
 		PrivateLinkAddress: "",
 		CreateTime:         time.Now().Format(time.RFC3339),
@@ -160,6 +187,9 @@ func CreateFreeCluster(c *gin.Context) {
 		SnapshotNumber:     0,
 		CreateProgress:     100,
 		Labels:             request.Labels,
+		Username:           "db_admin",
+		Password:           "password",
+		Prompt:             "Successfully Submitted",
 	}
 	cluster.Status = "CREATING"
 
@@ -180,14 +210,14 @@ func CreateFreeCluster(c *gin.Context) {
 		SnapshotNumber:     cluster.SnapshotNumber,
 		CreateProgress:     cluster.CreateProgress,
 		Labels:             cluster.Labels,
-		CuType:             "Free",
+		CuType:             "",
 		CuSize:             0,
-		Replica:            0,
+		Replica:            1,
 	}
 	clusterStore.Set(clusterId, dedicatedCluster)
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(TimeToChange)
 		cluster := clusterStore.Get(clusterId)
 		if cluster != nil {
 			cluster.Status = "RUNNING"
@@ -198,7 +228,12 @@ func CreateFreeCluster(c *gin.Context) {
 
 	c.JSON(http.StatusOK, Response[*FreeClusterResponse]{
 		Code: 0,
-		Data: cluster,
+		Data: &FreeClusterResponse{
+			ClusterId: clusterId,
+			Username: cluster.Username,
+			Password: cluster.Password,
+			Prompt: cluster.Prompt,
+		},
 	})
 }
 
@@ -249,7 +284,7 @@ func ResumeCluster(c *gin.Context) {
 	clusterStore.Set(clusterId, cluster)
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(TimeToChange)
 		cluster := clusterStore.Get(clusterId)
 		if cluster != nil {
 			cluster.Status = "RUNNING"
@@ -291,7 +326,7 @@ func SuspendCluster(c *gin.Context) {
 	clusterStore.Set(clusterId, cluster)
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(TimeToChange)
 		cluster := clusterStore.Get(clusterId)
 		if cluster != nil {
 			cluster.Status = "STOPPED"
@@ -349,7 +384,7 @@ func ModifyClusterReplica(c *gin.Context) {
 	clusterStore.Set(clusterId, cluster)
 
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(TimeToChange)
 		cluster := clusterStore.Get(clusterId)
 		if cluster != nil {
 			cluster.Status = "RUNNING"

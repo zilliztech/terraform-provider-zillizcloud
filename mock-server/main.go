@@ -1,13 +1,19 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"net/http"
+	"time"
 
 	"example.com/m/pkg/byoc_project"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	flag.DurationVar(&byoc_project.TimeToChange, "t", 5*time.Second, "time to change status of cluster")
+	flag.Parse()
+	fmt.Printf("time to change: %v\n", byoc_project.TimeToChange)
 	// Create a default gin router
 	r := gin.Default()
 
