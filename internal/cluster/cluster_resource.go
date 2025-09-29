@@ -194,6 +194,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Default:             int64default.StaticInt64(1),
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
+					customvalidator.ReplicaCuSizeValidator{},
 				},
 			},
 			"load_balancer_security_groups": schema.SetAttribute{
@@ -554,6 +555,12 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	// Read Terraform state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Validate that cu_size and replica are not changed at the same time
+	if plan.isCuSizeChanged(state) && plan.isReplicaChanged(state) {
+		resp.Diagnostics.AddError("Invalid configuration change", "Cannot change cu_size and replica at the same time. Please update them in separate operations.")
 		return
 	}
 

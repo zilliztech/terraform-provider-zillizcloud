@@ -217,7 +217,7 @@ resource "zillizcloud_cluster" "test" {
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
 				),
 			},
-			// Test update
+			// Test update cu_size only
 			{
 				Config: provider.ProviderConfig + `
 				data "zillizcloud_project" "default" {
@@ -227,8 +227,7 @@ resource "zillizcloud_cluster" "test" {
 					cluster_name = "a-standard-cluster-renamed"        # change the cluster name
 					region_id    = "aws-us-west-2"
 					plan         = "Standard"
-					cu_size      = "2"                                 # change the cu_size
-					replica      = "8"                                 # change the replica
+					cu_size      = "8"                                 # change the cu_size
 					cu_type      = "Performance-optimized"             
 					project_id   = data.zillizcloud_project.default.id
 					timeouts {
@@ -241,7 +240,38 @@ resource "zillizcloud_cluster" "test" {
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "a-standard-cluster-renamed"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Standard"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "8"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+				),
+			},
+			// Test update  replica
+			{
+				Config: provider.ProviderConfig + `
+							data "zillizcloud_project" "default" {
+							}
+							resource "zillizcloud_cluster" "test" {
+								cluster_name = "a-standard-cluster-renamed"        # change the cluster name
+								region_id    = "aws-us-west-2"
+								plan         = "Standard"
+								cu_size      = "8"
+								replica      = "2"                                 # change the replica
+								cu_type      = "Performance-optimized"
+								project_id   = data.zillizcloud_project.default.id
+								timeouts {
+									create = "120m"
+									update = "120m"
+								}
+							}
+							`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "a-standard-cluster-renamed"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Standard"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_size", "8"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica", "2"),
 					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
 					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
