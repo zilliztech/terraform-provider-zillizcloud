@@ -383,6 +383,9 @@ type DedicatedClusterResponse struct {
 	CreateProgress     int               `json:"createProgress"`
 	Labels             map[string]string `json:"labels"`
 	SecurityGroups     []string          `json:"securityGroups"`
+	Username           string            `json:"username"`
+	Password           string            `json:"password"`
+	Prompt             string            `json:"prompt"`
 }
 
 type Project struct {
@@ -434,6 +437,9 @@ type ServerlessClusterResponse struct {
 	SnapshotNumber     int               `json:"snapshotNumber"`
 	CreateProgress     int               `json:"createProgress"`
 	Labels             map[string]string `json:"labels"`
+	Username           string            `json:"username"`
+	Password           string            `json:"password"`
+	Prompt             string            `json:"prompt"`
 }
 
 // Free cluster types
@@ -462,6 +468,9 @@ type FreeClusterResponse struct {
 	SnapshotNumber     int               `json:"snapshotNumber"`
 	CreateProgress     int               `json:"createProgress"`
 	Labels             map[string]string `json:"labels"`
+	Username           string            `json:"username"`
+	Password           string            `json:"password"`
+	Prompt             string            `json:"prompt"`
 }
 
 // Security Groups request/response types

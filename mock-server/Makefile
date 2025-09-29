@@ -1,2 +1,4 @@
+TIME ?= 5s
+
 run:
-	go run main.go
+	go run main.go -t $(TIME)
