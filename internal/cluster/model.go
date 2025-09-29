@@ -45,6 +45,9 @@ func (c *ClusterResourceModel) setUnknown() {
 	c.CreateTime = unknown
 	c.Status = unknown
 	c.Description = unknown
+	if c.RegionId.IsNull() {
+		c.RegionId = unknown
+	}
 	c.SecurityGroups = types.SetNull(types.StringType)
 }
 
@@ -77,6 +80,17 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 		c.Replica = types.Int64Value(1)
 	}
 
+}
+
+// only for free or serverless plan, set default value
+func (c *ClusterResourceModel) completeForFreeOrServerless(input *ClusterResourceModel) {
+	plan := input.Plan.ValueString()
+	isFreeOrServerless := plan == string(zilliz.FreePlan) || plan == string(zilliz.ServerlessPlan)
+	if isFreeOrServerless {
+		c.CuSize = types.Int64Value(1)
+		c.CuType = types.StringValue("Performance-optimized")
+		c.Replica = types.Int64Value(1)
+	}
 }
 
 // Comparison methods for ClusterResourceModel

@@ -47,6 +47,7 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		// Username:           types.StringValue(cluster.Username),
 		// Password:           types.StringValue(cluster.Password),
 		// Prompt:             types.StringValue(cluster.Prompt),
+		CreateTime:  types.StringValue(cluster.CreateTime),
 		Labels:      types.MapUnknown(types.StringType), // read by GetLabels api
 		Description: types.StringValue(cluster.Description),
 		RegionId:    types.StringValue(cluster.RegionId),
