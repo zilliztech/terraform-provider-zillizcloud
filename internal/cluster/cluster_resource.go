@@ -192,6 +192,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Default:             int64default.StaticInt64(1),
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
 			},
 			"load_balancer_security_groups": schema.SetAttribute{
 				MarkdownDescription: "A set of security group IDs to associate with the load balancer of the cluster.",
@@ -286,6 +289,12 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	err := checkZillizClusterPlan(tfPlan)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid zilliz cluster plan", err.Error())
+		return
+	}
+
+	// Validate replica value during create - must be 1
+	if !tfPlan.Replica.IsNull() && !tfPlan.Replica.IsUnknown() && tfPlan.Replica.ValueInt64() != 1 {
+		resp.Diagnostics.AddError("Invalid replica value for cluster creation", "Replica value must be 1 during cluster creation")
 		return
 	}
 
