@@ -249,7 +249,14 @@ func (r *BYOCProjectResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	data.refresh(model)
+	//BUG: get the auto scaling and arch from the local state, since they are not returned by the API
+	model.Instances.AutoScaling = data.Instances.AutoScaling
+	model.Instances.Arch = data.Instances.Arch
+
+	data.AWS = model.AWS
+	data.Instances = model.Instances
+	data.Status = model.Status
+	data.DataPlaneID = model.DataPlaneID
 
 	tflog.Info(ctx, fmt.Sprintf("Read BYOC Project response: %+v", data))
 

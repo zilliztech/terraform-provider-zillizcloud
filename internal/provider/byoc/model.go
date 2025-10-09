@@ -60,14 +60,6 @@ type InstancesConfig struct {
 	Arch        types.String `tfsdk:"arch"`
 }
 
-func (data *BYOCProjectResourceModel) refresh(input BYOCProjectResourceModel) {
-	data.AWS = input.AWS
-	data.Instances = input.Instances
-	data.Status = input.Status
-	data.DataPlaneID = input.DataPlaneID
-	// data.Name = input.Name
-}
-
 type BYOCProjectStatus int
 
 const (
