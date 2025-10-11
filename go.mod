@@ -1,6 +1,6 @@
 module github.com/zilliztech/terraform-provider-zillizcloud
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.21.0
@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-testing v1.13.3
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/time v0.12.0
+	golang.org/x/time v0.14.0
 )
 
 require (
