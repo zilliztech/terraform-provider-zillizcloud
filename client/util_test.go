@@ -17,11 +17,13 @@ var (
 	apiKey       string
 	update       bool
 	pollInterval int
+	env          string
 )
 
 func init() {
 	flag.StringVar(&apiKey, "key", "", "Your TEST secret key for the zilliz cloud API. If present, integration tests will be run using this key.")
 	flag.BoolVar(&update, "update", false, "Set this flag to update the responses used in local tests. This requires that the key flag is set so that we can interact with the zilliz cloud API.")
+	flag.StringVar(&env, "env", "prod", "The environment to run the tests in. Can be 'uat' or 'prod'.")
 	// flag.IntVar(&pollInterval, "poll-interval", 60, "The interval in seconds to poll the zilliz cloud API for the status of a resource.")
 }
 
@@ -47,6 +49,14 @@ func zillizClient[T any](t *testing.T) (*Client, func()) {
 
 		options = append(options, WithBaseUrl(server.URL))
 	} else {
+		options = append(options, WithHostAddress(
+			func() string {
+				if env == "uat" {
+					return "https://api.cloud-uat3.zilliz.com/v2"
+				}
+				return "https://api.cloud.zilliz.com/v2"
+			}(),
+		))
 		key = apiKey
 	}
 
