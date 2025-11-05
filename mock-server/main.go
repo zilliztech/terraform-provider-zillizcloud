@@ -20,7 +20,13 @@ func main() {
 	// Define the API endpoint
 	v2 := r.Group("/v2")
 	{
-		v2.GET("/projects", byoc_project.GetProjects)
+		// Standard project endpoints
+		v2.POST("/projects", byoc_project.CreateProject)
+		v2.GET("/projects", byoc_project.ListProjects)
+		v2.GET("/projects/:projectId", byoc_project.GetProjectById)
+		v2.PATCH("/projects/:projectId/plan", byoc_project.UpgradeProjectPlan)
+		v2.DELETE("/projects/:projectId", byoc_project.DeleteProject)
+
 		clusters := v2.Group("/clusters")
 		{
 			clusters.POST("/createDedicated", byoc_project.CreateDedicatedCluster)

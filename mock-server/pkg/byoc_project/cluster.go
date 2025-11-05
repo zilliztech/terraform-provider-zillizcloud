@@ -32,11 +32,11 @@ func CreateDedicatedCluster(c *gin.Context) {
 	connectAddress := fmt.Sprintf("https://%s.%s.vectordb-uat3.zillizcloud.com:19540", clusterId, request.RegionId)
 
 	cluster := &DedicatedClusterResponse{
-		ClusterId:          clusterId,
-		ClusterName:        request.ClusterName,
-		ProjectId:          request.ProjectId,
-		Description:        request.Description,
-		RegionId:           func() string {
+		ClusterId:   clusterId,
+		ClusterName: request.ClusterName,
+		ProjectId:   request.ProjectId,
+		Description: request.Description,
+		RegionId: func() string {
 			if request.RegionId == "" {
 				// byoc case, use default region id
 				return "aws-us-west-2"
@@ -76,11 +76,11 @@ func CreateDedicatedCluster(c *gin.Context) {
 	c.JSON(http.StatusOK, Response[*DedicatedClusterResponse]{
 		Code: 0,
 		Data: &DedicatedClusterResponse{
-			ClusterId: clusterId,
+			ClusterId:   clusterId,
 			Description: cluster.Description,
-			Username:  cluster.Username,
-			Password:  cluster.Password,
-			Prompt:    cluster.Prompt,
+			Username:    cluster.Username,
+			Password:    cluster.Password,
+			Prompt:      cluster.Prompt,
 		},
 	})
 }
@@ -154,9 +154,9 @@ func CreateServerlessCluster(c *gin.Context) {
 		Code: 0,
 		Data: &ServerlessClusterResponse{
 			ClusterId: clusterId,
-			Username: cluster.Username,
-			Password: cluster.Password,
-			Prompt: cluster.Prompt,
+			Username:  cluster.Username,
+			Password:  cluster.Password,
+			Prompt:    cluster.Prompt,
 		},
 	})
 }
@@ -230,9 +230,9 @@ func CreateFreeCluster(c *gin.Context) {
 		Code: 0,
 		Data: &FreeClusterResponse{
 			ClusterId: clusterId,
-			Username: cluster.Username,
-			Password: cluster.Password,
-			Prompt: cluster.Prompt,
+			Username:  cluster.Username,
+			Password:  cluster.Password,
+			Prompt:    cluster.Prompt,
 		},
 	})
 }
@@ -343,20 +343,6 @@ func SuspendCluster(c *gin.Context) {
 	})
 }
 
-func GetProjects(c *gin.Context) {
-	projects := projectStore.GetAll()
-
-	projectList := make([]Project, 0, len(projects))
-	for _, p := range projects {
-		projectList = append(projectList, *p)
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": projectList,
-	})
-}
-
 func ModifyClusterReplica(c *gin.Context) {
 	clusterId := c.Param("clusterId")
 
@@ -400,8 +386,6 @@ func ModifyClusterReplica(c *gin.Context) {
 		},
 	})
 }
-
-
 
 func GetLabels(c *gin.Context) {
 	clusterId := c.Param("clusterId")
@@ -551,4 +535,3 @@ func UpsertSecurityGroups(c *gin.Context) {
 		},
 	})
 }
-

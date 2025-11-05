@@ -389,10 +389,20 @@ type DedicatedClusterResponse struct {
 }
 
 type Project struct {
-	ProjectName   string `json:"projectName"`
-	ProjectId     string `json:"projectId"`
-	InstanceCount int    `json:"instanceCount"`
-	CreateTime    string `json:"createTime"`
+	ProjectName     string `json:"projectName"`
+	ProjectId       string `json:"projectId"`
+	InstanceCount   int64  `json:"instanceCount"`
+	CreateTimeMilli int64  `json:"createTimeMilli"`
+	Plan            string `json:"plan"`
+}
+
+type CreateProjectRequest struct {
+	ProjectName string `json:"projectName"`
+	Plan        string `json:"plan"`
+}
+
+type UpgradeProjectPlanRequest struct {
+	Plan string `json:"plan"`
 }
 
 type ModifyReplicaRequest struct {
