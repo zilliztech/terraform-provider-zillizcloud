@@ -54,10 +54,11 @@ var (
 
 func init() {
 	defaultProject := &Project{
-		ProjectName:   "Default Project",
-		ProjectId:     "proj-ebc5ac7f430702aec8c57b",
-		InstanceCount: 0,
-		CreateTime:    "2023-12-28T07:17:49Z",
+		ProjectName:     "Default Project",
+		ProjectId:       "proj-ebc5ac7f430702aec8c57b",
+		InstanceCount:   0,
+		CreateTimeMilli: 1703745469000, // 2023-12-28T07:17:49Z
+		Plan:            "Enterprise",
 	}
 	projectStore.Set(defaultProject.ProjectId, defaultProject)
 }
@@ -96,4 +97,8 @@ func (s *safeStore[T]) GetAll() []*T {
 		return true
 	})
 	return results
+}
+
+func (s *safeStore[T]) Delete(key string) {
+	s.store.Delete(key)
 }
