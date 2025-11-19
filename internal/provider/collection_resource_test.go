@@ -39,6 +39,15 @@ resource "zillizcloud_collection" "test" {
         element_type_params = {
           dim = "256"
         }
+      },
+      {
+        field_name = "tags"
+        data_type  = "Array"
+        element_data_type = "VarChar"
+        element_type_params = {
+          max_length   = "128"
+          max_capacity = "100"
+        }
       }
     ]
   }
@@ -53,10 +62,14 @@ resource "zillizcloud_collection" "test" {
 					resource.TestCheckResourceAttr("zillizcloud_collection.test", "connect_address", "https://in01-295cd02566647b7.aws-us-east-2.vectordb.zillizcloud.com:19534"),
 					resource.TestCheckResourceAttr("zillizcloud_collection.test", "db_name", "testdb"),
 					resource.TestCheckResourceAttr("zillizcloud_collection.test", "collection_name", "testcollection"),
+					resource.TestCheckResourceAttr("zillizcloud_collection.test", "schema.fields.2.field_name", "tags"),
+					resource.TestCheckResourceAttr("zillizcloud_collection.test", "schema.fields.2.data_type", "Array"),
+					resource.TestCheckResourceAttr("zillizcloud_collection.test", "schema.fields.2.element_data_type", "VarChar"),
+					resource.TestCheckResourceAttr("zillizcloud_collection.test", "schema.fields.2.element_type_params.max_length", "128"),
 					resource.TestCheckResourceAttrSet("zillizcloud_collection.test", "id"),
 				),
 			},
-			// Step 2: Update collection (change schema)
+			// Step 2: Update collection (change params only)
 			{
 				Config: provider.ProviderConfig + `
 resource "zillizcloud_database" "test" {
@@ -81,6 +94,15 @@ resource "zillizcloud_collection" "test" {
         data_type  = "FloatVector"
         element_type_params = {
           dim = "256"
+        }
+      },
+      {
+        field_name = "tags"
+        data_type  = "Array"
+        element_data_type = "VarChar"
+        element_type_params = {
+          max_length   = "128"
+          max_capacity = "100"
         }
       }
     ]

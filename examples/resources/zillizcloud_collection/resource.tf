@@ -52,6 +52,15 @@ resource "zillizcloud_collection" "mycollection" {
         element_type_params = {
           dim = "128"
         }
+      },
+      {
+        field_name          = "tags"
+        data_type           = "Array"
+        element_data_type   = "VarChar"
+        element_type_params = {
+          max_length   = "128"
+          max_capacity = "100"
+        }
       }
     ]
   }
