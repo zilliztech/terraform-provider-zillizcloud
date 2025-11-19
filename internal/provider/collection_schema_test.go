@@ -44,10 +44,10 @@ func TestConvertSchemaFields(t *testing.T) {
 			name: "Regular field without element_data_type",
 			input: []CollectionSchemaFieldModel{
 				{
-					FieldName:       types.StringValue("id"),
-					DataType:        types.StringValue("Int64"),
-					ElementDataType: types.StringValue(""),
-					IsPrimary:       types.BoolValue(true),
+					FieldName:         types.StringValue("id"),
+					DataType:          types.StringValue("Int64"),
+					ElementDataType:   types.StringValue(""),
+					IsPrimary:         types.BoolValue(true),
 					ElementTypeParams: map[string]types.String{},
 				},
 			},
