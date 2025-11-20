@@ -24,6 +24,7 @@ type CollectionSchema struct {
 type CollectionSchemaField struct {
 	FieldName         string         `json:"fieldName"`
 	DataType          string         `json:"dataType"`
+	ElementDataType   string         `json:"elementDataType,omitempty"`
 	IsPrimary         bool           `json:"isPrimary"`
 	ElementTypeParams map[string]any `json:"elementTypeParams"`
 }
@@ -78,16 +79,17 @@ type CollectionDescription struct {
 }
 
 type CollectionField struct {
-	AutoID        bool         `json:"autoId"`
-	ClusteringKey bool         `json:"clusteringKey"`
-	Description   string       `json:"description"`
-	ID            int          `json:"id"`
-	Name          string       `json:"name"`
-	Nullable      bool         `json:"nullable"`
-	PartitionKey  bool         `json:"partitionKey"`
-	PrimaryKey    bool         `json:"primaryKey"`
-	Type          string       `json:"type"`
-	Params        []FieldParam `json:"params"`
+	AutoID          bool         `json:"autoId"`
+	ClusteringKey   bool         `json:"clusteringKey"`
+	Description     string       `json:"description"`
+	ElementDataType string       `json:"elementDataType,omitempty"`
+	ID              int          `json:"id"`
+	Name            string       `json:"name"`
+	Nullable        bool         `json:"nullable"`
+	PartitionKey    bool         `json:"partitionKey"`
+	PrimaryKey      bool         `json:"primaryKey"`
+	Type            string       `json:"type"`
+	Params          []FieldParam `json:"params"`
 }
 
 type FieldParam struct {

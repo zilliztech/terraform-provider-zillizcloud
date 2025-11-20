@@ -56,6 +56,7 @@ type CollectionSchemaModel struct {
 type CollectionSchemaFieldModel struct {
 	FieldName         types.String            `tfsdk:"field_name"`
 	DataType          types.String            `tfsdk:"data_type"`
+	ElementDataType   types.String            `tfsdk:"element_data_type"`
 	IsPrimary         types.Bool              `tfsdk:"is_primary"`
 	ElementTypeParams map[string]types.String `tfsdk:"element_type_params"`
 }
@@ -191,6 +192,13 @@ Reference: https://github.com/milvus-io/milvus-proto/blob/2.5/go-api/commonpb/co
 										stringplanmodifier.RequiresReplace(),
 									},
 								},
+								"element_data_type": schema.StringAttribute{
+									Optional:            true,
+									MarkdownDescription: `The data type of array elements (required when data_type is "Array"). Examples: "VarChar", "Int64", "Float".`,
+									PlanModifiers: []planmodifier.String{
+										stringplanmodifier.RequiresReplace(),
+									},
+								},
 								"is_primary": schema.BoolAttribute{
 									Optional:            true,
 									Computed:            true,
@@ -247,6 +255,7 @@ func convertSchemaFields(fields []CollectionSchemaFieldModel) []zilliz.Collectio
 		result[i] = zilliz.CollectionSchemaField{
 			FieldName:         f.FieldName.ValueString(),
 			DataType:          f.DataType.ValueString(),
+			ElementDataType:   f.ElementDataType.ValueString(),
 			IsPrimary:         f.IsPrimary.ValueBool(),
 			ElementTypeParams: params,
 		}
@@ -262,6 +271,7 @@ func convertSchemaFieldModel(field zilliz.CollectionField) CollectionSchemaField
 	return CollectionSchemaFieldModel{
 		FieldName:         types.StringValue(field.Name),
 		DataType:          types.StringValue(field.Type),
+		ElementDataType:   types.StringValue(field.ElementDataType),
 		IsPrimary:         types.BoolValue(field.PrimaryKey),
 		ElementTypeParams: elementTypeParams,
 	}

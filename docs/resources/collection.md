@@ -69,6 +69,15 @@ resource "zillizcloud_collection" "mycollection" {
         element_type_params = {
           dim = "128"
         }
+      },
+      {
+        field_name        = "tags"
+        data_type         = "Array"
+        element_data_type = "VarChar"
+        element_type_params = {
+          max_length   = "128"
+          max_capacity = "100"
+        }
       }
     ]
   }
@@ -147,6 +156,7 @@ Required:
 
 Optional:
 
+- `element_data_type` (String) The data type of array elements (required when data_type is "Array"). Examples: "VarChar", "Int64", "Float".
 - `element_type_params` (Map of String) Additional parameters for element type, if applicable (e.g., for array fields).
 - `is_primary` (Boolean) Whether this field is the primary key.
 
