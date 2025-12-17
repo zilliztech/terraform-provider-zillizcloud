@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -50,6 +51,14 @@ type ClusterResource struct {
 	timeout func() time.Duration
 }
 
+func (r *ClusterResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.Conflicting(
+			path.MatchRoot("cu_size"),
+			path.MatchRoot("cu_settings"),
+		),
+	}
+}
 func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_cluster"
 }
@@ -92,7 +101,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
-				Default: int64default.StaticInt64(1),
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
@@ -205,6 +213,32 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Default:             setdefault.StaticValue(types.SetNull(types.StringType)),
 				DeprecationMessage:  "This field is deprecated. Use the zillizcloud_cluster_load_balancer_security_groups resource instead.",
 			},
+			"cu_settings": schema.SingleNestedAttribute{
+				MarkdownDescription: "Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"dynamic_scaling": schema.SingleNestedAttribute{
+						MarkdownDescription: "Dynamic scaling configuration for query CUs.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"min": schema.Int64Attribute{
+								MarkdownDescription: "Minimum number of compute units (CU) for autoscaling. Must be at least 1.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+							"max": schema.Int64Attribute{
+								MarkdownDescription: "Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx,
@@ -313,6 +347,7 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tfState.Username = newState.Username
 	tfState.Password = newState.Password
 	tfState.Prompt = newState.Prompt
+	tfState.CuSize = types.Int64Value(1)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, tfState)...)
 
@@ -531,6 +566,29 @@ func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, 
 	return nil
 }
 
+func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() {
+		minCU := int(plan.CuSettings.DynamicScaling.Min.ValueInt64())
+		maxCU := int(plan.CuSettings.DynamicScaling.Max.ValueInt64())
+
+		if minCU > maxCU {
+			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf("Minimum CU (%d) must be less than or equal to maximum CU (%d)", minCU, maxCU))
+			return diags
+		}
+
+		err := r.store.ModifyAutoscaling(ctx, state.ClusterId.ValueString(), minCU, maxCU)
+		if err != nil {
+			diags.AddError("Failed to modify cluster autoscaling", err.Error())
+			return diags
+		}
+
+	}
+
+	return diags
+}
+
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	tflog.Info(ctx, "Update Cluster...")
 
@@ -564,7 +622,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	if plan.isCuSizeChanged(state) {
+	if plan.isCuSizeChanged(state) && plan.isCuSettingsDisabled() {
 		resp.Diagnostics.Append(r.handleCuSizeUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -598,6 +656,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
+	if plan.isCuSettingsChanged(state) {
+		resp.Diagnostics.Append(r.handleCuSettingsUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
@@ -605,6 +670,8 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	state.populate(cluster)
+
+	state.CuSettings = plan.CuSettings
 	state.Timeouts = plan.Timeouts
 
 	// Save updated data into Terraform state

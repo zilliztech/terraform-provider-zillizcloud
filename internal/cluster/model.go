@@ -14,6 +14,39 @@ const (
 	StatusActionResume
 )
 
+type DynamicScaling struct {
+	Min types.Int64 `tfsdk:"min"`
+	Max types.Int64 `tfsdk:"max"`
+}
+
+func (d *DynamicScaling) Equal(other *DynamicScaling) bool {
+	if d == nil && other == nil {
+		return true
+	}
+	if d == nil || other == nil {
+		return false
+	}
+	return d.Min.Equal(other.Min) && d.Max.Equal(other.Max)
+}
+
+type CuSettings struct {
+	DynamicScaling *DynamicScaling `tfsdk:"dynamic_scaling"`
+}
+
+func (c *CuSettings) IsdynamicScalingNull() bool {
+	return c.DynamicScaling == nil || c.DynamicScaling.Min.IsNull() || c.DynamicScaling.Max.IsNull()
+}
+
+func (c *CuSettings) Equal(other *CuSettings) bool {
+	if c == nil && other == nil {
+		return true
+	}
+	if c == nil || other == nil {
+		return false
+	}
+	return c.DynamicScaling.Equal(other.DynamicScaling)
+}
+
 type ClusterResourceModel struct {
 	ClusterId          types.String   `tfsdk:"id"`
 	Plan               types.String   `tfsdk:"plan"`
@@ -34,7 +67,12 @@ type ClusterResourceModel struct {
 	Labels             types.Map      `tfsdk:"labels"`
 	SecurityGroups     types.Set      `tfsdk:"load_balancer_security_groups"`
 	Replica            types.Int64    `tfsdk:"replica"`
+	CuSettings         *CuSettings    `tfsdk:"cu_settings"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
+}
+
+func (c *ClusterResourceModel) isCuSettingsDisabled() bool {
+	return c.CuSettings == nil || c.CuSettings.DynamicScaling == nil
 }
 
 func (c *ClusterResourceModel) setUnknown() {
@@ -150,4 +188,8 @@ func (c *ClusterResourceModel) getStatusAction(other ClusterResourceModel) Statu
 	}
 
 	return StatusActionNone
+}
+
+func (c *ClusterResourceModel) isCuSettingsChanged(other ClusterResourceModel) bool {
+	return !c.CuSettings.Equal(other.CuSettings)
 }

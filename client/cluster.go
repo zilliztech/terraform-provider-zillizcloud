@@ -80,6 +80,25 @@ func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*
 	return &response.Data.ClusterId, err
 }
 
+// modify cluster cu size
+type ModifyClusterAutoscalingParams struct {
+	Autoscaling struct {
+		CU struct {
+			Min *int `json:"min,omitempty"`
+			Max *int `json:"max,omitempty"`
+		} `json:"cu"`
+	} `json:"autoscaling"`
+}
+
+func (c *Client) ModifyClusterAutoscaling(clusterId string, params *ModifyClusterAutoscalingParams) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
 // add or remove cu
 type ModifyPropertiesParams struct {
 	ClusterName string `json:"clusterName"`
@@ -164,6 +183,17 @@ type Cluster struct {
 	ProjectId          string            `json:"projectId"`
 	Labels             map[string]string `json:"labels,omitempty"`
 	Replica            int64             `json:"replica,omitempty"`
+	Autoscaling        struct {
+		CU struct {
+			Min *int `json:"min,omitempty"`
+			Max *int `json:"max,omitempty"`
+		} `json:"cu"`
+	} `json:"autoscaling"`
+}
+
+type Autoscaling struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
 }
 
 func (c *Client) ListClusters() (Clusters, error) {
