@@ -386,6 +386,16 @@ type DedicatedClusterResponse struct {
 	Username           string            `json:"username"`
 	Password           string            `json:"password"`
 	Prompt             string            `json:"prompt"`
+	Autoscaling        Autoscaling       `json:"autoscaling"`
+}
+
+type Autoscaling struct {
+	CU CU `json:"cu"`
+}
+
+type CU struct {
+	Min *int `json:"min"`
+	Max *int `json:"max"`
 }
 
 type Project struct {
@@ -410,7 +420,8 @@ type ModifyReplicaRequest struct {
 }
 
 type ModifyClusterRequest struct {
-	CuSize int `json:"cuSize"`
+	CuSize      *int         `json:"cuSize,omitempty"`
+	Autoscaling *Autoscaling `json:"autoscaling,omitempty"`
 }
 
 type UpdateLabelsRequest struct {

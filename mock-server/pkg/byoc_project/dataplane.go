@@ -329,10 +329,32 @@ func ModifyCluster(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[ModifyCluster] clusterId: %s, changing cuSize from %d to %d, status: RUNNING -> MODIFYING -> RUNNING", clusterId, cluster.CuSize, request.CuSize)
+	if request.CuSize != nil && request.Autoscaling != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cuSize and autoscaling cannot be set at the same time"})
+		return
+	}
+
+	if request.Autoscaling != nil {
+		cluster.Autoscaling = *request.Autoscaling
+		log.Printf("[ModifyCluster] clusterId: %s, changed autoscaling, status: RUNNING", clusterId )
+		clusterStore.Set(clusterId, cluster)
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+			"data": gin.H{
+				"clusterId": clusterId,
+			},
+		})
+		return
+	}
+
+	log.Printf("[ModifyCluster] clusterId: %s, changing cuSize from %d to %d, status: RUNNING -> MODIFYING -> RUNNING", clusterId, cluster.CuSize, *request.CuSize)
 
 	cluster.Status = "MODIFYING"
-	cluster.CuSize = request.CuSize
+	cluster.CuSize = *request.CuSize
+	cluster.Autoscaling = Autoscaling{
+		CU: CU{
+		},
+	}
 	clusterStore.Set(clusterId, cluster)
 
 	go func() {
