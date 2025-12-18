@@ -239,6 +239,20 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 					},
 				},
 			},
+			"bucket_info": schema.SingleNestedAttribute{
+				MarkdownDescription: "Bucket information for the cluster. Only used for BYOC clusters.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"bucket_name": schema.StringAttribute{
+						Required:            true,
+						MarkdownDescription: "The name of the bucket to be used for the cluster.",
+					},
+					"prefix": schema.StringAttribute{
+						Optional:            true,
+						MarkdownDescription: "The prefix within the bucket to use for the cluster. If not provided, the cluster will use the bucket's root directory.",
+					},
+				},
+			},
 		},
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx,
@@ -661,6 +675,11 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	}
+
+	if plan.isBucketInfoChanged(state) {
+		resp.Diagnostics.AddError("Invalid configuration change", "Cannot change bucket info after cluster is created")
+		return
 	}
 
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())

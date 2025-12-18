@@ -237,6 +237,11 @@ type CreateClusterParams struct {
 	ProjectId   string            `json:"projectId"`
 	RegionId    string            `json:"regionId"`
 	Labels      map[string]string `json:"labels,omitempty"`
+	BucketInfo  *BucketInfo       `json:"bucketInfo,omitempty"`
+}
+type BucketInfo struct {
+	BucketName string  `json:"bucketName"`
+	Prefix     *string `json:"prefix,omitempty"`
 }
 
 type CreateServerlessClusterParams struct {
