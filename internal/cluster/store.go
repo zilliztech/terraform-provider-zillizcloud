@@ -22,6 +22,7 @@ type ClusterStore interface {
 	ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error
 	UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error
 	GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error)
+	ModifyAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -34,6 +35,14 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 	cluster, err := c.client.DescribeCluster(clusterId)
 	if err != nil {
 		return nil, err
+	}
+
+	var dynamicScaling *DynamicScaling
+	if cluster.Autoscaling.CU.Min != nil && cluster.Autoscaling.CU.Max != nil {
+		dynamicScaling = &DynamicScaling{
+			Min: types.Int64Value(int64(*cluster.Autoscaling.CU.Min)),
+			Max: types.Int64Value(int64(*cluster.Autoscaling.CU.Max)),
+		}
 	}
 
 	return &ClusterResourceModel{
@@ -71,6 +80,9 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 			}
 			return cluster.Replica
 		}()),
+		CuSettings: &CuSettings{
+			DynamicScaling: dynamicScaling,
+		},
 	}, nil
 }
 
@@ -112,10 +124,15 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			RegionId:    regionId,
 			Plan:        zilliz.Plan(cluster.Plan.ValueString()),
 			ClusterName: cluster.ClusterName.ValueString(),
-			CUSize:      int(cluster.CuSize.ValueInt64()),
-			CUType:      cluster.CuType.ValueString(),
-			ProjectId:   cluster.ProjectId.ValueString(),
-			Labels:      labels,
+			CUSize: func() int {
+				if cluster.CuSize.IsNull() || cluster.CuSize.IsUnknown() {
+					return 1
+				}
+				return int(cluster.CuSize.ValueInt64())
+			}(),
+			CUType:    cluster.CuType.ValueString(),
+			ProjectId: cluster.ProjectId.ValueString(),
+			Labels:    labels,
 		})
 	}
 
@@ -192,6 +209,17 @@ func (c *ClusterStoreImpl) UpsertSecurityGroups(ctx context.Context, clusterId s
 
 func (c *ClusterStoreImpl) GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error) {
 	return c.client.GetSecurityGroups(clusterId)
+}
+
+func (c *ClusterStoreImpl) ModifyAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error {
+	ptrInt := func(i int) *int {
+		return &i
+	}
+	params := &zilliz.ModifyClusterAutoscalingParams{}
+	params.Autoscaling.CU.Min = ptrInt(minCU)
+	params.Autoscaling.CU.Max = ptrInt(maxCU)
+	_, err := c.client.ModifyClusterAutoscaling(clusterId, params)
+	return err
 }
 
 // convertLabelsToTypesMap converts a map[string]string into a Terraform types.Map of strings.

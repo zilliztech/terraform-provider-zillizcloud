@@ -68,6 +68,7 @@ func TestClient_CreateProject(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("expected non-nil response")
+			return
 		}
 
 		if *resp == "" {
@@ -92,6 +93,7 @@ func TestClient_GetProjectById(t *testing.T) {
 
 		if project == nil {
 			t.Fatal("expected non-nil project")
+			return
 		}
 
 		if project.ProjectName != "test-project" {
