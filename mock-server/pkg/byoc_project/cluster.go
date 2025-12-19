@@ -56,6 +56,7 @@ func CreateDedicatedCluster(c *gin.Context) {
 		Username:           "db_admin",
 		Password:           "password",
 		Prompt:             "Successfully Submitted",
+		BucketInfo:         request.BucketInfo,
 	}
 	if cluster.Plan == "Standard" || cluster.Plan == "Enterprise" {
 		cluster.Replica = 1

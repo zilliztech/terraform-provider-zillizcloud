@@ -68,7 +68,23 @@ type ClusterResourceModel struct {
 	SecurityGroups     types.Set      `tfsdk:"load_balancer_security_groups"`
 	Replica            types.Int64    `tfsdk:"replica"`
 	CuSettings         *CuSettings    `tfsdk:"cu_settings"`
+	BucketInfo         *BucketInfo    `tfsdk:"bucket_info"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
+}
+
+type BucketInfo struct {
+	BucketName types.String  `tfsdk:"bucket_name"`
+	Prefix     *types.String `tfsdk:"prefix"`
+}
+
+func (b *BucketInfo) Equal(other *BucketInfo) bool {
+	if b == nil && other == nil {
+		return true
+	}
+	if b == nil || other == nil {
+		return false
+	}
+	return b.BucketName.Equal(other.BucketName) && b.Prefix.Equal(other.Prefix)
 }
 
 func (c *ClusterResourceModel) isCuSettingsDisabled() bool {
@@ -150,6 +166,10 @@ func (c *ClusterResourceModel) isClusterNameChanged(other ClusterResourceModel) 
 
 func (plan *ClusterResourceModel) isSecurityGroupsChanged(state ClusterResourceModel) bool {
 	return !plan.SecurityGroups.Equal(state.SecurityGroups)
+}
+
+func (c *ClusterResourceModel) isBucketInfoChanged(other ClusterResourceModel) bool {
+	return !c.BucketInfo.Equal(other.BucketInfo)
 }
 
 func (c *ClusterResourceModel) isStatusChangeRequired(other ClusterResourceModel) bool {

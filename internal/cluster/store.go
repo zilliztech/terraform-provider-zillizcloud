@@ -119,6 +119,16 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			ProjectId:   cluster.ProjectId.ValueString(),
 		})
 	default:
+
+		// only for the byoc case
+		var bucketInfo *zilliz.BucketInfo
+		if cluster.BucketInfo != nil {
+			bucketInfo = &zilliz.BucketInfo{
+				BucketName: cluster.BucketInfo.BucketName.ValueString(),
+				Prefix:     cluster.BucketInfo.Prefix.ValueStringPointer(),
+			}
+		}
+
 		// dedicated:
 		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
 			RegionId:    regionId,
@@ -130,9 +140,10 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 				}
 				return int(cluster.CuSize.ValueInt64())
 			}(),
-			CUType:    cluster.CuType.ValueString(),
-			ProjectId: cluster.ProjectId.ValueString(),
-			Labels:    labels,
+			CUType:     cluster.CuType.ValueString(),
+			ProjectId:  cluster.ProjectId.ValueString(),
+			Labels:     labels,
+			BucketInfo: bucketInfo,
 		})
 	}
 

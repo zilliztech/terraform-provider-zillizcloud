@@ -352,41 +352,48 @@ func NewSettingsResponse(opts ...Option) *SettingsResponse {
 }
 
 type CreateDedicatedClusterRequest struct {
-	ClusterId   string            `json:"clusterId"`
-	ClusterName string            `json:"clusterName"`
-	ProjectId   string            `json:"projectId"`
-	Description string            `json:"description"`
-	RegionId    string            `json:"regionId"`
-	CuType      string            `json:"cuType"`
-	Plan        string            `json:"plan"`
-	Replica     int               `json:"replica"`
-	CuSize      int               `json:"cuSize"`
-	Labels      map[string]string `json:"labels"`
+	ClusterId   string             `json:"clusterId"`
+	ClusterName string             `json:"clusterName"`
+	ProjectId   string             `json:"projectId"`
+	Description string             `json:"description"`
+	RegionId    string             `json:"regionId"`
+	CuType      string             `json:"cuType"`
+	Plan        string             `json:"plan"`
+	Replica     int                `json:"replica"`
+	CuSize      int                `json:"cuSize"`
+	Labels      map[string]string  `json:"labels"`
+	BucketInfo  *ClusterBucketInfo `json:"bucketInfo,omitempty"`
+}
+
+type ClusterBucketInfo struct {
+	BucketName string `json:"bucketName"`
+	Prefix     string `json:"prefix"`
 }
 
 type DedicatedClusterResponse struct {
-	ClusterId          string            `json:"clusterId"`
-	ClusterName        string            `json:"clusterName"`
-	ProjectId          string            `json:"projectId"`
-	Description        string            `json:"description"`
-	RegionId           string            `json:"regionId"`
-	CuType             string            `json:"cuType"`
-	Plan               string            `json:"plan"`
-	Status             string            `json:"status"`
-	ConnectAddress     string            `json:"connectAddress"`
-	PrivateLinkAddress string            `json:"privateLinkAddress"`
-	CreateTime         string            `json:"createTime"`
-	Replica            int               `json:"replica"`
-	CuSize             int               `json:"cuSize"`
-	StorageSize        int               `json:"storageSize"`
-	SnapshotNumber     int               `json:"snapshotNumber"`
-	CreateProgress     int               `json:"createProgress"`
-	Labels             map[string]string `json:"labels"`
-	SecurityGroups     []string          `json:"securityGroups"`
-	Username           string            `json:"username"`
-	Password           string            `json:"password"`
-	Prompt             string            `json:"prompt"`
-	Autoscaling        Autoscaling       `json:"autoscaling"`
+	ClusterId          string             `json:"clusterId"`
+	ClusterName        string             `json:"clusterName"`
+	ProjectId          string             `json:"projectId"`
+	Description        string             `json:"description"`
+	RegionId           string             `json:"regionId"`
+	CuType             string             `json:"cuType"`
+	Plan               string             `json:"plan"`
+	Status             string             `json:"status"`
+	ConnectAddress     string             `json:"connectAddress"`
+	PrivateLinkAddress string             `json:"privateLinkAddress"`
+	CreateTime         string             `json:"createTime"`
+	Replica            int                `json:"replica"`
+	CuSize             int                `json:"cuSize"`
+	StorageSize        int                `json:"storageSize"`
+	SnapshotNumber     int                `json:"snapshotNumber"`
+	CreateProgress     int                `json:"createProgress"`
+	Labels             map[string]string  `json:"labels"`
+	SecurityGroups     []string           `json:"securityGroups"`
+	Username           string             `json:"username"`
+	Password           string             `json:"password"`
+	Prompt             string             `json:"prompt"`
+	Autoscaling        Autoscaling        `json:"autoscaling"`
+	BucketInfo         *ClusterBucketInfo `json:"bucketInfo,omitempty"`
 }
 
 type Autoscaling struct {
