@@ -375,7 +375,7 @@ func checkZillizClusterPlan(data ClusterResourceModel) error {
 	}
 
 	switch zilliz.Plan(data.Plan.ValueString()) {
-	case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan:
+	case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan, zilliz.BusinessCriticalPlan:
 		return nil
 	default:
 		return fmt.Errorf("invalid plan: %s", data.Plan.ValueString())
