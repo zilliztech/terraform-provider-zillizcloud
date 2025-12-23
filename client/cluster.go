@@ -231,7 +231,7 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 }
 
 type CreateClusterParams struct {
-	Plan        Plan              `json:"plan"`
+	Plan        *string           `json:"plan,omitempty"`
 	ClusterName string            `json:"clusterName"`
 	CUSize      int               `json:"cuSize"`
 	CUType      string            `json:"cuType"`
