@@ -89,7 +89,6 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.",
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("Enterprise"),
 				Validators: []validator.String{
 					stringvalidator.OneOf("Free", "Serverless", "Standard", "Enterprise", "BusinessCritical"),
 				},
@@ -335,11 +334,6 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	err := checkZillizClusterPlan(tfPlan)
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid zilliz cluster plan", err.Error())
-		return
-	}
 
 	// Validate replica value during create - must be 1
 	if !tfPlan.Replica.IsNull() && !tfPlan.Replica.IsUnknown() && tfPlan.Replica.ValueInt64() != 1 {
@@ -362,24 +356,11 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tfState.Password = newState.Password
 	tfState.Prompt = newState.Prompt
 	tfState.CuSize = types.Int64Value(1)
+	tfState.Plan = types.StringValue("unknown")
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, tfState)...)
 
 	r.tryBestUpdateStatesAfterCreation(ctx, &tfPlan, &tfState, resp)
-}
-
-func checkZillizClusterPlan(data ClusterResourceModel) error {
-	// plan could be empty in byoc env
-	if data.Plan.IsNull() || data.Plan.IsUnknown() {
-		return nil
-	}
-
-	switch zilliz.Plan(data.Plan.ValueString()) {
-	case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan, zilliz.BusinessCriticalPlan:
-		return nil
-	default:
-		return fmt.Errorf("invalid plan: %s", data.Plan.ValueString())
-	}
 }
 
 // tryBestUpdateStatesAfterCreation is called after resource already created, so there're just warnings if anything wrong.
@@ -395,6 +376,7 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		state.CreateTime = newState.CreateTime
 		state.Description = newState.Description
 		state.RegionId = newState.RegionId
+		state.Plan = newState.Plan
 	}
 
 	diags := resp.State.Set(ctx, state)
