@@ -12,6 +12,7 @@ var (
 	ServerlessPlan Plan = "Serverless"
 	StandardPlan   Plan = "Standard"
 	EnterprisePlan Plan = "Enterprise"
+	BusinessCriticalPlan Plan = "BusinessCritical"
 	BuiltInPlan    Plan = "" // one can leave plan empty for BYOC env
 )
 
