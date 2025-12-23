@@ -8,11 +8,12 @@ import (
 type Plan string
 
 var (
-	FreePlan       Plan = "Free"
-	ServerlessPlan Plan = "Serverless"
-	StandardPlan   Plan = "Standard"
-	EnterprisePlan Plan = "Enterprise"
-	BuiltInPlan    Plan = "" // one can leave plan empty for BYOC env
+	FreePlan             Plan = "Free"
+	ServerlessPlan       Plan = "Serverless"
+	StandardPlan         Plan = "Standard"
+	EnterprisePlan       Plan = "Enterprise"
+	BusinessCriticalPlan Plan = "BusinessCritical"
+	BuiltInPlan          Plan = "" // one can leave plan empty for BYOC env
 )
 
 type ModifyClusterParams struct {
@@ -230,7 +231,7 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 }
 
 type CreateClusterParams struct {
-	Plan        Plan              `json:"plan"`
+	Plan        *string           `json:"plan,omitempty"`
 	ClusterName string            `json:"clusterName"`
 	CUSize      int               `json:"cuSize"`
 	CUType      string            `json:"cuType"`

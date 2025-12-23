@@ -131,8 +131,13 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 
 		// dedicated:
 		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
-			RegionId:    regionId,
-			Plan:        zilliz.Plan(cluster.Plan.ValueString()),
+			RegionId: regionId,
+			Plan: func() *string {
+				if cluster.Plan.IsNull() || cluster.Plan.IsUnknown() {
+					return nil
+				}
+				return stringPtr(cluster.Plan.ValueString())
+			}(),
 			ClusterName: cluster.ClusterName.ValueString(),
 			CUSize: func() int {
 				if cluster.CuSize.IsNull() || cluster.CuSize.IsUnknown() {
@@ -158,6 +163,10 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 		Prompt:    types.StringValue(response.Prompt),
 	}
 	return ret, nil
+}
+
+func stringPtr(s string) *string {
+	return &s
 }
 
 func (c *ClusterStoreImpl) Delete(ctx context.Context, clusterId string) error {
