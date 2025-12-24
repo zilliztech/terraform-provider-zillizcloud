@@ -334,7 +334,6 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-
 	// Validate replica value during create - must be 1
 	if !tfPlan.Replica.IsNull() && !tfPlan.Replica.IsUnknown() && tfPlan.Replica.ValueInt64() != 1 {
 		resp.Diagnostics.AddError("Invalid replica value for cluster creation", "Replica value must be 1 during cluster creation")

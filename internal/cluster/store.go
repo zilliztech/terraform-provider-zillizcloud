@@ -131,8 +131,8 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 
 		// dedicated:
 		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
-			RegionId:    regionId,
-			Plan:        func() *string {
+			RegionId: regionId,
+			Plan: func() *string {
 				if cluster.Plan.IsNull() || cluster.Plan.IsUnknown() {
 					return nil
 				}

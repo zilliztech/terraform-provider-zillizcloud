@@ -8,12 +8,12 @@ import (
 type Plan string
 
 var (
-	FreePlan       Plan = "Free"
-	ServerlessPlan Plan = "Serverless"
-	StandardPlan   Plan = "Standard"
-	EnterprisePlan Plan = "Enterprise"
+	FreePlan             Plan = "Free"
+	ServerlessPlan       Plan = "Serverless"
+	StandardPlan         Plan = "Standard"
+	EnterprisePlan       Plan = "Enterprise"
 	BusinessCriticalPlan Plan = "BusinessCritical"
-	BuiltInPlan    Plan = "" // one can leave plan empty for BYOC env
+	BuiltInPlan          Plan = "" // one can leave plan empty for BYOC env
 )
 
 type ModifyClusterParams struct {
