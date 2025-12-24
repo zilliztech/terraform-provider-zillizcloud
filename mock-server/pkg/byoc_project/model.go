@@ -367,7 +367,7 @@ type CreateDedicatedClusterRequest struct {
 
 type ClusterBucketInfo struct {
 	BucketName string `json:"bucketName"`
-	Prefix     string `json:"prefix"`
+	Prefix     *string `json:"prefix,omitempty"`
 }
 
 type DedicatedClusterResponse struct {
