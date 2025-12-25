@@ -91,7 +91,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Computed:            true,
 				Default:             stringdefault.StaticString("Enterprise"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("Free", "Serverless", "Standard", "Enterprise"),
+					stringvalidator.OneOf("Free", "Serverless", "Standard", "Enterprise", "BusinessCritical"),
 				},
 			},
 			"cu_size": schema.Int64Attribute{
