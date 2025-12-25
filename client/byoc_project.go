@@ -37,6 +37,24 @@ type AWSParam struct {
 	VPCEndpointID    *string  `json:"endpointId"`
 }
 
+type AzureParam struct {
+	// network parameters
+	VNetID            string   `json:"vnetId"`
+	SubnetIDs         []string `json:"subnetIds"`
+	NSGIDs            []string `json:"nsgIds"`
+	PrivateEndpointID *string  `json:"privateEndpointId"`
+	// storage parameters
+	StorageAccountName string `json:"storageAccountName"`
+	ContainerName      string `json:"containerName"`
+	// identity parameters
+	StorageClientID       string `json:"storageClientId"`
+	StorageResourceID     string `json:"storageResourceId"`
+	KubeletClientID       string `json:"kubeletClientID"`
+	KubeletResourceID     string `json:"kubeletResourceId"`
+	MaintenanceClientID   string `json:"maintenanceClientId"`
+	MaintenanceResourceID string `json:"maintenanceResourceId"`
+}
+
 func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYOCProjectResponse, error) {
 	var response zillizResponse[CreateBYOCProjectResponse]
 	err := c.do("POST", "byoc/dataplane/create", params, &response)

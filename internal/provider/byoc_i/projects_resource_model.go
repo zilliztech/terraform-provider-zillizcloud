@@ -16,6 +16,7 @@ type BYOCOpProjectResourceModel struct {
 	DataPlaneID types.String   `tfsdk:"data_plane_id"`
 	ExtConfig   types.String   `tfsdk:"ext_config"`
 	AWS         *AWSConfig     `tfsdk:"aws"`
+	Azure       *AzureConfig   `tfsdk:"azure"`
 	Timeouts    timeouts.Value `tfsdk:"timeouts"`
 	Status      types.Int64    `tfsdk:"status"`
 }
@@ -41,6 +42,36 @@ type RoleARNConfig struct {
 
 type StorageConfig struct {
 	BucketID types.String `tfsdk:"bucket_id"`
+}
+
+type AzureConfig struct {
+	Region   types.String        `tfsdk:"region"`
+	Network  AzureNetworkConfig  `tfsdk:"network"`
+	Identity AzureIdentityConfig `tfsdk:"identity"`
+	Storage  AzureStorageConfig  `tfsdk:"storage"`
+}
+
+type AzureNetworkConfig struct {
+	VNetID            types.String `tfsdk:"vnet_id"`
+	SubnetIDs         types.Set    `tfsdk:"subnet_ids"`
+	NSGIDs            types.Set    `tfsdk:"nsg_ids"`
+	PrivateEndpointID types.String `tfsdk:"private_endpoint_id"`
+}
+
+type AzureIdentityConfig struct {
+	Storage     AzureIdentity `tfsdk:"storage"`
+	Kubelet     AzureIdentity `tfsdk:"kubelet"`
+	Maintenance AzureIdentity `tfsdk:"maintenance"`
+}
+
+type AzureIdentity struct {
+	ClientID   types.String `tfsdk:"client_id"`
+	ResourceID types.String `tfsdk:"resource_id"`
+}
+
+type AzureStorageConfig struct {
+	StorageAccountName types.String `tfsdk:"storage_account_name"`
+	ContainerName      types.String `tfsdk:"container_name"`
 }
 
 type Instances struct {
@@ -71,6 +102,7 @@ type InstancesOpConfig struct {
 
 func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel) {
 	data.AWS = input.AWS
+	data.Azure = input.Azure
 	data.Status = input.Status
 	data.DataPlaneID = input.DataPlaneID
 	data.ProjectID = input.ProjectID

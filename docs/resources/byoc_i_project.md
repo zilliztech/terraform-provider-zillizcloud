@@ -23,6 +23,7 @@ BYOC-I Project resource for managing bring-your-own-cloud operator projects.
 ### Optional
 
 - `aws` (Attributes) AWS configuration for the BYOC project (see [below for nested schema](#nestedatt--aws))
+- `azure` (Attributes) Azure configuration for the BYOC project (see [below for nested schema](#nestedatt--azure))
 - `ext_config` (String) External configuration
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
@@ -71,6 +72,77 @@ Required:
 Required:
 
 - `bucket_id` (String) Storage bucket ID
+
+
+
+<a id="nestedatt--azure"></a>
+### Nested Schema for `azure`
+
+Required:
+
+- `identity` (Attributes) Identity configuration (see [below for nested schema](#nestedatt--azure--identity))
+- `network` (Attributes) Network configuration (see [below for nested schema](#nestedatt--azure--network))
+- `region` (String) Azure region
+- `storage` (Attributes) Storage configuration (see [below for nested schema](#nestedatt--azure--storage))
+
+<a id="nestedatt--azure--identity"></a>
+### Nested Schema for `azure.identity`
+
+Required:
+
+- `kubelet` (Attributes) Kubelet identity configuration (see [below for nested schema](#nestedatt--azure--identity--kubelet))
+- `maintenance` (Attributes) Maintenance identity configuration (see [below for nested schema](#nestedatt--azure--identity--maintenance))
+- `storage` (Attributes) Storage identity configuration (see [below for nested schema](#nestedatt--azure--identity--storage))
+
+<a id="nestedatt--azure--identity--kubelet"></a>
+### Nested Schema for `azure.identity.kubelet`
+
+Required:
+
+- `client_id` (String) Client ID
+- `resource_id` (String) Resource ID
+
+
+<a id="nestedatt--azure--identity--maintenance"></a>
+### Nested Schema for `azure.identity.maintenance`
+
+Required:
+
+- `client_id` (String) Client ID
+- `resource_id` (String) Resource ID
+
+
+<a id="nestedatt--azure--identity--storage"></a>
+### Nested Schema for `azure.identity.storage`
+
+Required:
+
+- `client_id` (String) Client ID
+- `resource_id` (String) Resource ID
+
+
+
+<a id="nestedatt--azure--network"></a>
+### Nested Schema for `azure.network`
+
+Required:
+
+- `nsg_ids` (Set of String) List of network security group IDs
+- `subnet_ids` (Set of String) List of subnet IDs
+- `vnet_id` (String) virtual network ID
+
+Optional:
+
+- `private_endpoint_id` (String) Private endpoint ID
+
+
+<a id="nestedatt--azure--storage"></a>
+### Nested Schema for `azure.storage`
+
+Required:
+
+- `container_name` (String) Storage container name
+- `storage_account_name` (String) Storage account name
 
 
 

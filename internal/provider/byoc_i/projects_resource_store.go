@@ -24,39 +24,61 @@ var _ ByocOpProjectStore = &byocOpProjectStore{}
 
 func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectResourceModel, updateStateFunc func(project *BYOCOpProjectResourceModel) error) (err error) {
 
-	var request zilliz.CreateByocOpProjectRequest
-	var subnetIDs []string
-	var securityGroupIDs []string
-	data.AWS.Network.SubnetIDs.ElementsAs(ctx, &subnetIDs, false)
-	data.AWS.Network.SecurityGroupIDs.ElementsAs(ctx, &securityGroupIDs, false)
+	request := zilliz.CreateByocOpProjectRequest{
+		ProjectId:   data.ProjectID.ValueString(),
+		DataPlaneId: data.DataPlaneID.ValueString(),
+		DeployType:  TERRAFORM_DEPLOY_TYPE,
+	}
 
 	if data.AWS != nil {
-		request = zilliz.CreateByocOpProjectRequest{
-			ProjectId:   data.ProjectID.ValueString(),
-			DataPlaneId: data.DataPlaneID.ValueString(),
+		request.CloudID = zilliz.AWS
+		request.RegionID = data.AWS.Region.ValueString()
 
-			RegionID: data.AWS.Region.ValueString(),
+		var subnetIDs []string
+		var securityGroupIDs []string
+		data.AWS.Network.SubnetIDs.ElementsAs(ctx, &subnetIDs, false)
+		data.AWS.Network.SecurityGroupIDs.ElementsAs(ctx, &securityGroupIDs, false)
 
-			CloudID: zilliz.CloudId("aws"),
-
-			DeployType: TERRAFORM_DEPLOY_TYPE,
-			AWSParam: &zilliz.AWSParam{
-				BucketID:         data.AWS.Storage.BucketID.ValueString(),
-				StorageRoleArn:   data.AWS.RoleARN.Storage.ValueString(),
-				EksRoleArn:       data.AWS.RoleARN.EKS.ValueString(),
-				BootstrapRoleArn: data.AWS.RoleARN.CrossAccount.ValueString(),
-				UserVpcID:        data.AWS.Network.VPCID.ValueString(),
-				SubnetIDs:        subnetIDs,
-				SecurityGroupIDs: securityGroupIDs,
-				VPCEndpointID:    data.AWS.Network.VPCEndpointID.ValueStringPointer(),
-			},
+		request.AWSParam = &zilliz.AWSParam{
+			BucketID:         data.AWS.Storage.BucketID.ValueString(),
+			StorageRoleArn:   data.AWS.RoleARN.Storage.ValueString(),
+			EksRoleArn:       data.AWS.RoleARN.EKS.ValueString(),
+			BootstrapRoleArn: data.AWS.RoleARN.CrossAccount.ValueString(),
+			UserVpcID:        data.AWS.Network.VPCID.ValueString(),
+			SubnetIDs:        subnetIDs,
+			SecurityGroupIDs: securityGroupIDs,
+			VPCEndpointID:    data.AWS.Network.VPCEndpointID.ValueStringPointer(),
 		}
+	}
 
-		// if data.ExtConfig.ValueString() is set, set it to ExtConfig
-		if !data.ExtConfig.IsNull() {
-			request.ExtConfig = data.ExtConfig.ValueStringPointer()
+	if data.Azure != nil {
+		request.CloudID = zilliz.Azure
+		request.RegionID = data.Azure.Region.ValueString()
+
+		var subnetIDs []string
+		var nsgIDs []string
+		data.Azure.Network.SubnetIDs.ElementsAs(ctx, &subnetIDs, false)
+		data.Azure.Network.NSGIDs.ElementsAs(ctx, &nsgIDs, false)
+
+		request.AzureParam = &zilliz.AzureParam{
+			VNetID:                data.Azure.Network.VNetID.ValueString(),
+			SubnetIDs:             subnetIDs,
+			NSGIDs:                nsgIDs,
+			PrivateEndpointID:     data.Azure.Network.PrivateEndpointID.ValueStringPointer(),
+			StorageAccountName:    data.Azure.Storage.StorageAccountName.ValueString(),
+			ContainerName:         data.Azure.Storage.ContainerName.ValueString(),
+			StorageClientID:       data.Azure.Identity.Storage.ClientID.ValueString(),
+			StorageResourceID:     data.Azure.Identity.Storage.ResourceID.ValueString(),
+			KubeletClientID:       data.Azure.Identity.Kubelet.ClientID.ValueString(),
+			KubeletResourceID:     data.Azure.Identity.Kubelet.ResourceID.ValueString(),
+			MaintenanceClientID:   data.Azure.Identity.Maintenance.ClientID.ValueString(),
+			MaintenanceResourceID: data.Azure.Identity.Maintenance.ResourceID.ValueString(),
 		}
+	}
 
+	// if data.ExtConfig.ValueString() is set, set it to ExtConfig
+	if !data.ExtConfig.IsNull() {
+		request.ExtConfig = data.ExtConfig.ValueStringPointer()
 	}
 
 	tflog.Info(ctx, fmt.Sprintf("Create BYOC-I Project request: %+v", request))
