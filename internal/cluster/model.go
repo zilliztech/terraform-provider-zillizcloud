@@ -73,8 +73,8 @@ type ClusterResourceModel struct {
 }
 
 type BucketInfo struct {
-	BucketName types.String  `tfsdk:"bucket_name"`
-	Prefix     *types.String `tfsdk:"prefix"`
+	BucketName types.String `tfsdk:"bucket_name"`
+	Prefix     types.String `tfsdk:"prefix"`
 }
 
 func (b *BucketInfo) Equal(other *BucketInfo) bool {
