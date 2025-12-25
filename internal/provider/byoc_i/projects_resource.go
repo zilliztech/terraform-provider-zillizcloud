@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
@@ -25,6 +27,7 @@ const (
 
 var _ resource.Resource = &BYOCOpProjectResource{}
 var _ resource.ResourceWithConfigure = &BYOCOpProjectResource{}
+var _ resource.ResourceWithConfigValidators = &BYOCOpProjectResource{}
 
 func NewBYOCOpProjectResource() resource.Resource {
 	return &BYOCOpProjectResource{}
@@ -167,6 +170,132 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 					},
 				},
 			},
+			"azure": schema.SingleNestedAttribute{
+				MarkdownDescription: "Azure configuration for the BYOC project",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"region": schema.StringAttribute{
+						MarkdownDescription: "Azure region",
+						Required:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.RequiresReplace(),
+						},
+					},
+					"network": schema.SingleNestedAttribute{
+						MarkdownDescription: "Network configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"vnet_id": schema.StringAttribute{
+								MarkdownDescription: "virtual network ID",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"subnet_ids": schema.SetAttribute{
+								MarkdownDescription: "List of subnet IDs",
+								Required:            true,
+								ElementType:         types.StringType,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.RequiresReplace(),
+								},
+							},
+							"nsg_ids": schema.SetAttribute{
+								MarkdownDescription: "List of network security group IDs",
+								Required:            true,
+								ElementType:         types.StringType,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.RequiresReplace(),
+								},
+							},
+							"private_endpoint_id": schema.StringAttribute{
+								MarkdownDescription: "Private endpoint ID",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+					"identity": schema.SingleNestedAttribute{
+						MarkdownDescription: "Identity configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"storage": schema.SingleNestedAttribute{
+								MarkdownDescription: "Storage identity configuration",
+								Required:            true,
+								Attributes: map[string]schema.Attribute{
+									"client_id": schema.StringAttribute{
+										MarkdownDescription: "Client ID",
+										Required:            true,
+									},
+									"resource_id": schema.StringAttribute{
+										MarkdownDescription: "Resource ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+								},
+							},
+							"kubelet": schema.SingleNestedAttribute{
+								MarkdownDescription: "Kubelet identity configuration",
+								Required:            true,
+								Attributes: map[string]schema.Attribute{
+									"client_id": schema.StringAttribute{
+										MarkdownDescription: "Client ID",
+										Required:            true,
+									},
+									"resource_id": schema.StringAttribute{
+										MarkdownDescription: "Resource ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+								},
+							},
+							"maintenance": schema.SingleNestedAttribute{
+								MarkdownDescription: "Maintenance identity configuration",
+								Required:            true,
+								Attributes: map[string]schema.Attribute{
+									"client_id": schema.StringAttribute{
+										MarkdownDescription: "Client ID",
+										Required:            true,
+									},
+									"resource_id": schema.StringAttribute{
+										MarkdownDescription: "Resource ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+								},
+							},
+						},
+					},
+					"storage": schema.SingleNestedAttribute{
+						MarkdownDescription: "Storage configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"storage_account_name": schema.StringAttribute{
+								MarkdownDescription: "Storage account name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"container_name": schema.StringAttribute{
+								MarkdownDescription: "Storage container name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
@@ -175,6 +304,15 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 				Update: true,
 			}),
 		},
+	}
+}
+
+func (r *BYOCOpProjectResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.ExactlyOneOf(
+			path.MatchRoot("aws"),
+			path.MatchRoot("azure"),
+		),
 	}
 }
 
