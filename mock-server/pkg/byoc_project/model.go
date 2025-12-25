@@ -358,7 +358,7 @@ type CreateDedicatedClusterRequest struct {
 	Description string             `json:"description"`
 	RegionId    string             `json:"regionId"`
 	CuType      string             `json:"cuType"`
-	Plan        string             `json:"plan"`
+	Plan        *string            `json:"plan,omitempty"`
 	Replica     int                `json:"replica"`
 	CuSize      int                `json:"cuSize"`
 	Labels      map[string]string  `json:"labels"`
@@ -367,7 +367,7 @@ type CreateDedicatedClusterRequest struct {
 
 type ClusterBucketInfo struct {
 	BucketName string `json:"bucketName"`
-	Prefix     string `json:"prefix"`
+	Prefix     *string `json:"prefix,omitempty"`
 }
 
 type DedicatedClusterResponse struct {

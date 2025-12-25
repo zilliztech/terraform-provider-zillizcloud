@@ -44,7 +44,12 @@ func CreateDedicatedCluster(c *gin.Context) {
 			return request.RegionId
 		}(),
 		CuType:             request.CuType,
-		Plan:               request.Plan,
+		Plan:               func() string {
+			if request.Plan == nil {
+				return "Enterprise"
+			}
+			return *request.Plan
+		}(),
 		ConnectAddress:     connectAddress,
 		PrivateLinkAddress: "",
 		CreateTime:         time.Now().Format(time.RFC3339),
