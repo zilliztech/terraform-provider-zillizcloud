@@ -24,6 +24,8 @@ type ClusterStore interface {
 	GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error)
 	ModifyAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error
 	ModifySchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error
+	ModifyReplicaAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error
+	ModifyReplicaSchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -250,6 +252,24 @@ func (c *ClusterStoreImpl) ModifySchedules(ctx context.Context, clusterId string
 	params := &zilliz.ModifyClusterAutoscalingParams{}
 	params.Autoscaling.CU.Schedules = &schedules
 	_, err := c.client.ModifyClusterAutoscaling(clusterId, params)
+	return err
+}
+
+func (c *ClusterStoreImpl) ModifyReplicaAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error {
+	ptrInt := func(i int) *int {
+		return &i
+	}
+	params := &zilliz.ModifyReplicaSettings{}
+	params.Autoscaling.Replica.Min = ptrInt(minCU)
+	params.Autoscaling.Replica.Max = ptrInt(maxCU)
+	_, err := c.client.ModifyReplicaSettings(clusterId, params)
+	return err
+}
+
+func (c *ClusterStoreImpl) ModifyReplicaSchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error {
+	params := &zilliz.ModifyReplicaSettings{}
+	params.Autoscaling.Replica.Schedules = &schedules
+	_, err := c.client.ModifyReplicaSettings(clusterId, params)
 	return err
 }
 

@@ -57,8 +57,13 @@ func (r *ClusterResource) ConfigValidators(ctx context.Context) []resource.Confi
 			path.MatchRoot("cu_size"),
 			path.MatchRoot("cu_settings"),
 		),
+		resourcevalidator.Conflicting(
+			path.MatchRoot("replica"),
+			path.MatchRoot("replica_settings"),
+		),
 	}
 }
+
 func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_cluster"
 }
@@ -214,6 +219,57 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				DeprecationMessage:  "This field is deprecated. Use the zillizcloud_cluster_load_balancer_security_groups resource instead.",
 			},
 			"cu_settings": schema.SingleNestedAttribute{
+				MarkdownDescription: "Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"dynamic_scaling": schema.SingleNestedAttribute{
+						MarkdownDescription: "Dynamic scaling configuration for query CUs.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"min": schema.Int64Attribute{
+								MarkdownDescription: "Minimum number of compute units (CU) for autoscaling. Must be at least 1.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+							"max": schema.Int64Attribute{
+								MarkdownDescription: "Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+						},
+					},
+					"schedule_scaling": schema.ListNestedAttribute{
+						MarkdownDescription: "Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"timezone": schema.StringAttribute{
+									MarkdownDescription: "The timezone for the cron expression. Defaults to UTC.",
+									Optional:            true,
+									Computed:            true,
+									Default:             stringdefault.StaticString("UTC"),
+								},
+								"cron": schema.StringAttribute{
+									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
+									Required:            true,
+								},
+								"target": schema.Int64Attribute{
+									MarkdownDescription: "Target number of compute units (CU) for the scheduled scaling. Must be at least 1.",
+									Required:            true,
+									Validators: []validator.Int64{
+										int64validator.AtLeast(1),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"replica_settings": schema.SingleNestedAttribute{
 				MarkdownDescription: "Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
@@ -628,12 +684,51 @@ func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, stat
 		schedules := make([]zilliz.ScheduleConfig, len(plan.CuSettings.ScheduleScaling))
 		for i, s := range plan.CuSettings.ScheduleScaling {
 			schedules[i] = zilliz.ScheduleConfig{
-				Cron:   s.Cron.ValueString(),
-				Target: int(s.Target.ValueInt64()),
+				Timezone: s.Timezone.ValueString(),
+				Cron:     s.Cron.ValueString(),
+				Target:   int(s.Target.ValueInt64()),
 			}
 		}
 
 		err := r.store.ModifySchedules(ctx, state.ClusterId.ValueString(), schedules)
+		if err != nil {
+			diags.AddError("Failed to modify cluster schedules", err.Error())
+			return diags
+		}
+	}
+
+	return diags
+}
+
+func (r *ClusterResource) handleReplicaSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() {
+		minReplica := int(plan.ReplicaSettings.DynamicScaling.Min.ValueInt64())
+		maxReplica := int(plan.ReplicaSettings.DynamicScaling.Max.ValueInt64())
+
+		if minReplica > maxReplica {
+			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf("Minimum replica (%d) must be less than or equal to maximum replica (%d)", minReplica, maxReplica))
+			return diags
+		}
+
+		err := r.store.ModifyReplicaAutoscaling(ctx, state.ClusterId.ValueString(), minReplica, maxReplica)
+		if err != nil {
+			diags.AddError("Failed to modify cluster autoscaling", err.Error())
+		}
+	}
+
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsSchedulesNull() {
+		schedules := make([]zilliz.ScheduleConfig, len(plan.ReplicaSettings.ScheduleScaling))
+		for i, s := range plan.ReplicaSettings.ScheduleScaling {
+			schedules[i] = zilliz.ScheduleConfig{
+				Timezone: s.Timezone.ValueString(),
+				Cron:     s.Cron.ValueString(),
+				Target:   int(s.Target.ValueInt64()),
+			}
+		}
+
+		err := r.store.ModifyReplicaSchedules(ctx, state.ClusterId.ValueString(), schedules)
 		if err != nil {
 			diags.AddError("Failed to modify cluster schedules", err.Error())
 			return diags
@@ -683,7 +778,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
-	if plan.isReplicaChanged(state) {
+	if plan.isReplicaChanged(state) && plan.isReplicaSettingsDisabled() {
 		resp.Diagnostics.Append(r.handleReplicaUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -717,6 +812,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
+	if plan.isReplicaSettingsChanged(state) {
+		resp.Diagnostics.Append(r.handleReplicaSettingsUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	if plan.isBucketInfoChanged(state) {
 		resp.Diagnostics.AddError("Invalid configuration change", "Cannot change bucket info after cluster is created")
 		return
@@ -731,6 +833,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	state.populate(cluster)
 
 	state.CuSettings = plan.CuSettings
+	state.ReplicaSettings = plan.ReplicaSettings
 	state.Timeouts = plan.Timeouts
 
 	// Save updated data into Terraform state
