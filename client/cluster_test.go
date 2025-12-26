@@ -16,7 +16,7 @@ func TestClient_Cluster(t *testing.T) {
 
 	checkPlan := func(plan string) func(resp *Cluster) bool {
 		return func(resp *Cluster) bool {
-			return resp.Plan == Plan(plan)
+			return resp.Plan == plan
 		}
 	}
 

@@ -33,6 +33,12 @@ import (
 const (
 	defaultClusterCreateTimeout time.Duration = 45 * time.Minute
 	defaultClusterUpdateTimeout time.Duration = 30 * time.Minute
+
+	FreePlan             string = "Free"
+	ServerlessPlan       string = "Serverless"
+	StandardPlan         string = "Standard"
+	EnterprisePlan       string = "Enterprise"
+	BusinessCriticalPlan string = "BusinessCritical"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -90,7 +96,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("Free", "Serverless", "Standard", "Enterprise", "BusinessCritical"),
+					stringvalidator.OneOf(FreePlan, ServerlessPlan, StandardPlan, EnterprisePlan, BusinessCriticalPlan),
 				},
 			},
 			"cu_size": schema.Int64Attribute{

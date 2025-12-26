@@ -5,17 +5,6 @@ import (
 	"strings"
 )
 
-type Plan string
-
-var (
-	FreePlan             Plan = "Free"
-	ServerlessPlan       Plan = "Serverless"
-	StandardPlan         Plan = "Standard"
-	EnterprisePlan       Plan = "Enterprise"
-	BusinessCriticalPlan Plan = "BusinessCritical"
-	BuiltInPlan          Plan = "" // one can leave plan empty for BYOC env
-)
-
 type ModifyClusterParams struct {
 	CuSize int `json:"cuSize"`
 }
@@ -175,7 +164,7 @@ type Cluster struct {
 	RegionId           string            `json:"regionId"`
 	ClusterType        string            `json:"clusterType"`
 	CuType             string            `json:"cuType"`
-	Plan               Plan              `json:"plan"`
+	Plan               string            `json:"plan"`
 	CuSize             int64             `json:"cuSize"`
 	Status             string            `json:"status"`
 	ConnectAddress     string            `json:"connectAddress"`
@@ -217,7 +206,7 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 	// TODO: remove this once we have a better way to determine the plan
 	// in03- is a free cluster
 	if strings.HasPrefix(cluster.ClusterId, "in03-") {
-		cluster.Plan = FreePlan
+		cluster.Plan = "Free"
 	}
 
 	switch cluster.Status {
