@@ -335,7 +335,8 @@ func ModifyCluster(c *gin.Context) {
 	}
 
 	if request.Autoscaling != nil {
-		cluster.Autoscaling = *request.Autoscaling
+		cluster.Autoscaling.CU = request.Autoscaling.CU
+		cluster.Autoscaling.Replica = request.Autoscaling.Replica
 		log.Printf("[ModifyCluster] clusterId: %s, changed autoscaling, status: RUNNING", clusterId)
 		clusterStore.Set(clusterId, cluster)
 		c.JSON(http.StatusOK, gin.H{

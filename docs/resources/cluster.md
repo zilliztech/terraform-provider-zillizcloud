@@ -81,6 +81,7 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
 - `plan` (String) The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.
 - `region_id` (String) The ID of the region where the cluster exists.
 - `replica` (Number) The number of replicas for the cluster. Defaults to 1.
+- `replica_settings` (Attributes) Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously. (see [below for nested schema](#nestedatt--replica_settings))
 - `status` (String) The current status of the cluster. Possible values are RUNNING, SUSPENDING, SUSPENDED, and RESUMING.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
@@ -113,6 +114,7 @@ Optional:
 Optional:
 
 - `dynamic_scaling` (Attributes) Dynamic scaling configuration for query CUs. (see [below for nested schema](#nestedatt--cu_settings--dynamic_scaling))
+- `schedule_scaling` (Attributes List) Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions. (see [below for nested schema](#nestedatt--cu_settings--schedule_scaling))
 
 <a id="nestedatt--cu_settings--dynamic_scaling"></a>
 ### Nested Schema for `cu_settings.dynamic_scaling`
@@ -121,6 +123,50 @@ Optional:
 
 - `max` (Number) Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.
 - `min` (Number) Minimum number of compute units (CU) for autoscaling. Must be at least 1.
+
+
+<a id="nestedatt--cu_settings--schedule_scaling"></a>
+### Nested Schema for `cu_settings.schedule_scaling`
+
+Required:
+
+- `cron` (String) Cron expression defining when the scheduled scaling should occur.
+- `target` (Number) Target number of compute units (CU) for the scheduled scaling. Must be at least 1.
+
+Optional:
+
+- `timezone` (String) The timezone for the cron expression. Defaults to UTC.
+
+
+
+<a id="nestedatt--replica_settings"></a>
+### Nested Schema for `replica_settings`
+
+Optional:
+
+- `dynamic_scaling` (Attributes) Dynamic scaling configuration for query CUs. (see [below for nested schema](#nestedatt--replica_settings--dynamic_scaling))
+- `schedule_scaling` (Attributes List) Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions. (see [below for nested schema](#nestedatt--replica_settings--schedule_scaling))
+
+<a id="nestedatt--replica_settings--dynamic_scaling"></a>
+### Nested Schema for `replica_settings.dynamic_scaling`
+
+Optional:
+
+- `max` (Number) Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.
+- `min` (Number) Minimum number of compute units (CU) for autoscaling. Must be at least 1.
+
+
+<a id="nestedatt--replica_settings--schedule_scaling"></a>
+### Nested Schema for `replica_settings.schedule_scaling`
+
+Required:
+
+- `cron` (String) Cron expression defining when the scheduled scaling should occur.
+- `target` (Number) Target number of compute units (CU) for the scheduled scaling. Must be at least 1.
+
+Optional:
+
+- `timezone` (String) The timezone for the cron expression. Defaults to UTC.
 
 
 

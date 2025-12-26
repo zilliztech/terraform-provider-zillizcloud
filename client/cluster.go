@@ -80,14 +80,41 @@ func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*
 	return &response.Data.ClusterId, err
 }
 
+// ScheduleConfig represents a scheduled scaling configuration
+type ScheduleConfig struct {
+	Timezone string `json:"timezone"`
+	Cron     string `json:"cron"`
+	Target   int    `json:"target"`
+}
+
 // modify cluster cu size
 type ModifyClusterAutoscalingParams struct {
 	Autoscaling struct {
 		CU struct {
-			Min *int `json:"min,omitempty"`
-			Max *int `json:"max,omitempty"`
+			Min       *int              `json:"min,omitempty"`
+			Max       *int              `json:"max,omitempty"`
+			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
 		} `json:"cu"`
 	} `json:"autoscaling"`
+}
+
+type ModifyReplicaSettings struct {
+	Autoscaling struct {
+		Replica struct {
+			Min       *int              `json:"min,omitempty"`
+			Max       *int              `json:"max,omitempty"`
+			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
+		} `json:"replica"`
+	} `json:"autoscaling"`
+}
+
+func (c *Client) ModifyReplicaSettings(clusterId string, params *ModifyReplicaSettings) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
 }
 
 func (c *Client) ModifyClusterAutoscaling(clusterId string, params *ModifyClusterAutoscalingParams) (*string, error) {
@@ -185,8 +212,9 @@ type Cluster struct {
 	Replica            int64             `json:"replica,omitempty"`
 	Autoscaling        struct {
 		CU struct {
-			Min *int `json:"min,omitempty"`
-			Max *int `json:"max,omitempty"`
+			Min       *int             `json:"min,omitempty"`
+			Max       *int             `json:"max,omitempty"`
+			Schedules []ScheduleConfig `json:"schedules,omitempty"`
 		} `json:"cu"`
 	} `json:"autoscaling"`
 }
