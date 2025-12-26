@@ -237,6 +237,31 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 							},
 						},
 					},
+					"schedule_scaling": schema.ListNestedAttribute{
+						MarkdownDescription: "Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"timezone": schema.StringAttribute{
+									MarkdownDescription: "The timezone for the cron expression. Defaults to UTC.",
+									Optional:            true,
+									Computed:            true,
+									Default:             stringdefault.StaticString("UTC"),
+								},
+								"cron": schema.StringAttribute{
+									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
+									Required:            true,
+								},
+								"target": schema.Int64Attribute{
+									MarkdownDescription: "Target number of compute units (CU) for the scheduled scaling. Must be at least 1.",
+									Required:            true,
+									Validators: []validator.Int64{
+										int64validator.AtLeast(1),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			"bucket_info": schema.SingleNestedAttribute{
@@ -597,7 +622,22 @@ func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, stat
 			diags.AddError("Failed to modify cluster autoscaling", err.Error())
 			return diags
 		}
+	}
 
+	if plan.CuSettings != nil && !plan.CuSettings.IsSchedulesNull() {
+		schedules := make([]zilliz.ScheduleConfig, len(plan.CuSettings.ScheduleScaling))
+		for i, s := range plan.CuSettings.ScheduleScaling {
+			schedules[i] = zilliz.ScheduleConfig{
+				Cron:   s.Cron.ValueString(),
+				Target: int(s.Target.ValueInt64()),
+			}
+		}
+
+		err := r.store.ModifySchedules(ctx, state.ClusterId.ValueString(), schedules)
+		if err != nil {
+			diags.AddError("Failed to modify cluster schedules", err.Error())
+			return diags
+		}
 	}
 
 	return diags

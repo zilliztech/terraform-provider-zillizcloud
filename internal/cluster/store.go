@@ -23,6 +23,7 @@ type ClusterStore interface {
 	UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error
 	GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error)
 	ModifyAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error
+	ModifySchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -42,6 +43,17 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		dynamicScaling = &DynamicScaling{
 			Min: types.Int64Value(int64(*cluster.Autoscaling.CU.Min)),
 			Max: types.Int64Value(int64(*cluster.Autoscaling.CU.Max)),
+		}
+	}
+
+	var schedules []ScheduleScaling
+	if len(cluster.Autoscaling.CU.Schedules) > 0 {
+		schedules = make([]ScheduleScaling, len(cluster.Autoscaling.CU.Schedules))
+		for i, s := range cluster.Autoscaling.CU.Schedules {
+			schedules[i] = ScheduleScaling{
+				Cron:   types.StringValue(s.Cron),
+				Target: types.Int64Value(int64(s.Target)),
+			}
 		}
 	}
 
@@ -81,7 +93,8 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 			return cluster.Replica
 		}()),
 		CuSettings: &CuSettings{
-			DynamicScaling: dynamicScaling,
+			DynamicScaling:  dynamicScaling,
+			ScheduleScaling: schedules,
 		},
 	}, nil
 }
@@ -229,6 +242,13 @@ func (c *ClusterStoreImpl) ModifyAutoscaling(ctx context.Context, clusterId stri
 	params := &zilliz.ModifyClusterAutoscalingParams{}
 	params.Autoscaling.CU.Min = ptrInt(minCU)
 	params.Autoscaling.CU.Max = ptrInt(maxCU)
+	_, err := c.client.ModifyClusterAutoscaling(clusterId, params)
+	return err
+}
+
+func (c *ClusterStoreImpl) ModifySchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error {
+	params := &zilliz.ModifyClusterAutoscalingParams{}
+	params.Autoscaling.CU.Schedules = &schedules
 	_, err := c.client.ModifyClusterAutoscaling(clusterId, params)
 	return err
 }

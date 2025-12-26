@@ -17,7 +17,6 @@ func TestAccClusterResource(t *testing.T) {
 		t.Run("FreePlan", testAccClusterResourceFreePlan)
 		t.Run("ServerlessPlan", testAccClusterResourceServerlessPlan)
 		t.Run("StandardPlan", testAccClusterResourceStandardPlan)
-		t.Run("CuSettings", testAccClusterResourceCuSettings)
 	})
 	t.Run("BYOCEnv", func(t *testing.T) {
 		t.Run("UpdateLabels", testAccClusterResourceUpdateLabels)
@@ -349,92 +348,258 @@ func testAccClusterResourceUpdateLabels(t *testing.T) {
 	})
 }
 
-// test update cu_settings
-func testAccClusterResourceCuSettings(t *testing.T) {
-	t.Parallel()
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			// Create cluster with cu_settings
-			{
-				Config: provider.ProviderConfig + `
-data "zillizcloud_project" "default" {
-}
 
-resource "zillizcloud_cluster" "test" {
-  cluster_name = "cu-settings-cluster"
-  region_id    = "aws-us-west-2"
-  plan         = "Enterprise"
-  cu_type      = "Performance-optimized"
-  project_id   = data.zillizcloud_project.default.id
-  cu_size      = 1
 
-}
-`,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
-					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
-					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
-				),
-				PreventPostDestroyRefresh: true,
+func TestAccCuSettings(t *testing.T) {
+	t.Run("dynamic_scaling", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				// Create cluster with cu_settings
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_size      = 1
+	
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+					),
+					PreventPostDestroyRefresh: true,
+				},
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_size      = 1
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	}
+	`,
+					ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
+				},
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 4
+		  max = 8
+		}
+	  }
+	  timeouts {
+		create = "120m"
+		update = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "4"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "8"),
+					),
+				},
 			},
-			{
-				Config: provider.ProviderConfig + `
-data "zillizcloud_project" "default" {
-}
-
-resource "zillizcloud_cluster" "test" {
-  cluster_name = "cu-settings-cluster"
-  region_id    = "aws-us-west-2"
-  plan         = "Enterprise"
-  cu_type      = "Performance-optimized"
-  project_id   = data.zillizcloud_project.default.id
-  cu_size      = 1
-  cu_settings  = {
-    dynamic_scaling = {
-      min = 2
-      max = 4
-    }
-  }
-}
-`,
-				ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
+		})
+	})
+	t.Run("change to schedule_scaling", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				// Create cluster with cu_settings
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_size      = 1
+	
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+					),
+					PreventPostDestroyRefresh: true,
+				},
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		schedule_scaling = [
+		  {
+			timezone = "UTC"
+			cron = "0 0 * * *"
+			target = 10
+		  }
+		]
+	  }
+	  timeouts {
+		create = "120m"
+		update = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "10"),
+					),
+				},
 			},
-			{
-				Config: provider.ProviderConfig + `
-data "zillizcloud_project" "default" {
-}
+		})
+	})
 
-resource "zillizcloud_cluster" "test" {
-  cluster_name = "cu-settings-cluster"
-  region_id    = "aws-us-west-2"
-  plan         = "Enterprise"
-  cu_type      = "Performance-optimized"
-  project_id   = data.zillizcloud_project.default.id
-  cu_settings  = {
-    dynamic_scaling = {
-      min = 4
-      max = 8
-    }
-  }
-  timeouts {
-    create = "120m"
-    update = "120m"
-  }
-}
-`,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "4"),
-					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "8"),
-				),
+	t.Run("change to dynamic_scaling then to schedule_scaling", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				// Create cluster with cu_settings
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_size      = 1
+	
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_type", "Performance-optimized"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "project_id"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+					),
+					PreventPostDestroyRefresh: true,
+				},
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_size      = 1
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	}
+	`,
+					ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
+				},
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+	
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "cu-settings-cluster"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		schedule_scaling = [
+		  {
+			timezone = "UTC"
+			cron = "0 0 * * *"
+			target = 10
+		  }
+		]
+	  }
+	  timeouts {
+		create = "120m"
+		update = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "cu-settings-cluster"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "plan", "Enterprise"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "10"),
+					),
+				},
 			},
-		},
+		})
 	})
 }

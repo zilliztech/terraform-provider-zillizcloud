@@ -29,8 +29,10 @@ func (d *DynamicScaling) Equal(other *DynamicScaling) bool {
 	return d.Min.Equal(other.Min) && d.Max.Equal(other.Max)
 }
 
+// schedule_scaling
 type CuSettings struct {
-	DynamicScaling *DynamicScaling `tfsdk:"dynamic_scaling"`
+	DynamicScaling  *DynamicScaling   `tfsdk:"dynamic_scaling"`
+	ScheduleScaling []ScheduleScaling `tfsdk:"schedule_scaling"`
 }
 
 func (c *CuSettings) IsdynamicScalingNull() bool {
@@ -44,7 +46,39 @@ func (c *CuSettings) Equal(other *CuSettings) bool {
 	if c == nil || other == nil {
 		return false
 	}
-	return c.DynamicScaling.Equal(other.DynamicScaling)
+	return c.DynamicScaling.Equal(other.DynamicScaling) && SchedulesEqual(c.ScheduleScaling, other.ScheduleScaling)
+}
+
+func (c *CuSettings) IsSchedulesNull() bool {
+	return c == nil || len(c.ScheduleScaling) == 0
+}
+
+type ScheduleScaling struct {
+	Timezone types.String `tfsdk:"timezone"`
+	Cron     types.String `tfsdk:"cron"`
+	Target   types.Int64  `tfsdk:"target"`
+}
+
+func (s *ScheduleScaling) Equal(other *ScheduleScaling) bool {
+	if s == nil && other == nil {
+		return true
+	}
+	if s == nil || other == nil {
+		return false
+	}
+	return s.Timezone.Equal(other.Timezone) && s.Cron.Equal(other.Cron) && s.Target.Equal(other.Target)
+}
+
+func SchedulesEqual(a, b []ScheduleScaling) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(&b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 type ClusterResourceModel struct {

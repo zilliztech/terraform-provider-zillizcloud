@@ -80,12 +80,19 @@ func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*
 	return &response.Data.ClusterId, err
 }
 
+// ScheduleConfig represents a scheduled scaling configuration
+type ScheduleConfig struct {
+	Cron   string `json:"cron"`
+	Target int    `json:"target"`
+}
+
 // modify cluster cu size
 type ModifyClusterAutoscalingParams struct {
 	Autoscaling struct {
 		CU struct {
-			Min *int `json:"min,omitempty"`
-			Max *int `json:"max,omitempty"`
+			Min       *int              `json:"min,omitempty"`
+			Max       *int              `json:"max,omitempty"`
+			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
 		} `json:"cu"`
 	} `json:"autoscaling"`
 }
@@ -185,8 +192,9 @@ type Cluster struct {
 	Replica            int64             `json:"replica,omitempty"`
 	Autoscaling        struct {
 		CU struct {
-			Min *int `json:"min,omitempty"`
-			Max *int `json:"max,omitempty"`
+			Min       *int             `json:"min,omitempty"`
+			Max       *int             `json:"max,omitempty"`
+			Schedules []ScheduleConfig `json:"schedules,omitempty"`
 		} `json:"cu"`
 	} `json:"autoscaling"`
 }
