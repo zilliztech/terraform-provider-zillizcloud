@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	"github.com/zilliztech/terraform-provider-zillizcloud/internal/util/conv"
 )
 
 type ClusterStore interface {
@@ -47,7 +48,7 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 
 	return &ClusterResourceModel{
 		ClusterId:   types.StringValue(cluster.ClusterId),
-		Plan:        types.StringValue(string(cluster.Plan)),
+		Plan:        types.StringValue(cluster.Plan),
 		ClusterName: types.StringValue(cluster.ClusterName),
 		CuSize:      types.Int64Value(cluster.CuSize),
 		CuType:      types.StringValue(cluster.CuType),
@@ -104,15 +105,15 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			}
 		}
 	}
-	zillizPlan := zilliz.Plan(cluster.Plan.ValueString())
+	zillizPlan := cluster.Plan.ValueString()
 	switch zillizPlan {
-	case zilliz.FreePlan:
+	case FreePlan:
 		response, err = c.client.CreateFreeCluster(zilliz.CreateServerlessClusterParams{
 			RegionId:    regionId,
 			ClusterName: cluster.ClusterName.ValueString(),
 			ProjectId:   cluster.ProjectId.ValueString(),
 		})
-	case zilliz.ServerlessPlan:
+	case ServerlessPlan:
 		response, err = c.client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
 			RegionId:    regionId,
 			ClusterName: cluster.ClusterName.ValueString(),
@@ -136,7 +137,7 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 				if cluster.Plan.IsNull() || cluster.Plan.IsUnknown() {
 					return nil
 				}
-				return stringPtr(cluster.Plan.ValueString())
+				return conv.StringPtr(cluster.Plan.ValueString())
 			}(),
 			ClusterName: cluster.ClusterName.ValueString(),
 			CUSize: func() int {
@@ -163,10 +164,6 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 		Prompt:    types.StringValue(response.Prompt),
 	}
 	return ret, nil
-}
-
-func stringPtr(s string) *string {
-	return &s
 }
 
 func (c *ClusterStoreImpl) Delete(ctx context.Context, clusterId string) error {

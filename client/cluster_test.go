@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/zilliztech/terraform-provider-zillizcloud/internal/util/conv"
 )
 
 func TestClient_Cluster(t *testing.T) {
@@ -16,7 +18,7 @@ func TestClient_Cluster(t *testing.T) {
 
 	checkPlan := func(plan string) func(resp *Cluster) bool {
 		return func(resp *Cluster) bool {
-			return resp.Plan == Plan(plan)
+			return resp.Plan == plan
 		}
 	}
 
@@ -51,14 +53,10 @@ func TestClient_Cluster(t *testing.T) {
 		return projects[0].ProjectId
 	}
 
-	stringPtr := func(s string) *string {
-		return &s
-	}
-
 	projectID = getProject()
 	params := CreateClusterParams{
 		ProjectId:   projectID,
-		Plan:        stringPtr("Standard"),
+		Plan:        conv.StringPtr("Standard"),
 		ClusterName: "a-standard-type-cluster",
 		CUSize:      1,
 		CUType:      "Performance-optimized",
