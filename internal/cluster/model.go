@@ -3,7 +3,6 @@ package cluster
 import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
 type StatusAction int
@@ -131,8 +130,8 @@ type ClusterResourceModel struct {
 }
 
 type BucketInfo struct {
-	BucketName types.String  `tfsdk:"bucket_name"`
-	Prefix     *types.String `tfsdk:"prefix"`
+	BucketName types.String `tfsdk:"bucket_name"`
+	Prefix     types.String `tfsdk:"prefix"`
 }
 
 func (b *BucketInfo) Equal(other *BucketInfo) bool {
@@ -189,7 +188,7 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 
 	// only for free or serverless plan, set default value
 	plan := input.Plan.ValueString()
-	isFreeOrServerless := plan == string(zilliz.FreePlan) || plan == string(zilliz.ServerlessPlan)
+	isFreeOrServerless := plan == FreePlan || plan == ServerlessPlan
 	if isFreeOrServerless {
 		c.CuSize = types.Int64Value(1)
 		c.CuType = types.StringValue("Performance-optimized")
@@ -201,7 +200,7 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 // only for free or serverless plan, set default value
 func (c *ClusterResourceModel) completeForFreeOrServerless(input *ClusterResourceModel) {
 	plan := input.Plan.ValueString()
-	isFreeOrServerless := plan == string(zilliz.FreePlan) || plan == string(zilliz.ServerlessPlan)
+	isFreeOrServerless := plan == FreePlan || plan == ServerlessPlan
 	if isFreeOrServerless {
 		c.CuSize = types.Int64Value(1)
 		c.CuType = types.StringValue("Performance-optimized")
