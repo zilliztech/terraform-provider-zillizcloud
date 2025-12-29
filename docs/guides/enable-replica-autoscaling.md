@@ -1,39 +1,45 @@
-# Migrating from Fixed CU Size to CU Autoscaling
+# Migrating from Fixed Replica to Replica Autoscaling
 
-This guide walks you through migrating your Zilliz Cloud cluster from a fixed compute unit (CU) size to CU autoscaling. Zilliz Cloud supports two types of autoscaling:
+This guide walks you through migrating your Zilliz Cloud cluster from a fixed replica count to replica autoscaling. Zilliz Cloud supports two types of replica autoscaling:
 
-- **Dynamic Autoscaling**: Automatically adjusts compute resources based on real-time workload demands
-- **Scheduled Scaling**: Scales compute resources at predetermined times using cron expressions
+- **Dynamic Autoscaling**: Automatically adjusts the number of replicas based on real-time workload demands
+- **Scheduled Scaling**: Scales replicas at predetermined times using cron expressions
 
-Note: either `cu_settings` or `replica_settings` can be used, but not both.
-
+For CU (compute unit) autoscaling, see the [CU Autoscaling Guide](./enable-cluster-autoscaling.md).
 
 ## Prerequisites
 
 Before you begin, ensure you have:
 
 - Completed the initial setup steps outlined in the [Getting Started with Zilliz Cloud Terraform Provider](./get-start.md) guide
-- An existing cluster configured with `cu_size`
+- An existing cluster configured with a fixed `replica` value
 - Necessary permissions and access credentials to interact with the Zilliz Cloud API
-- An Enterprise plan cluster (autoscaling is available on Enterprise clusters)
+- An Enterprise plan cluster (replica autoscaling is available on Enterprise clusters)
 
-## Understanding CU Autoscaling
+## Understanding Replica Autoscaling
 
-### Fixed CU Size vs. Autoscaling Options
+### What are Replicas?
 
-**Fixed CU Size (`cu_size`)**:
-- Static allocation of compute units
-- Cluster always uses the same amount of resources
+Replicas are copies of your data distributed across multiple nodes. Increasing replicas improves:
+- **Query throughput**: More replicas can handle more concurrent queries
+- **High availability**: If one replica fails, others continue serving requests
+- **Read scalability**: Distribute read load across multiple replicas
+
+### Fixed Replica vs. Autoscaling Options
+
+**Fixed Replica (`replica`)**:
+- Static number of replicas
+- Cluster always maintains the same replica count
 - Simple to configure but may be over-provisioned during low usage or under-provisioned during peak times
 
-**Dynamic Autoscaling (`cu_settings.dynamic_scaling`)**:
-- Automatically scales compute units between a minimum and maximum threshold
-- Adjusts resources based on actual workload demands
-- Optimizes costs by using fewer resources during low activity periods
+**Dynamic Autoscaling (`replica_settings.dynamic_scaling`)**:
+- Automatically scales replicas between a minimum and maximum threshold
+- Adjusts based on actual workload demands
+- Optimizes costs by using fewer replicas during low activity periods
 - Ensures performance by scaling up during high demand
 
-**Scheduled Scaling (`cu_settings.schedule_scaling`)**:
-- Scales compute units at specific times defined by cron expressions
+**Scheduled Scaling (`replica_settings.schedule_scaling`)**:
+- Scales replicas at specific times defined by cron expressions
 - Ideal for predictable traffic patterns (e.g., business hours, batch processing windows)
 - Supports timezone configuration for global deployments
 - Can define multiple schedules for different scaling targets
@@ -42,18 +48,18 @@ Before you begin, ensure you have:
 
 | Scenario | Recommended Approach |
 |----------|---------------------|
-| Unpredictable workloads | Dynamic Autoscaling |
-| Predictable daily/weekly patterns | Scheduled Scaling |
-| Simple, consistent workloads | Fixed CU Size |
+| Unpredictable query loads | Dynamic Autoscaling |
+| Predictable daily/weekly traffic patterns | Scheduled Scaling |
+| Simple, consistent workloads | Fixed Replica |
 
 ### Important Constraints
 
-- **Mutual Exclusivity**: `cu_size` and `cu_settings` cannot be configured together on the same cluster
+- **Mutual Exclusivity**: `replica` and `replica_settings` cannot be configured together on the same cluster
 - **Validation Rules**:
-  - Minimum CU must be at least 1 (for dynamic scaling)
-  - Maximum CU must be greater than or equal to minimum CU (for dynamic scaling)
-  - Target CU must be at least 1 (for scheduled scaling)
-- **Migration Requirement**: You must remove `cu_size` before adding `cu_settings` (requires two separate Terraform operations)
+  - Minimum replica must be at least 1 (for dynamic scaling)
+  - Maximum replica must be greater than or equal to minimum replica (for dynamic scaling)
+  - Target replica must be at least 1 (for scheduled scaling)
+- **Migration Requirement**: You must remove `replica` before adding `replica_settings` (requires two separate Terraform operations)
 
 ## Migration Process
 
@@ -68,17 +74,16 @@ resource "zillizcloud_cluster" "example" {
   plan         = "Enterprise"
   cu_type      = "Performance-optimized"
   project_id   = data.zillizcloud_project.default.id
-  cu_size      = 4  # Fixed at 4 CUs
+  cu_size      = 4
+  replica      = 2  # Fixed at 2 replicas
 }
 ```
 
+### Step 2: Enable Replica Autoscaling Configuration
 
+Now update your configuration to add the `replica_settings` block with your desired autoscaling parameters.
 
-### Step 2: Enable CU Autoscaling Configuration
-
-Now update your configuration to add the `cu_settings` block with your desired autoscaling parameters.
-
-**Important:** Make sure to remove the `cu_size` attribute from your configuration.
+**Important:** Make sure to remove the `replica` attribute from your configuration.
 
 ```hcl
 resource "zillizcloud_cluster" "example" {
@@ -87,11 +92,12 @@ resource "zillizcloud_cluster" "example" {
   plan         = "Enterprise"
   cu_type      = "Performance-optimized"
   project_id   = data.zillizcloud_project.default.id
+  cu_size      = 4
 
-  cu_settings = {
+  replica_settings = {
     dynamic_scaling = {
-      min = 2  # Minimum CUs during low activity
-      max = 8  # Maximum CUs during peak load
+      min = 1  # Minimum replicas during low activity
+      max = 4  # Maximum replicas during peak load
     }
   }
 }
@@ -104,11 +110,11 @@ terraform plan
 terraform apply
 ```
 
-**Success!** Your cluster now has dynamic autoscaling enabled and will automatically adjust compute resources between 2 and 8 CUs based on workload.
+**Success!** Your cluster now has dynamic replica autoscaling enabled and will automatically adjust replicas between 1 and 4 based on workload.
 
 ## Configuring Scheduled Scaling
 
-Scheduled scaling allows you to scale your cluster's compute units at specific times using cron expressions. This is ideal for predictable workload patterns.
+Scheduled scaling allows you to scale your cluster's replicas at specific times using cron expressions. This is ideal for predictable workload patterns.
 
 ### Schedule Scaling Attributes
 
@@ -116,7 +122,7 @@ Scheduled scaling allows you to scale your cluster's compute units at specific t
 |-----------|------|----------|-------------|
 | `timezone` | String | No | The timezone for the cron expression. Defaults to `UTC`. |
 | `cron` | String | Yes | Cron expression defining when the scheduled scaling should occur. |
-| `target` | Int64 | Yes | Target number of compute units (CU) for the scheduled scaling. Must be at least 1. |
+| `target` | Int64 | Yes | Target number of replicas for the scheduled scaling. Must be at least 1. |
 
 ### Cron Expression Format
 
@@ -138,7 +144,7 @@ The cron expression follows the standard format: `minute hour day-of-month month
 
 ### Example: Scale Up During Business Hours
 
-This configuration scales the cluster to 8 CUs at 9:00 AM and scales down to 2 CUs at 6:00 PM on weekdays (US Eastern time):
+This configuration scales the cluster to 4 replicas at 9:00 AM and scales down to 1 replica at 6:00 PM on weekdays (US Eastern time):
 
 ```hcl
 resource "zillizcloud_cluster" "example" {
@@ -147,18 +153,19 @@ resource "zillizcloud_cluster" "example" {
   plan         = "Enterprise"
   cu_type      = "Performance-optimized"
   project_id   = data.zillizcloud_project.default.id
+  cu_size      = 4
 
-  cu_settings = {
+  replica_settings = {
     schedule_scaling = [
       {
         timezone = "America/New_York"
         cron     = "0 9 * * 1-5"  # 9:00 AM on weekdays
-        target   = 8              # Scale up to 8 CUs
+        target   = 4              # Scale up to 4 replicas
       },
       {
         timezone = "America/New_York"
         cron     = "0 18 * * 1-5" # 6:00 PM on weekdays
-        target   = 2              # Scale down to 2 CUs
+        target   = 1              # Scale down to 1 replica
       }
     ]
   }
@@ -176,56 +183,100 @@ resource "zillizcloud_cluster" "example" {
   plan         = "Enterprise"
   cu_type      = "Performance-optimized"
   project_id   = data.zillizcloud_project.default.id
+  cu_size      = 4
 
-  cu_settings = {
+  replica_settings = {
     schedule_scaling = [
       {
         timezone = "UTC"
         cron     = "0 0 * * 6"    # Saturday midnight
-        target   = 1              # Minimal CUs for weekend
+        target   = 1              # Minimal replicas for weekend
       },
       {
         timezone = "UTC"
         cron     = "0 6 * * 1"    # Monday 6:00 AM
-        target   = 4              # Scale up for the work week
+        target   = 3              # Scale up for the work week
       }
     ]
   }
 }
 ```
 
+## Combining Dynamic and Scheduled Scaling
+
+For maximum flexibility, you can combine both dynamic autoscaling and scheduled scaling. This is useful when you have predictable baseline patterns but also experience unpredictable spikes.
+
+### Example: Business Hours with Dynamic Scaling
+
+```hcl
+resource "zillizcloud_cluster" "example" {
+  cluster_name = "my-production-cluster"
+  region_id    = "aws-us-west-2"
+  plan         = "Enterprise"
+  cu_type      = "Performance-optimized"
+  project_id   = data.zillizcloud_project.default.id
+  cu_size      = 4
+
+  replica_settings = {
+    # Dynamic scaling handles unpredictable load variations
+    dynamic_scaling = {
+      min = 1   # Never go below 1 replica
+      max = 6   # Can scale up to 6 replicas if needed
+    }
+
+    # Scheduled scaling sets baseline capacity
+    schedule_scaling = [
+      {
+        timezone = "America/Los_Angeles"
+        cron     = "0 8 * * 1-5"  # 8:00 AM weekdays
+        target   = 3              # Start business hours with 3 replicas
+      },
+      {
+        timezone = "America/Los_Angeles"
+        cron     = "0 20 * * 1-5" # 8:00 PM weekdays
+        target   = 1              # Scale down after hours
+      },
+      {
+        timezone = "America/Los_Angeles"
+        cron     = "0 0 * * 0,6"  # Midnight on weekends
+        target   = 1              # Minimal weekend capacity
+      }
+    ]
+  }
+}
+```
 
 ## Common Errors and Troubleshooting
 
 ### Error: "These attributes cannot be configured together"
 
-**Cause**: You attempted to set both `cu_size` and `cu_settings` simultaneously.
+**Cause**: You attempted to set both `replica` and `replica_settings` simultaneously.
 
-**Solution**: Follow the two-step migration process outlined above. Remove `cu_size` first, apply the change, then add `cu_settings`.
+**Solution**: Follow the two-step migration process outlined above. Remove `replica` first, apply the change, then add `replica_settings`.
 
-### Error: "Invalid autoscaling configuration: Minimum CU must be less than or equal to maximum CU"
+### Error: "Invalid autoscaling configuration: Minimum replica must be less than or equal to maximum replica"
 
 **Cause**: You set `min` greater than `max`.
 
-**Solution**: Ensure `min` ≤ `max` in your configuration:
+**Solution**: Ensure `min` <= `max` in your configuration:
 
 ```hcl
-cu_settings = {
+replica_settings = {
   dynamic_scaling = {
-    min = 2   # Must be <= max
-    max = 8
+    min = 1   # Must be <= max
+    max = 4
   }
 }
 ```
 
-### Error: Validation failed on minimum CU
+### Error: Validation failed on minimum replica
 
-**Cause**: Minimum CU value is less than 1.
+**Cause**: Minimum replica value is less than 1.
 
 **Solution**: Set `min` to at least 1:
 
 ```hcl
-cu_settings = {
+replica_settings = {
   dynamic_scaling = {
     min = 1   # Minimum allowed value
     max = 4
@@ -240,11 +291,11 @@ cu_settings = {
 **Solution**: Ensure your cron expression follows the standard 5-field format: `minute hour day-of-month month day-of-week`
 
 ```hcl
-cu_settings = {
+replica_settings = {
   schedule_scaling = [
     {
       cron   = "0 9 * * 1-5"  # Correct: 5 fields
-      target = 4
+      target = 3
     }
   ]
 }
@@ -257,12 +308,12 @@ cu_settings = {
 **Solution**: Use a valid IANA timezone name:
 
 ```hcl
-cu_settings = {
+replica_settings = {
   schedule_scaling = [
     {
       timezone = "America/New_York"  # Valid IANA timezone
       cron     = "0 9 * * 1-5"
-      target   = 4
+      target   = 3
     }
   ]
 }
@@ -277,14 +328,14 @@ cu_settings = {
 - `Asia/Tokyo`
 - `Asia/Shanghai`
 
-### Error: Target CU validation failed
+### Error: Target replica validation failed
 
 **Cause**: The `target` value in scheduled scaling is less than 1.
 
 **Solution**: Ensure the target is at least 1:
 
 ```hcl
-cu_settings = {
+replica_settings = {
   schedule_scaling = [
     {
       cron   = "0 9 * * *"
@@ -310,17 +361,24 @@ cu_settings = {
 2. **Use scheduled scaling for baselines**: Let dynamic scaling handle unexpected spikes
 3. **Monitor costs**: Combined scaling can lead to unexpected resource usage if not carefully configured
 
+### High Availability Considerations
+
+1. **Minimum replicas for HA**: Consider keeping `min` at 2 or higher for production workloads requiring high availability
+2. **Geographic distribution**: Replicas help with availability but consider your region's fault tolerance requirements
+3. **Balance cost vs. availability**: More replicas increase both cost and availability - find the right balance for your workload
+
 ### Monitoring Recommendations
 
 - Set up alerts for scaling events in the Zilliz Cloud console
 - Review scaling patterns weekly during initial rollout
 - Track query latency and throughput to ensure performance targets are met
+- Monitor replica count changes to understand scaling behavior
 
-## Reverting to Fixed CU Size
+## Reverting to Fixed Replica
 
-If you need to revert from autoscaling to a fixed CU size:
+If you need to revert from autoscaling to a fixed replica count:
 
-### Step 1: Remove `cu_settings`
+### Step 1: Remove `replica_settings`
 
 ```hcl
 resource "zillizcloud_cluster" "example" {
@@ -329,7 +387,8 @@ resource "zillizcloud_cluster" "example" {
   plan         = "Enterprise"
   cu_type      = "Performance-optimized"
   project_id   = data.zillizcloud_project.default.id
-  # cu_settings removed
+  cu_size      = 4
+  # replica_settings removed
 }
 ```
 
@@ -339,7 +398,7 @@ Apply the change:
 terraform apply
 ```
 
-### Step 2: Add Fixed `cu_size`
+### Step 2: Add Fixed `replica`
 
 ```hcl
 resource "zillizcloud_cluster" "example" {
@@ -348,7 +407,8 @@ resource "zillizcloud_cluster" "example" {
   plan         = "Enterprise"
   cu_type      = "Performance-optimized"
   project_id   = data.zillizcloud_project.default.id
-  cu_size = 6  # Return to fixed size
+  cu_size      = 4
+  replica      = 2  # Return to fixed replica count
 }
 ```
 
@@ -369,7 +429,7 @@ After enabling autoscaling:
 ## Next Steps
 
 - Review the [Cluster Resource Documentation](https://registry.terraform.io/providers/zillizcloud/zillizcloud/latest/docs/resources/cluster) for complete configuration options
-- Learn about [Replica Autoscaling](./enable-replica-autoscaling.md) to scale cluster replicas independently
+- Learn about [CU Autoscaling](./enable-cluster-autoscaling.md) to scale compute units
 - Learn about [Scaling Clusters](./scale-cluster.md) for more cluster management techniques
 - Explore [Creating Enterprise Clusters](./create-a-standard-cluster.md) for best practices
 

@@ -435,12 +435,26 @@ type DedicatedClusterResponse struct {
 }
 
 type Autoscaling struct {
-	CU CU `json:"cu"`
+	CU      CU      `json:"cu"`
+	Replica Replica `json:"replica"`
+}
+
+type Replica struct {
+	Min       *int       `json:"min"`
+	Max       *int       `json:"max"`
+	Schedules []Schedule `json:"schedules"`
 }
 
 type CU struct {
-	Min *int `json:"min"`
-	Max *int `json:"max"`
+	Min       *int       `json:"min"`
+	Max       *int       `json:"max"`
+	Schedules []Schedule `json:"schedules"`
+}
+
+type Schedule struct {
+	Timezone string `json:"timezone"`
+	Cron     string `json:"cron"`
+	Target   int    `json:"target"`
 }
 
 type Project struct {
