@@ -51,10 +51,14 @@ func TestClient_Cluster(t *testing.T) {
 		return projects[0].ProjectId
 	}
 
+	stringPtr := func(s string) *string {
+		return &s
+	}
+
 	projectID = getProject()
 	params := CreateClusterParams{
 		ProjectId:   projectID,
-		Plan:        "Standard",
+		Plan:        stringPtr(string(StandardPlan)),
 		ClusterName: "a-standard-type-cluster",
 		CUSize:      1,
 		CUType:      "Performance-optimized",
