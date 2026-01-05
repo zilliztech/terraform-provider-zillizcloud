@@ -427,6 +427,18 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	// Validate cu_settings is not set during create
+	if tfPlan.CuSettings != nil {
+		resp.Diagnostics.AddError("Invalid cu_settings for cluster creation", "cu_settings cannot be set during cluster creation. Please create the cluster first, then update it to configure cu_settings.")
+		return
+	}
+
+	// Validate replica_settings is not set during create
+	if tfPlan.ReplicaSettings != nil {
+		resp.Diagnostics.AddError("Invalid replica_settings for cluster creation", "replica_settings cannot be set during cluster creation. Please create the cluster first, then update it to configure replica_settings.")
+		return
+	}
+
 	tfState := tfPlan
 
 	tfState.completeForFreeOrServerless(&tfPlan)
