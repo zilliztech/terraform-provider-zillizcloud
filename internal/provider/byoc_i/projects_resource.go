@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
@@ -221,21 +223,39 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 						MarkdownDescription: "Identity configuration",
 						Required:            true,
 						Attributes: map[string]schema.Attribute{
-							"storage": schema.SingleNestedAttribute{
-								MarkdownDescription: "Storage identity configuration",
+							"storages": schema.SetNestedAttribute{
+								MarkdownDescription: "Storage identity configuration (exactly 10 items required)",
 								Required:            true,
-								Attributes: map[string]schema.Attribute{
-									"client_id": schema.StringAttribute{
-										MarkdownDescription: "Client ID",
-										Required:            true,
-									},
-									"resource_id": schema.StringAttribute{
-										MarkdownDescription: "Resource ID",
-										Required:            true,
-										PlanModifiers: []planmodifier.String{
-											stringplanmodifier.RequiresReplace(),
+								NestedObject: schema.NestedAttributeObject{
+									Attributes: map[string]schema.Attribute{
+										"client_id": schema.StringAttribute{
+											MarkdownDescription: "Client ID of the managed identity",
+											Required:            true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.RequiresReplace(),
+											},
+										},
+										"principal_id": schema.StringAttribute{
+											MarkdownDescription: "Principal ID of the managed identity",
+											Required:            true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.RequiresReplace(),
+											},
+										},
+										"resource_id": schema.StringAttribute{
+											MarkdownDescription: "Resource ID of the managed identity",
+											Required:            true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.RequiresReplace(),
+											},
 										},
 									},
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeBetween(10, 10),
+								},
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.RequiresReplace(),
 								},
 							},
 							"kubelet": schema.SingleNestedAttribute{
@@ -245,6 +265,16 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 									"client_id": schema.StringAttribute{
 										MarkdownDescription: "Client ID",
 										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+									"principal_id": schema.StringAttribute{
+										MarkdownDescription: "Principal ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
 									},
 									"resource_id": schema.StringAttribute{
 										MarkdownDescription: "Resource ID",
@@ -262,6 +292,13 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 									"client_id": schema.StringAttribute{
 										MarkdownDescription: "Client ID",
 										Required:            true,
+									},
+									"principal_id": schema.StringAttribute{
+										MarkdownDescription: "Principal ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
 									},
 									"resource_id": schema.StringAttribute{
 										MarkdownDescription: "Resource ID",

@@ -21,6 +21,12 @@ type AWSParams struct {
 	EndpointId *string `json:"endpointId"`
 }
 
+type AzureIdentityParam struct {
+	ClientID    string `json:"clientId"`
+	PrincipalID string `json:"PrincipalID"`
+	ResourceID  string `json:"resourceId"`
+}
+
 type AzureParams struct {
 	// network parameters
 	VNetID            string   `json:"vnetId"`
@@ -31,12 +37,9 @@ type AzureParams struct {
 	StorageAccountName string `json:"storageAccountName"`
 	ContainerName      string `json:"containerName"`
 	// identity parameters
-	StorageClientID       string `json:"storageClientId"`
-	StorageResourceID     string `json:"storageResourceId"`
-	KubeletClientID       string `json:"kubeletClientId"`
-	KubeletResourceID     string `json:"kubeletResourceId"`
-	MaintenanceClientID   string `json:"maintenanceClientId"`
-	MaintenanceResourceID string `json:"maintenanceResourceId"`
+	StorageIdentities   []AzureIdentityParam `json:"storageIdentities"`
+	KubeletIdentity     AzureIdentityParam   `json:"kubeletIdentity"`
+	MaintenanceIdentity AzureIdentityParam   `json:"maintenanceIdentity"`
 }
 
 // Main request structure
@@ -404,7 +407,7 @@ type CreateDedicatedClusterRequest struct {
 }
 
 type ClusterBucketInfo struct {
-	BucketName string `json:"bucketName"`
+	BucketName string  `json:"bucketName"`
 	Prefix     *string `json:"prefix,omitempty"`
 }
 

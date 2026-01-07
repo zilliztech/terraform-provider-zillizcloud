@@ -59,14 +59,15 @@ type AzureNetworkConfig struct {
 }
 
 type AzureIdentityConfig struct {
-	Storage     AzureIdentity `tfsdk:"storage"`
+	Storages    types.Set     `tfsdk:"storages"`
 	Kubelet     AzureIdentity `tfsdk:"kubelet"`
 	Maintenance AzureIdentity `tfsdk:"maintenance"`
 }
 
 type AzureIdentity struct {
-	ClientID   types.String `tfsdk:"client_id"`
-	ResourceID types.String `tfsdk:"resource_id"`
+	PrincipalID types.String `tfsdk:"principal_id"`
+	ClientID    types.String `tfsdk:"client_id"`
+	ResourceID  types.String `tfsdk:"resource_id"`
 }
 
 type AzureStorageConfig struct {

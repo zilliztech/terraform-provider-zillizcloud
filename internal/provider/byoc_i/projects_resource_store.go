@@ -60,19 +60,37 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		data.Azure.Network.SubnetIDs.ElementsAs(ctx, &subnetIDs, false)
 		data.Azure.Network.NSGIDs.ElementsAs(ctx, &nsgIDs, false)
 
+		// Convert storages set to []AzureIdentityParam
+		var storageIdentities []AzureIdentity
+		data.Azure.Identity.Storages.ElementsAs(ctx, &storageIdentities, false)
+
+		var azureStorageIdentities []zilliz.AzureIdentityParam
+		for _, storage := range storageIdentities {
+			azureStorageIdentities = append(azureStorageIdentities, zilliz.AzureIdentityParam{
+				ClientID:    storage.ClientID.ValueString(),
+				PrincipalID: storage.PrincipalID.ValueString(),
+				ResourceID:  storage.ResourceID.ValueString(),
+			})
+		}
+
 		request.AzureParam = &zilliz.AzureParam{
-			VNetID:                data.Azure.Network.VNetID.ValueString(),
-			SubnetIDs:             subnetIDs,
-			NSGIDs:                nsgIDs,
-			PrivateEndpointID:     data.Azure.Network.PrivateEndpointID.ValueStringPointer(),
-			StorageAccountName:    data.Azure.Storage.StorageAccountName.ValueString(),
-			ContainerName:         data.Azure.Storage.ContainerName.ValueString(),
-			StorageClientID:       data.Azure.Identity.Storage.ClientID.ValueString(),
-			StorageResourceID:     data.Azure.Identity.Storage.ResourceID.ValueString(),
-			KubeletClientID:       data.Azure.Identity.Kubelet.ClientID.ValueString(),
-			KubeletResourceID:     data.Azure.Identity.Kubelet.ResourceID.ValueString(),
-			MaintenanceClientID:   data.Azure.Identity.Maintenance.ClientID.ValueString(),
-			MaintenanceResourceID: data.Azure.Identity.Maintenance.ResourceID.ValueString(),
+			VNetID:             data.Azure.Network.VNetID.ValueString(),
+			SubnetIDs:          subnetIDs,
+			NSGIDs:             nsgIDs,
+			PrivateEndpointID:  data.Azure.Network.PrivateEndpointID.ValueStringPointer(),
+			StorageAccountName: data.Azure.Storage.StorageAccountName.ValueString(),
+			ContainerName:      data.Azure.Storage.ContainerName.ValueString(),
+			StorageIdentities:  azureStorageIdentities,
+			KubeletIdentity: zilliz.AzureIdentityParam{
+				ClientID:    data.Azure.Identity.Kubelet.ClientID.ValueString(),
+				ResourceID:  data.Azure.Identity.Kubelet.ResourceID.ValueString(),
+				PrincipalID: data.Azure.Identity.Kubelet.PrincipalID.ValueString(),
+			},
+			MaintenanceIdentity: zilliz.AzureIdentityParam{
+				ClientID:    data.Azure.Identity.Maintenance.ClientID.ValueString(),
+				ResourceID:  data.Azure.Identity.Maintenance.ResourceID.ValueString(),
+				PrincipalID: data.Azure.Identity.Maintenance.PrincipalID.ValueString(),
+			},
 		}
 	}
 
