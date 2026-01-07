@@ -37,6 +37,12 @@ type AWSParam struct {
 	VPCEndpointID    *string  `json:"endpointId"`
 }
 
+type AzureIdentityParam struct {
+	ClientID    string `json:"clientId"`
+	ResourceID  string `json:"resourceId"`
+	PrincipalID string `json:"principalId"`
+}
+
 type AzureParam struct {
 	// network parameters
 	VNetID            string   `json:"vnetId"`
@@ -47,12 +53,9 @@ type AzureParam struct {
 	StorageAccountName string `json:"storageAccountName"`
 	ContainerName      string `json:"containerName"`
 	// identity parameters
-	StorageClientID       string `json:"storageClientId"`
-	StorageResourceID     string `json:"storageResourceId"`
-	KubeletClientID       string `json:"kubeletClientID"`
-	KubeletResourceID     string `json:"kubeletResourceId"`
-	MaintenanceClientID   string `json:"maintenanceClientId"`
-	MaintenanceResourceID string `json:"maintenanceResourceId"`
+	StorageIdentities   []AzureIdentityParam `json:"storageIdentities"`
+	KubeletIdentity     AzureIdentityParam   `json:"kubeletIdentity"`
+	MaintenanceIdentity AzureIdentityParam   `json:"maintenanceIdentity"`
 }
 
 func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYOCProjectResponse, error) {

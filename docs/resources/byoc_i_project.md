@@ -92,7 +92,7 @@ Required:
 
 - `kubelet` (Attributes) Kubelet identity configuration (see [below for nested schema](#nestedatt--azure--identity--kubelet))
 - `maintenance` (Attributes) Maintenance identity configuration (see [below for nested schema](#nestedatt--azure--identity--maintenance))
-- `storage` (Attributes) Storage identity configuration (see [below for nested schema](#nestedatt--azure--identity--storage))
+- `storages` (Attributes Set) Storage identity configuration (exactly 10 items required) (see [below for nested schema](#nestedatt--azure--identity--storages))
 
 <a id="nestedatt--azure--identity--kubelet"></a>
 ### Nested Schema for `azure.identity.kubelet`
@@ -100,6 +100,7 @@ Required:
 Required:
 
 - `client_id` (String) Client ID
+- `principal_id` (String) Principal ID
 - `resource_id` (String) Resource ID
 
 
@@ -109,16 +110,18 @@ Required:
 Required:
 
 - `client_id` (String) Client ID
+- `principal_id` (String) Principal ID
 - `resource_id` (String) Resource ID
 
 
-<a id="nestedatt--azure--identity--storage"></a>
-### Nested Schema for `azure.identity.storage`
+<a id="nestedatt--azure--identity--storages"></a>
+### Nested Schema for `azure.identity.storages`
 
 Required:
 
-- `client_id` (String) Client ID
-- `resource_id` (String) Resource ID
+- `client_id` (String) Client ID of the managed identity
+- `principal_id` (String) Principal ID of the managed identity
+- `resource_id` (String) Resource ID of the managed identity
 
 
 
