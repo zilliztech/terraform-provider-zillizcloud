@@ -116,12 +116,12 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"cu_type": schema.StringAttribute{
-				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Extended-capacity.",
+				MarkdownDescription: `The type of the CU used for the Zilliz Cloud cluster to be created. Available options are Performance-optimized, Capacity-optimized and Tiered-storage.`,
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("Performance-optimized"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("Performance-optimized", "Capacity-optimized", "Extended-capacity"),
+					stringvalidator.OneOf("Performance-optimized", "Capacity-optimized", "Tiered-storage", "Extended-capacity"),
 				},
 			},
 			"username": schema.StringAttribute{

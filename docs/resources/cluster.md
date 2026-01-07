@@ -74,7 +74,7 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
 - `bucket_info` (Attributes) Bucket information for the cluster. Only used for BYOC clusters. (see [below for nested schema](#nestedatt--bucket_info))
 - `cu_settings` (Attributes) Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously. (see [below for nested schema](#nestedatt--cu_settings))
 - `cu_size` (Number) The size of the CU to be used for the created cluster. It is an integer from 1 to 256.
-- `cu_type` (String) The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Extended-capacity.
+- `cu_type` (String) The type of the CU used for the Zilliz Cloud cluster to be created. Available options are Performance-optimized, Capacity-optimized and Tiered-storage.
 - `desired_status` (String) The desired status of the cluster. Possible values are RUNNING and SUSPENDED. Defaults to RUNNING.
 - `labels` (Map of String) A map of labels to assign to the cluster. Labels are key-value pairs that can be used to organize and categorize clusters.
 - `load_balancer_security_groups` (Set of String, Deprecated) A set of security group IDs to associate with the load balancer of the cluster.
