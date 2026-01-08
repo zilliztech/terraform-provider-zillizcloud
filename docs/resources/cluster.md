@@ -135,7 +135,7 @@ Required:
 
 Optional:
 
-- `timezone` (String) The timezone for the cron expression. Defaults to UTC.
+- `timezone` (String) The timezone for the cron expression. Defaults to Etc/UTC.
 
 
 
@@ -166,7 +166,7 @@ Required:
 
 Optional:
 
-- `timezone` (String) The timezone for the cron expression. Defaults to UTC.
+- `timezone` (String) The timezone for the cron expression. Defaults to Etc/UTC.
 
 
 

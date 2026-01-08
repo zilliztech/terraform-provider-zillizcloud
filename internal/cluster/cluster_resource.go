@@ -253,10 +253,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"timezone": schema.StringAttribute{
-									MarkdownDescription: "The timezone for the cron expression. Defaults to UTC.",
+									MarkdownDescription: "The timezone for the cron expression. Defaults to Etc/UTC.",
 									Optional:            true,
 									Computed:            true,
-									Default:             stringdefault.StaticString("UTC"),
+									Default:             stringdefault.StaticString("Etc/UTC"),
 								},
 								"cron": schema.StringAttribute{
 									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
@@ -304,10 +304,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"timezone": schema.StringAttribute{
-									MarkdownDescription: "The timezone for the cron expression. Defaults to UTC.",
+									MarkdownDescription: "The timezone for the cron expression. Defaults to Etc/UTC.",
 									Optional:            true,
 									Computed:            true,
-									Default:             stringdefault.StaticString("UTC"),
+									Default:             stringdefault.StaticString("Etc/UTC"),
 								},
 								"cron": schema.StringAttribute{
 									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
