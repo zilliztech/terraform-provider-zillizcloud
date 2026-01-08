@@ -663,6 +663,12 @@ func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, 
 func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 
+	// can not set both dynamic scaling and schedule scaling at the same time
+	if plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() && !plan.CuSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "Cannot set both dynamic scaling and schedule scaling at the same time")
+		return diags
+	}
+
 	if plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() {
 		minCU := int(plan.CuSettings.DynamicScaling.Min.ValueInt64())
 		maxCU := int(plan.CuSettings.DynamicScaling.Max.ValueInt64())
@@ -701,6 +707,12 @@ func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, stat
 
 func (r *ClusterResource) handleReplicaSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
+
+	// can not set both dynamic scaling and schedule scaling at the same time
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() && !plan.ReplicaSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "Cannot set both dynamic scaling and schedule scaling at the same time")
+		return diags
+	}
 
 	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() {
 		minReplica := int(plan.ReplicaSettings.DynamicScaling.Min.ValueInt64())
