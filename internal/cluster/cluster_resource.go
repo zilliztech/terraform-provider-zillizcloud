@@ -253,10 +253,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"timezone": schema.StringAttribute{
-									MarkdownDescription: "The timezone for the cron expression. Defaults to UTC.",
+									MarkdownDescription: "The timezone for the cron expression. Defaults to Etc/UTC.",
 									Optional:            true,
 									Computed:            true,
-									Default:             stringdefault.StaticString("UTC"),
+									Default:             stringdefault.StaticString("Etc/UTC"),
 								},
 								"cron": schema.StringAttribute{
 									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
@@ -304,10 +304,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"timezone": schema.StringAttribute{
-									MarkdownDescription: "The timezone for the cron expression. Defaults to UTC.",
+									MarkdownDescription: "The timezone for the cron expression. Defaults to Etc/UTC.",
 									Optional:            true,
 									Computed:            true,
-									Default:             stringdefault.StaticString("UTC"),
+									Default:             stringdefault.StaticString("Etc/UTC"),
 								},
 								"cron": schema.StringAttribute{
 									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
@@ -663,6 +663,12 @@ func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, 
 func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 
+	// can not set both dynamic scaling and schedule scaling at the same time
+	if plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() && !plan.CuSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "Cannot set both dynamic scaling and schedule scaling at the same time")
+		return diags
+	}
+
 	if plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() {
 		minCU := int(plan.CuSettings.DynamicScaling.Min.ValueInt64())
 		maxCU := int(plan.CuSettings.DynamicScaling.Max.ValueInt64())
@@ -701,6 +707,12 @@ func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, stat
 
 func (r *ClusterResource) handleReplicaSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
+
+	// can not set both dynamic scaling and schedule scaling at the same time
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() && !plan.ReplicaSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "Cannot set both dynamic scaling and schedule scaling at the same time")
+		return diags
+	}
 
 	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() {
 		minReplica := int(plan.ReplicaSettings.DynamicScaling.Min.ValueInt64())
