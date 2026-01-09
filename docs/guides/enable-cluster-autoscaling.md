@@ -114,7 +114,7 @@ Scheduled scaling allows you to scale your cluster's compute units at specific t
 
 | Attribute | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `timezone` | String | No | The timezone for the cron expression. Defaults to `UTC`. |
+| `timezone` | String | No | The timezone for the cron expression. Defaults to `Etc/UTC`. |
 | `cron` | String | Yes | Cron expression defining when the scheduled scaling should occur. |
 | `target` | Int64 | Yes | Target number of compute units (CU) for the scheduled scaling. Must be at least 1. |
 
@@ -180,12 +180,12 @@ resource "zillizcloud_cluster" "example" {
   cu_settings = {
     schedule_scaling = [
       {
-        timezone = "UTC"
+        timezone = "Etc/UTC"
         cron     = "0 0 * * 6"    # Saturday midnight
         target   = 1              # Minimal CUs for weekend
       },
       {
-        timezone = "UTC"
+        timezone = "Etc/UTC"
         cron     = "0 6 * * 1"    # Monday 6:00 AM
         target   = 4              # Scale up for the work week
       }
@@ -269,7 +269,7 @@ cu_settings = {
 ```
 
 **Common Valid Timezones:**
-- `UTC` (default)
+- `Etc/UTC` (default)
 - `America/New_York`
 - `America/Los_Angeles`
 - `Europe/London`
