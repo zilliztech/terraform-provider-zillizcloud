@@ -117,7 +117,7 @@ Use a comma-separated list of numbers where 1=Monday through 7=Sunday.
 Example: `aws-us-east-1`, `gcp-us-west1`
 - `retention_days` (Number) The number of days to retain backups.
 
-**Valid range:** 1-365 days
+**Valid range:** 1-30 days
 - `start_time` (String) The time window during which backups can start.
 
 **Format:** `HH:MM-HH:MM` (24-hour format, UTC)
@@ -149,4 +149,4 @@ Required:
 Example: `aws-us-west-2`
 - `retention_days` (Number) The number of days to retain cross-region backup copies.
 
-**Valid range:** 1-365 days
+**Valid range:** 1-30 days

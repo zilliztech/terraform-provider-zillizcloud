@@ -129,7 +129,7 @@ Use a comma-separated list of numbers where 1=Monday through 7=Sunday.
 				Required: true,
 				MarkdownDescription: `The number of days to retain backups.
 
-**Valid range:** 1-365 days`,
+**Valid range:** 1-30 days`,
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 					int64validator.AtMost(30),
@@ -160,7 +160,7 @@ Example: ` + "`aws-us-west-2`",
 							Required: true,
 							MarkdownDescription: `The number of days to retain cross-region backup copies.
 
-**Valid range:** 1-365 days`,
+**Valid range:** 1-30 days`,
 							Validators: []validator.Int64{
 								int64validator.AtLeast(1),
 								int64validator.AtMost(30),
