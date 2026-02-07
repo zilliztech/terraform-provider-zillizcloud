@@ -170,6 +170,38 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 							},
 						},
 					},
+					// CSE (Client-Side Encryption) configuration for AWS KMS encryption
+					// This enables users to encrypt their data using their own KMS keys
+					"cse": schema.SingleNestedAttribute{
+						MarkdownDescription: "CSE (Client-Side Encryption) configuration for AWS KMS encryption",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							// The IAM role ARN that has permissions to use the KMS key for encryption/decryption
+							"aws_cse_role_arn": schema.StringAttribute{
+								MarkdownDescription: "AWS IAM role ARN for client-side encryption operations",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							// The default KMS key ARN used for encrypting data
+							"default_aws_cse_key_arn": schema.StringAttribute{
+								MarkdownDescription: "Default AWS KMS key ARN for client-side encryption",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							// External ID for cross-account KMS key access (used in IAM role trust policy)
+							"external_id": schema.StringAttribute{
+								MarkdownDescription: "External ID for cross-account KMS key access",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
 				},
 			},
 			"azure": schema.SingleNestedAttribute{
