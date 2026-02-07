@@ -14,6 +14,11 @@ type AWSParams struct {
 	EksRoleArn       string `json:"eksRoleArn"`
 	BootstrapRoleArn string `json:"bootstrapRoleArn"`
 
+	// KMS parameters
+	AwsCseRoleArn       string `json:"awsCseRoleArn"`
+	DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
+	ExternalID          string `json:"externalId"`
+
 	UserVpcID        string   `json:"userVpcId"`
 	SubnetIds        []string `json:"subnetIds"`
 	SecurityGroupIds []string `json:"securityGroupIds"`

@@ -7,6 +7,8 @@ terraform {
 }
 
 provider "zillizcloud" {
+  host_address = "http://127.0.0.1:8080/v2"
+  api_key = "1234567890"
 }
 
 
@@ -83,6 +85,12 @@ resource "zillizcloud_byoc_i_project" "this" {
 
     storage = {
       bucket_id = "zilliz-s3-0af21b"
+    }
+
+    kms = {
+      aws_cse_role_arn       = "arn:aws:iam::999999999999:role/zilliz-stack-17d586-ZillizCSERole-1jSYHHFWhGkz"
+      default_aws_cse_key_arn = "arn:aws:kms:us-west-2:999999999999:key/12345678901234567890123456789012"
+      external_id             = "12345678901234567890123456789012"
     }
 
   }
