@@ -26,6 +26,7 @@ type AWSConfig struct {
 	Network NetworkConfig `tfsdk:"network"`
 	RoleARN RoleARNConfig `tfsdk:"role_arn"`
 	Storage StorageConfig `tfsdk:"storage"`
+	CSE     *CSEConfig    `tfsdk:"cse"`
 }
 type NetworkConfig struct {
 	VPCID            types.String `tfsdk:"vpc_id"`
@@ -42,6 +43,13 @@ type RoleARNConfig struct {
 
 type StorageConfig struct {
 	BucketID types.String `tfsdk:"bucket_id"`
+}
+
+// CSEConfig contains Client-Side Encryption configuration for AWS KMS
+type CSEConfig struct {
+	AwsCseRoleArn       types.String `tfsdk:"aws_cse_role_arn"`
+	DefaultAwsCseKeyArn types.String `tfsdk:"default_aws_cse_key_arn"`
+	ExternalID          types.String `tfsdk:"external_id"`
 }
 
 type AzureConfig struct {

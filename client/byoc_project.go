@@ -27,10 +27,16 @@ type CreateBYOCProjectRequest struct {
 }
 
 type AWSParam struct {
-	BucketID         string   `json:"bucketId"`
-	StorageRoleArn   string   `json:"storageRoleArn"`
-	EksRoleArn       string   `json:"eksRoleArn"`
-	BootstrapRoleArn string   `json:"bootstrapRoleArn"`
+	BucketID         string `json:"bucketId"`
+	StorageRoleArn   string `json:"storageRoleArn"`
+	EksRoleArn       string `json:"eksRoleArn"`
+	BootstrapRoleArn string `json:"bootstrapRoleArn"`
+
+	// KMS parameters
+	AwsCseRoleArn       string `json:"awsCseRoleArn"`
+	DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
+	ExternalID          string `json:"externalId"`
+
 	UserVpcID        string   `json:"userVpcId"`
 	SubnetIDs        []string `json:"subnetIds"`
 	SecurityGroupIDs []string `json:"securityGroupIds"`
@@ -169,6 +175,11 @@ type GetBYOCProjectResponse struct {
 		EndpointID       *string  `json:"endpointId"`
 		SecurityGroupIDs []string `json:"securityGroupIds"`
 		SubnetIDs        []string `json:"subnetIds"`
+
+		// KMS fields
+		AwsCseRoleArn       string `json:"awsCseRoleArn"`
+		DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
+		ExternalID          string `json:"externalId"`
 
 		VPCID string `json:"vpcId"`
 	} `json:"awsConfig"`
