@@ -200,6 +200,7 @@ type Cluster struct {
 	ProjectId          string            `json:"projectId"`
 	Labels             map[string]string `json:"labels,omitempty"`
 	Replica            int64             `json:"replica,omitempty"`
+	AwsCseKeyArn       string            `json:"keyIdentifier,omitempty"`
 	Autoscaling        struct {
 		CU struct {
 			Min       *int             `json:"min,omitempty"`
@@ -248,14 +249,15 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 }
 
 type CreateClusterParams struct {
-	Plan        *string           `json:"plan,omitempty"`
-	ClusterName string            `json:"clusterName"`
-	CUSize      int               `json:"cuSize"`
-	CUType      string            `json:"cuType"`
-	ProjectId   string            `json:"projectId"`
-	RegionId    string            `json:"regionId"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	BucketInfo  *BucketInfo       `json:"bucketInfo,omitempty"`
+	Plan         *string           `json:"plan,omitempty"`
+	ClusterName  string            `json:"clusterName"`
+	CUSize       int               `json:"cuSize"`
+	CUType       string            `json:"cuType"`
+	ProjectId    string            `json:"projectId"`
+	RegionId     string            `json:"regionId"`
+	Labels       map[string]string `json:"labels,omitempty"`
+	BucketInfo   *BucketInfo       `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn *string           `json:"keyIdentifier,omitempty"`
 }
 type BucketInfo struct {
 	BucketName string  `json:"bucketName"`

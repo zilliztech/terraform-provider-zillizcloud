@@ -20,6 +20,7 @@ func TestAccClusterResource(t *testing.T) {
 	})
 	t.Run("BYOCEnv", func(t *testing.T) {
 		t.Run("UpdateLabels", testAccClusterResourceUpdateLabels)
+		t.Run("AwsCseKeyArn", testAccClusterResourceAwsCseKeyArn)
 	})
 }
 
@@ -343,6 +344,47 @@ func testAccClusterResourceUpdateLabels(t *testing.T) {
 					// no attribute should be set
 					resource.TestCheckNoResourceAttr("zillizcloud_cluster.test", "labels.%"),
 				),
+			},
+		},
+	})
+}
+
+func testAccClusterResourceAwsCseKeyArn(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Create a BYOC cluster with aws_cse_key_arn
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name   = "a-byoc-cse-cluster"
+						project_id     = data.zillizcloud_project.default.id
+						aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cluster_name", "a-byoc-cse-cluster"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "aws_cse_key_arn", "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+				),
+			},
+			// Attempt to change aws_cse_key_arn should fail
+			{
+				Config: provider.ProviderConfig + `
+					data "zillizcloud_project" "default" {
+					}
+
+					resource "zillizcloud_cluster" "test" {
+						cluster_name   = "a-byoc-cse-cluster"
+						project_id     = data.zillizcloud_project.default.id
+						aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/changed-key-arn-00000000000000000"
+					}
+				`,
+				ExpectError: regexp.MustCompile(`Cannot change AWS CSE key ARN after cluster is created`),
 			},
 		},
 	})
