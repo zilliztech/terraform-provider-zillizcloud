@@ -95,6 +95,7 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 			}
 			return cluster.Replica
 		}()),
+		AwsCseKeyArn: types.StringValue(cluster.AwsCseKeyArn),
 		CuSettings: &CuSettings{
 			DynamicScaling:  dynamicScaling,
 			ScheduleScaling: schedules,
@@ -145,6 +146,12 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			}
 		}
 
+		// only for the byoc case
+		var awsCseKeyArn *string
+		if !cluster.AwsCseKeyArn.IsNull() && !cluster.AwsCseKeyArn.IsUnknown() {
+			awsCseKeyArn = conv.StringPtr(cluster.AwsCseKeyArn.ValueString())
+		}
+
 		// dedicated:
 		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
 			RegionId: regionId,
@@ -161,10 +168,11 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 				}
 				return int(cluster.CuSize.ValueInt64())
 			}(),
-			CUType:     cluster.CuType.ValueString(),
-			ProjectId:  cluster.ProjectId.ValueString(),
-			Labels:     labels,
-			BucketInfo: bucketInfo,
+			CUType:       cluster.CuType.ValueString(),
+			ProjectId:    cluster.ProjectId.ValueString(),
+			Labels:       labels,
+			BucketInfo:   bucketInfo,
+			AwsCseKeyArn: awsCseKeyArn,
 		})
 	}
 

@@ -43,8 +43,8 @@ func CreateDedicatedCluster(c *gin.Context) {
 			}
 			return request.RegionId
 		}(),
-		CuType:             request.CuType,
-		Plan:               func() string {
+		CuType: request.CuType,
+		Plan: func() string {
 			if request.Plan == nil {
 				return "Enterprise"
 			}
@@ -62,6 +62,12 @@ func CreateDedicatedCluster(c *gin.Context) {
 		Password:           "password",
 		Prompt:             "Successfully Submitted",
 		BucketInfo:         request.BucketInfo,
+		AwsCseKeyArn: func() string {
+			if request.AwsCseKeyArn != nil {
+				return *request.AwsCseKeyArn
+			}
+			return ""
+		}(),
 	}
 	if cluster.Plan == "Standard" || cluster.Plan == "Enterprise" {
 		cluster.Replica = 1

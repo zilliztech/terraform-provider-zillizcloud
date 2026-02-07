@@ -393,17 +393,18 @@ func NewSettingsResponse(opts ...Option) *SettingsResponse {
 }
 
 type CreateDedicatedClusterRequest struct {
-	ClusterId   string             `json:"clusterId"`
-	ClusterName string             `json:"clusterName"`
-	ProjectId   string             `json:"projectId"`
-	Description string             `json:"description"`
-	RegionId    string             `json:"regionId"`
-	CuType      string             `json:"cuType"`
-	Plan        *string            `json:"plan,omitempty"`
-	Replica     int                `json:"replica"`
-	CuSize      int                `json:"cuSize"`
-	Labels      map[string]string  `json:"labels"`
-	BucketInfo  *ClusterBucketInfo `json:"bucketInfo,omitempty"`
+	ClusterId    string             `json:"clusterId"`
+	ClusterName  string             `json:"clusterName"`
+	ProjectId    string             `json:"projectId"`
+	Description  string             `json:"description"`
+	RegionId     string             `json:"regionId"`
+	CuType       string             `json:"cuType"`
+	Plan         *string            `json:"plan,omitempty"`
+	Replica      int                `json:"replica"`
+	CuSize       int                `json:"cuSize"`
+	Labels       map[string]string  `json:"labels"`
+	BucketInfo   *ClusterBucketInfo `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn *string            `json:"keyIdentifier,omitempty"`
 }
 
 type ClusterBucketInfo struct {
@@ -435,6 +436,7 @@ type DedicatedClusterResponse struct {
 	Prompt             string             `json:"prompt"`
 	Autoscaling        Autoscaling        `json:"autoscaling"`
 	BucketInfo         *ClusterBucketInfo `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn       string             `json:"keyIdentifier,omitempty"`
 }
 
 type Autoscaling struct {

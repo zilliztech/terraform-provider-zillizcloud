@@ -325,6 +325,14 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 					},
 				},
 			},
+			"aws_cse_key_arn": schema.StringAttribute{
+				MarkdownDescription: "The ARN of the AWS KMS key used for client-side encryption (CSE). Only used for BYOC clusters. Immutable after creation.",
+				Optional:            true,
+				Sensitive:           true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"bucket_info": schema.SingleNestedAttribute{
 				MarkdownDescription: "Bucket information for the cluster. Only used for BYOC clusters.",
 				Optional:            true,
@@ -832,6 +840,11 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if plan.isBucketInfoChanged(state) {
 		resp.Diagnostics.AddError("Invalid configuration change", "Cannot change bucket info after cluster is created")
+		return
+	}
+
+	if plan.isAwsCseKeyArnChanged(state) {
+		resp.Diagnostics.AddError("Invalid configuration change", "Cannot change AWS CSE key ARN after cluster is created")
 		return
 	}
 
