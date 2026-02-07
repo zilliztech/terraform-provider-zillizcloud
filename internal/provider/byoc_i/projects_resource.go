@@ -170,6 +170,33 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 							},
 						},
 					},
+					"kms": schema.SingleNestedAttribute{
+						MarkdownDescription: "KMS configuration for encryption",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"aws_cse_role_arn": schema.StringAttribute{
+								MarkdownDescription: "AWS CSE role ARN for client-side encryption",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"default_aws_cse_key_arn": schema.StringAttribute{
+								MarkdownDescription: "Default AWS KMS key ARN for client-side encryption",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"external_id": schema.StringAttribute{
+								MarkdownDescription: "External ID for KMS key access",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
 				},
 			},
 			"azure": schema.SingleNestedAttribute{

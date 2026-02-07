@@ -39,7 +39,7 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		data.AWS.Network.SubnetIDs.ElementsAs(ctx, &subnetIDs, false)
 		data.AWS.Network.SecurityGroupIDs.ElementsAs(ctx, &securityGroupIDs, false)
 
-		request.AWSParam = &zilliz.AWSParam{
+		awsParam := &zilliz.AWSParam{
 			BucketID:         data.AWS.Storage.BucketID.ValueString(),
 			StorageRoleArn:   data.AWS.RoleARN.Storage.ValueString(),
 			EksRoleArn:       data.AWS.RoleARN.EKS.ValueString(),
@@ -49,6 +49,15 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 			SecurityGroupIDs: securityGroupIDs,
 			VPCEndpointID:    data.AWS.Network.VPCEndpointID.ValueStringPointer(),
 		}
+
+		// Add KMS configuration if provided
+		if data.AWS.KMS != nil {
+			awsParam.AwsCseRoleArn = data.AWS.KMS.AwsCseRoleArn.ValueString()
+			awsParam.DefaultAwsCseKeyArn = data.AWS.KMS.DefaultAwsCseKeyArn.ValueString()
+			awsParam.ExternalID = data.AWS.KMS.ExternalID.ValueString()
+		}
+
+		request.AWSParam = awsParam
 	}
 
 	if data.Azure != nil {
