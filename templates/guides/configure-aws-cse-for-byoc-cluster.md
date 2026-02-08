@@ -1,9 +1,13 @@
 # Configuring AWS Client-Side Encryption for BYOC
 
-This guide demonstrates how to configure AWS Client-Side Encryption (CSE) for your Bring Your Own Cloud (BYOC) infrastructure using Terraform. CSE can be configured at two levels:
+This guide demonstrates how to configure AWS Client-Side Encryption (CSE) for your Bring Your Own Cloud (BYOC) infrastructure using Terraform.
 
-1. **Project-level CSE** - Default encryption settings for all clusters in a BYOC project
-2. **Cluster-level CSE** - Per-cluster encryption using a specific KMS key
+CSE requires two steps:
+
+1. **Configure CSE infrastructure in the BYOC project** - Set up IAM roles and default KMS key that enables CSE capability
+2. **Opt-in individual clusters to use CSE** - Specify `aws_cse_key_arn` on clusters that should use encryption
+
+**Important**: Clusters do NOT use CSE by default. Each cluster must explicitly opt-in by specifying an `aws_cse_key_arn`. Different clusters within the same project can choose whether to use CSE or not.
 
 By enabling CSE, you can encrypt your data using your own AWS KMS keys, providing enhanced security and control over your encryption keys.
 
@@ -28,25 +32,28 @@ Client-Side Encryption allows you to encrypt your data before it's sent to stora
 - **Key Control**: Full ownership and management of encryption keys
 - **Audit Trail**: Track KMS key usage through AWS CloudTrail
 
-### CSE Configuration Levels
+### How CSE Works in BYOC
 
-AWS CSE can be configured at two different levels in Zilliz Cloud BYOC:
+CSE configuration in Zilliz Cloud BYOC involves two components:
 
-#### 1. Project-Level CSE (Default for All Clusters)
+#### 1. Project CSE Infrastructure (Prerequisites)
 
-When you configure CSE at the project level, it sets default encryption parameters for all clusters created within that project. This includes:
+First, configure the CSE infrastructure at the BYOC project level. This sets up the necessary AWS resources:
 
 - **CSE Role ARN**: IAM role used for encryption/decryption operations
-- **Default CSE Key ARN**: Default KMS key for encrypting data
-- **External ID**: Security token for cross-account access
+- **Default CSE Key ARN**: Default KMS key available for clusters to use
+- **External ID**: Security token for secure cross-account access
 
-#### 2. Cluster-Level CSE (Per-Cluster Override)
+**Important**: Configuring CSE at the project level does NOT automatically enable encryption for clusters. It only makes CSE capability available.
 
-Individual clusters can specify their own KMS key, overriding the project default. This is useful when:
+#### 2. Cluster CSE Opt-In (Per-Cluster)
 
-- Different clusters require different encryption keys
-- You need to segregate encryption keys by environment or team
-- Compliance requires separate keys for different data classifications
+Each cluster must explicitly opt-in to use CSE by specifying an `aws_cse_key_arn`. This allows flexibility:
+
+- **Selective Encryption**: Only clusters that need encryption use it
+- **Different Keys**: Different clusters can use different KMS keys for data segregation
+- **Mixed Mode**: Within the same project, some clusters use CSE while others don't
+- **No Default Encryption**: Clusters without `aws_cse_key_arn` will NOT use CSE
 
 ### AWS KMS Key ARN Format
 
@@ -70,9 +77,9 @@ arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012
 
 ## Configuration Examples
 
-### Option 1: Project-Level CSE (Recommended for Multiple Clusters)
+### Step 1: Configure CSE Infrastructure in BYOC Project
 
-Configure CSE at the project level to set default encryption for all clusters:
+First, set up the CSE infrastructure in your BYOC project. This makes CSE capability available but doesn't automatically encrypt any clusters:
 
 ```hcl
 resource "zillizcloud_byoc_i_project" "aws_project_with_cse" {
@@ -100,7 +107,8 @@ resource "zillizcloud_byoc_i_project" "aws_project_with_cse" {
       bootstrap = "arn:aws:iam::123456789012:role/ZillizBootstrapRole"
     }
 
-    # CSE (Client-Side Encryption) configuration
+    # CSE infrastructure - enables CSE capability for the project
+    # Note: This does NOT automatically encrypt clusters
     cse = {
       aws_cse_role_arn        = "arn:aws:iam::123456789012:role/ZillizCSERole"
       default_aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/default-cse-key-id"
@@ -108,43 +116,77 @@ resource "zillizcloud_byoc_i_project" "aws_project_with_cse" {
     }
   }
 }
+```
 
-# Clusters created in this project will use the default CSE configuration
-resource "zillizcloud_cluster" "cluster_with_default_cse" {
-  cluster_name = "production-cluster-1"
+### Step 2: Create Clusters with CSE Opt-In
+
+Now you can create clusters. Each cluster independently decides whether to use CSE:
+
+#### Example A: Cluster WITHOUT CSE (Default Behavior)
+
+This cluster will NOT use encryption, even though the project has CSE configured:
+
+```hcl
+resource "zillizcloud_cluster" "cluster_without_cse" {
+  cluster_name = "development-cluster"
   region_id    = "aws-us-west-2"
   plan         = "Enterprise"
   cu_size      = 2
   cu_type      = "Performance-optimized"
   project_id   = zillizcloud_byoc_i_project.aws_project_with_cse.id
+
+  # No aws_cse_key_arn specified = No CSE encryption
 }
 ```
 
-### Option 2: Cluster-Level CSE (Per-Cluster Override)
+#### Example B: Cluster WITH CSE Using Default Key
 
-Configure a specific KMS key for an individual cluster:
+This cluster opts-in to CSE and uses the default key from the project:
 
 ```hcl
-data "zillizcloud_project" "byoc_project" {
-  # Fetching your BYOC project information
-}
-
-resource "zillizcloud_cluster" "cluster_with_specific_key" {
-  cluster_name    = "secure-production-cluster"
-  region_id       = "aws-us-east-2"
+resource "zillizcloud_cluster" "cluster_with_default_cse" {
+  cluster_name    = "production-cluster-1"
+  region_id       = "aws-us-west-2"
   plan            = "Enterprise"
   cu_size         = 2
   cu_type         = "Performance-optimized"
-  project_id      = data.zillizcloud_project.byoc_project.id
-  aws_cse_key_arn = "arn:aws:kms:us-east-2:123456789012:key/cluster-specific-key-id"
+  project_id      = zillizcloud_byoc_i_project.aws_project_with_cse.id
+
+  # Opt-in to CSE using the project's default key
+  aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/default-cse-key-id"
 }
 ```
 
-### Option 3: Combined Configuration
+#### Example C: Cluster WITH CSE Using Custom Key
 
-Combine project-level defaults with cluster-level overrides and custom bucket:
+This cluster opts-in to CSE but uses a different KMS key for data segregation:
 
 ```hcl
+resource "zillizcloud_cluster" "cluster_with_custom_cse" {
+  cluster_name    = "high-security-cluster"
+  region_id       = "aws-us-west-2"
+  plan            = "Enterprise"
+  cu_size         = 4
+  cu_type         = "Performance-optimized"
+  project_id      = zillizcloud_byoc_i_project.aws_project_with_cse.id
+
+  # Opt-in to CSE using a different KMS key
+  aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/high-security-key-id"
+
+  # Can also combine with custom bucket
+  bucket_info = {
+    bucket_name = "high-security-data-bucket"
+    prefix      = "/encrypted-data"
+  }
+}
+```
+
+### Complete Example: Mixed Mode Project
+
+This example shows a project with CSE infrastructure and multiple clusters with different encryption choices:
+
+```hcl
+# 1. Create BYOC project with CSE infrastructure
 resource "zillizcloud_byoc_i_project" "aws_project" {
   project_name = "production-byoc-project"
   cloud_id     = "aws"
@@ -167,7 +209,7 @@ resource "zillizcloud_byoc_i_project" "aws_project" {
       bootstrap = "arn:aws:iam::123456789012:role/ZillizBootstrapRole"
     }
 
-    # Default CSE for all clusters
+    # CSE infrastructure configuration
     cse = {
       aws_cse_role_arn        = "arn:aws:iam::123456789012:role/ZillizCSERole"
       default_aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/default-key"
@@ -176,22 +218,41 @@ resource "zillizcloud_byoc_i_project" "aws_project" {
   }
 }
 
-# Cluster with custom KMS key and bucket
-resource "zillizcloud_cluster" "high_security_cluster" {
-  cluster_name    = "high-security-cluster"
+# 2. Development cluster - NO encryption
+resource "zillizcloud_cluster" "dev_cluster" {
+  cluster_name = "dev-cluster"
+  region_id    = "aws-us-west-2"
+  plan         = "Standard"
+  cu_size      = 1
+  cu_type      = "Performance-optimized"
+  project_id   = zillizcloud_byoc_i_project.aws_project.id
+  # No aws_cse_key_arn = No encryption
+}
+
+# 3. Staging cluster - uses default CSE key
+resource "zillizcloud_cluster" "staging_cluster" {
+  cluster_name    = "staging-cluster"
   region_id       = "aws-us-west-2"
   plan            = "Enterprise"
-  cu_size         = 4
+  cu_size         = 2
   cu_type         = "Performance-optimized"
   project_id      = zillizcloud_byoc_i_project.aws_project.id
+  aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/default-key"
+}
 
-  # Override with cluster-specific KMS key
-  aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/high-security-key"
+# 4. Production cluster - uses dedicated CSE key
+resource "zillizcloud_cluster" "prod_cluster" {
+  cluster_name    = "production-cluster"
+  region_id       = "aws-us-west-2"
+  plan            = "Enterprise"
+  cu_size         = 8
+  cu_type         = "Performance-optimized"
+  project_id      = zillizcloud_byoc_i_project.aws_project.id
+  aws_cse_key_arn = "arn:aws:kms:us-west-2:123456789012:key/production-key"
 
-  # Custom storage bucket
   bucket_info = {
-    bucket_name = "high-security-data-bucket"
-    prefix      = "/encrypted-data"
+    bucket_name = "production-data-bucket"
+    prefix      = "/prod"
   }
 }
 ```
