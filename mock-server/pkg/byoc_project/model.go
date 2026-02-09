@@ -14,7 +14,7 @@ type AWSParams struct {
 	EksRoleArn       string `json:"eksRoleArn"`
 	BootstrapRoleArn string `json:"bootstrapRoleArn"`
 
-	// KMS parameters
+	// CSE(Client Side Encryption) parameters
 	AwsCseRoleArn       string `json:"awsCseRoleArn"`
 	DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
 	ExternalID          string `json:"externalId"`

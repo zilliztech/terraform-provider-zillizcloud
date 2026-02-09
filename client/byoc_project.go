@@ -32,7 +32,7 @@ type AWSParam struct {
 	EksRoleArn       string `json:"eksRoleArn"`
 	BootstrapRoleArn string `json:"bootstrapRoleArn"`
 
-	// KMS parameters
+	// CSE(Client Side Encryption) parameters
 	AwsCseRoleArn       string `json:"awsCseRoleArn"`
 	DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
 	ExternalID          string `json:"externalId"`
@@ -176,7 +176,7 @@ type GetBYOCProjectResponse struct {
 		SecurityGroupIDs []string `json:"securityGroupIds"`
 		SubnetIDs        []string `json:"subnetIds"`
 
-		// KMS fields
+		// CSE(Client Side Encryption) parameters fields
 		AwsCseRoleArn       string `json:"awsCseRoleArn"`
 		DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
 		ExternalID          string `json:"externalId"`
