@@ -42,6 +42,10 @@ Required:
 - `role_arn` (Attributes) Role ARN configuration (see [below for nested schema](#nestedatt--aws--role_arn))
 - `storage` (Attributes) Storage configuration (see [below for nested schema](#nestedatt--aws--storage))
 
+Optional:
+
+- `cse` (Attributes) CSE (Client-Side Encryption) configuration for AWS KMS encryption (see [below for nested schema](#nestedatt--aws--cse))
+
 <a id="nestedatt--aws--network"></a>
 ### Nested Schema for `aws.network`
 
@@ -72,6 +76,16 @@ Required:
 Required:
 
 - `bucket_id` (String) Storage bucket ID
+
+
+<a id="nestedatt--aws--cse"></a>
+### Nested Schema for `aws.cse`
+
+Optional:
+
+- `aws_cse_role_arn` (String) AWS IAM role ARN for client-side encryption operations
+- `default_aws_cse_key_arn` (String) Default AWS KMS key ARN for client-side encryption
+- `external_id` (String) External ID for cross-account KMS key access
 
 
 

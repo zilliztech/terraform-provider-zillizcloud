@@ -126,6 +126,7 @@ type ClusterResourceModel struct {
 	CuSettings         *CuSettings      `tfsdk:"cu_settings"`
 	ReplicaSettings    *ReplicaSettings `tfsdk:"replica_settings"`
 	BucketInfo         *BucketInfo      `tfsdk:"bucket_info"`
+	AwsCseKeyArn       types.String     `tfsdk:"aws_cse_key_arn"`
 	Timeouts           timeouts.Value   `tfsdk:"timeouts"`
 }
 
@@ -231,6 +232,10 @@ func (plan *ClusterResourceModel) isSecurityGroupsChanged(state ClusterResourceM
 
 func (c *ClusterResourceModel) isBucketInfoChanged(other ClusterResourceModel) bool {
 	return !c.BucketInfo.Equal(other.BucketInfo)
+}
+
+func (c *ClusterResourceModel) isAwsCseKeyArnChanged(other ClusterResourceModel) bool {
+	return c.AwsCseKeyArn.ValueString() != other.AwsCseKeyArn.ValueString()
 }
 
 func (c *ClusterResourceModel) isStatusChangeRequired(other ClusterResourceModel) bool {

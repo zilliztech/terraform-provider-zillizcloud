@@ -71,6 +71,7 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
 
 ### Optional
 
+- `aws_cse_key_arn` (String) The ARN of the AWS KMS key used for client-side encryption (CSE). Only used for BYOC clusters. Immutable after creation.
 - `bucket_info` (Attributes) Bucket information for the cluster. Only used for BYOC clusters. (see [below for nested schema](#nestedatt--bucket_info))
 - `cu_settings` (Attributes) Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously. (see [below for nested schema](#nestedatt--cu_settings))
 - `cu_size` (Number) The size of the CU to be used for the created cluster. It is an integer from 1 to 256.
