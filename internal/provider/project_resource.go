@@ -32,6 +32,7 @@ type ProjectResourceModel struct {
 	Id          types.String `tfsdk:"id"`
 	ProjectName types.String `tfsdk:"project_name"`
 	Plan        types.String `tfsdk:"plan"`
+	OrgType     types.String `tfsdk:"org_type"`
 }
 
 func (r *ProjectResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -63,6 +64,10 @@ Typical use case: creating projects with specific plan types (e.g., Standard).`,
 				Optional:            true,
 				Default:             stringdefault.StaticString("Enterprise"),
 				MarkdownDescription: `The plan type for the project (e.g., "Standard", "Enterprise", "Business Critical", "BYOC"). By default, the plan is "Enterprise".`,
+			},
+			"org_type": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: `The organization type for the project.`,
 			},
 		},
 	}
@@ -122,6 +127,7 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	state.ProjectName = types.StringValue(project.ProjectName)
 	state.Plan = types.StringValue(project.Plan)
+	state.OrgType = types.StringValue(project.OrgType)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -187,6 +193,7 @@ func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportSt
 	state.Id = types.StringValue(projectId)
 	state.ProjectName = types.StringValue(project.ProjectName)
 	state.Plan = types.StringValue(project.Plan)
+	state.OrgType = types.StringValue(project.OrgType)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
