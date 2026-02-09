@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 	util "github.com/zilliztech/terraform-provider-zillizcloud/client/retry"
+	customplanmodifier "github.com/zilliztech/terraform-provider-zillizcloud/internal/planmodifier"
 	customvalidator "github.com/zilliztech/terraform-provider-zillizcloud/internal/validator"
 )
 
@@ -100,6 +101,10 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.",
 				Optional:            true,
 				Computed:            true,
+				DeprecationMessage:  "The plan field is deprecated and will be removed in a future major version. The plan is determined automatically based on cu_size and cu_type.",
+				PlanModifiers: []planmodifier.String{
+					customplanmodifier.IgnoreChangesString(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf(FreePlan, ServerlessPlan, StandardPlan, EnterprisePlan, BusinessCriticalPlan),
 				},
@@ -534,7 +539,10 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.ConnectAddress = cluster.ConnectAddress
 	state.PrivateLinkAddress = cluster.PrivateLinkAddress
 	state.CreateTime = cluster.CreateTime
-	state.Plan = cluster.Plan
+	// plan field is deprecated - only set from API if state is empty (first read after import)
+	if state.Plan.IsNull() || state.Plan.IsUnknown() {
+		state.Plan = cluster.Plan
+	}
 	state.Replica = cluster.Replica
 	state.CuSize = cluster.CuSize
 	state.CuType = cluster.CuType
