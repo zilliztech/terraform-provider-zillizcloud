@@ -473,6 +473,7 @@ type Project struct {
 	InstanceCount   int64  `json:"instanceCount"`
 	CreateTimeMilli int64  `json:"createTimeMilli"`
 	Plan            string `json:"plan"`
+	OrgType         string `json:"orgType"`
 }
 
 type CreateProjectRequest struct {
