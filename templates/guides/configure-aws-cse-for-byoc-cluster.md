@@ -1,21 +1,21 @@
-# Configuring AWS Client-Side Encryption for BYOC
+# Configuring Client-Side Encryption (CSE) for BYOC Clusters
 
-This guide demonstrates how to configure AWS Client-Side Encryption (CSE) for your Bring Your Own Cloud (BYOC) infrastructure using Terraform.
+This guide demonstrates how to configure Client-Side Encryption (CSE) for your Bring Your Own Cloud (BYOC) infrastructure using Terraform.
 
 CSE requires two steps:
 
-1. **Configure CSE infrastructure in the BYOC project** - Set up IAM roles and default KMS key that enables CSE capability
+1. **Configure CSE infrastructure in the BYOC project** - Set up the necessary roles and default KMS key that enables CSE capability
 2. **Opt-in individual clusters to use CSE** - Specify `aws_cse_key_arn` on clusters that should use encryption
 
 **Important**: Clusters do NOT use CSE by default. Each cluster must explicitly opt-in by specifying an `aws_cse_key_arn`. Different clusters within the same project can choose whether to use CSE or not.
 
-By enabling CSE, you can encrypt your data using your own AWS KMS keys, providing enhanced security and control over your encryption keys.
+By enabling CSE, you can encrypt your data using your own KMS keys, providing enhanced security and control over your encryption keys.
 
-## Understanding AWS Client-Side Encryption
+## Understanding Client-Side Encryption
 
 ### What is Client-Side Encryption (CSE)?
 
-Client-Side Encryption allows you to encrypt your data before it's sent to storage using your own AWS KMS (Key Management Service) keys. This provides:
+Client-Side Encryption allows you to encrypt your data before it's sent to storage using your own KMS (Key Management Service) keys. This provides:
 
 - **Enhanced Security**: Data is encrypted using keys you control
 - **Compliance**: Meet regulatory requirements for data encryption
@@ -28,7 +28,7 @@ CSE configuration in Zilliz Cloud BYOC involves two components:
 
 #### 1. Project CSE Infrastructure (Automatic Setup)
 
-The CSE infrastructure is automatically configured during the BYOC project creation process. This sets up the necessary AWS resources:
+The CSE infrastructure is automatically configured during the BYOC project creation process. This sets up the necessary resources:
 
 - **CSE Role ARN**: IAM role used for encryption/decryption operations
 - **Default CSE Key ARN**: Default KMS key available for clusters to use
@@ -170,11 +170,11 @@ Ensure your Zilliz Cloud BYOC infrastructure has permissions to use the KMS key.
 
 ## Common Errors and Troubleshooting
 
-### Error: "Cannot change AWS CSE key ARN after cluster is created"
+### Error: "Cannot change CSE key ARN after cluster is created"
 
 **Cause**: You attempted to modify the `aws_cse_key_arn` attribute after the cluster was already created.
 
-**Solution**: The AWS CSE key configuration is immutable. If you need to use a different KMS key:
+**Solution**: The CSE key configuration is immutable. If you need to use a different KMS key:
 
 1. Destroy the existing cluster:
    ```bash
@@ -204,13 +204,13 @@ arn:aws:kms:REGION:ACCOUNT_ID:key/KEY_ID
 **Cause**: The BYOC infrastructure doesn't have permission to use the specified KMS key.
 
 **Solution**:
-1. Check the KMS key policy in AWS Console
+1. Check the KMS key policy in your cloud provider console
 2. Ensure the BYOC service role has the required permissions
 3. Update the key policy to grant necessary permissions
 
 ## Best Practices
 
-1. **Key Management**: Implement proper key rotation policies in AWS KMS
+1. **Key Management**: Implement proper key rotation policies for your KMS keys
 2. **Access Control**: Use least privilege principle when granting KMS key permissions
 3. **Monitoring**: Enable CloudTrail logging for KMS key usage auditing
 4. **Backup**: Ensure your KMS key backup and disaster recovery procedures are in place
