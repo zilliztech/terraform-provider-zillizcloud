@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -32,6 +33,12 @@ import (
 const (
 	defaultClusterCreateTimeout time.Duration = 45 * time.Minute
 	defaultClusterUpdateTimeout time.Duration = 30 * time.Minute
+
+	FreePlan             string = "Free"
+	ServerlessPlan       string = "Serverless"
+	StandardPlan         string = "Standard"
+	EnterprisePlan       string = "Enterprise"
+	BusinessCriticalPlan string = "BusinessCritical"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -48,6 +55,19 @@ type ClusterResource struct {
 	client  *zilliz.Client
 	store   ClusterStore
 	timeout func() time.Duration
+}
+
+func (r *ClusterResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.Conflicting(
+			path.MatchRoot("cu_size"),
+			path.MatchRoot("cu_settings"),
+		),
+		resourcevalidator.Conflicting(
+			path.MatchRoot("replica"),
+			path.MatchRoot("replica_settings"),
+		),
+	}
 }
 
 func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -80,9 +100,8 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.",
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("Enterprise"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("Free", "Serverless", "Standard", "Enterprise"),
+					stringvalidator.OneOf(FreePlan, ServerlessPlan, StandardPlan, EnterprisePlan, BusinessCriticalPlan),
 				},
 			},
 			"cu_size": schema.Int64Attribute{
@@ -92,18 +111,17 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
-				Default: int64default.StaticInt64(1),
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
 			},
 			"cu_type": schema.StringAttribute{
-				MarkdownDescription: "The type of the CU used for the Zilliz Cloud cluster to be created. A compute unit (CU) is the physical resource unit for cluster deployment. Different CU types comprise varying combinations of CPU, memory, and storage. Available options are Performance-optimized, Capacity-optimized, and Extended-capacity.",
+				MarkdownDescription: `The type of the CU used for the Zilliz Cloud cluster to be created. Available options are Performance-optimized, Capacity-optimized and Tiered-storage.`,
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("Performance-optimized"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("Performance-optimized", "Capacity-optimized", "Extended-capacity"),
+					stringvalidator.OneOf("Performance-optimized", "Capacity-optimized", "Tiered-storage", "Extended-capacity"),
 				},
 			},
 			"username": schema.StringAttribute{
@@ -205,6 +223,129 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Default:             setdefault.StaticValue(types.SetNull(types.StringType)),
 				DeprecationMessage:  "This field is deprecated. Use the zillizcloud_cluster_load_balancer_security_groups resource instead.",
 			},
+			"cu_settings": schema.SingleNestedAttribute{
+				MarkdownDescription: "Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"dynamic_scaling": schema.SingleNestedAttribute{
+						MarkdownDescription: "Dynamic scaling configuration for query CUs.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"min": schema.Int64Attribute{
+								MarkdownDescription: "Minimum number of compute units (CU) for autoscaling. Must be at least 1.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+							"max": schema.Int64Attribute{
+								MarkdownDescription: "Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+						},
+					},
+					"schedule_scaling": schema.ListNestedAttribute{
+						MarkdownDescription: "Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"timezone": schema.StringAttribute{
+									MarkdownDescription: "The timezone for the cron expression. Defaults to Etc/UTC.",
+									Optional:            true,
+									Computed:            true,
+									Default:             stringdefault.StaticString("Etc/UTC"),
+								},
+								"cron": schema.StringAttribute{
+									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
+									Required:            true,
+								},
+								"target": schema.Int64Attribute{
+									MarkdownDescription: "Target number of compute units (CU) for the scheduled scaling. Must be at least 1.",
+									Required:            true,
+									Validators: []validator.Int64{
+										int64validator.AtLeast(1),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"replica_settings": schema.SingleNestedAttribute{
+				MarkdownDescription: "Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"dynamic_scaling": schema.SingleNestedAttribute{
+						MarkdownDescription: "Dynamic scaling configuration for query CUs.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"min": schema.Int64Attribute{
+								MarkdownDescription: "Minimum number of compute units (CU) for autoscaling. Must be at least 1.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+							"max": schema.Int64Attribute{
+								MarkdownDescription: "Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.",
+								Optional:            true,
+								Validators: []validator.Int64{
+									int64validator.AtLeast(1),
+								},
+							},
+						},
+					},
+					"schedule_scaling": schema.ListNestedAttribute{
+						MarkdownDescription: "Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"timezone": schema.StringAttribute{
+									MarkdownDescription: "The timezone for the cron expression. Defaults to Etc/UTC.",
+									Optional:            true,
+									Computed:            true,
+									Default:             stringdefault.StaticString("Etc/UTC"),
+								},
+								"cron": schema.StringAttribute{
+									MarkdownDescription: "Cron expression defining when the scheduled scaling should occur.",
+									Required:            true,
+								},
+								"target": schema.Int64Attribute{
+									MarkdownDescription: "Target number of compute units (CU) for the scheduled scaling. Must be at least 1.",
+									Required:            true,
+									Validators: []validator.Int64{
+										int64validator.AtLeast(1),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"aws_cse_key_arn": schema.StringAttribute{
+				MarkdownDescription: "The ARN of the AWS KMS key used for client-side encryption (CSE). Only used for BYOC clusters. Immutable after creation.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"bucket_info": schema.SingleNestedAttribute{
+				MarkdownDescription: "Bucket information for the cluster. Only used for BYOC clusters.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"bucket_name": schema.StringAttribute{
+						Required:            true,
+						MarkdownDescription: "The name of the bucket to be used for the cluster.",
+					},
+					"prefix": schema.StringAttribute{
+						Optional:            true,
+						MarkdownDescription: "The prefix within the bucket to use for the cluster. If not provided, the cluster will use the bucket's root directory.",
+					},
+				},
+			},
 		},
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx,
@@ -287,15 +428,21 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	err := checkZillizClusterPlan(tfPlan)
-	if err != nil {
-		resp.Diagnostics.AddError("Invalid zilliz cluster plan", err.Error())
-		return
-	}
-
 	// Validate replica value during create - must be 1
 	if !tfPlan.Replica.IsNull() && !tfPlan.Replica.IsUnknown() && tfPlan.Replica.ValueInt64() != 1 {
 		resp.Diagnostics.AddError("Invalid replica value for cluster creation", "Replica value must be 1 during cluster creation")
+		return
+	}
+
+	// Validate cu_settings is not set during create
+	if tfPlan.CuSettings != nil {
+		resp.Diagnostics.AddError("Invalid cu_settings for cluster creation", "cu_settings cannot be set during cluster creation. Please create the cluster first, then update it to configure cu_settings.")
+		return
+	}
+
+	// Validate replica_settings is not set during create
+	if tfPlan.ReplicaSettings != nil {
+		resp.Diagnostics.AddError("Invalid replica_settings for cluster creation", "replica_settings cannot be set during cluster creation. Please create the cluster first, then update it to configure replica_settings.")
 		return
 	}
 
@@ -313,24 +460,12 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tfState.Username = newState.Username
 	tfState.Password = newState.Password
 	tfState.Prompt = newState.Prompt
+	tfState.CuSize = types.Int64Value(1)
+	tfState.Plan = types.StringValue("unknown")
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, tfState)...)
 
 	r.tryBestUpdateStatesAfterCreation(ctx, &tfPlan, &tfState, resp)
-}
-
-func checkZillizClusterPlan(data ClusterResourceModel) error {
-	// plan could be empty in byoc env
-	if data.Plan.IsNull() || data.Plan.IsUnknown() {
-		return nil
-	}
-
-	switch zilliz.Plan(data.Plan.ValueString()) {
-	case zilliz.StandardPlan, zilliz.EnterprisePlan, zilliz.FreePlan, zilliz.ServerlessPlan:
-		return nil
-	default:
-		return fmt.Errorf("invalid plan: %s", data.Plan.ValueString())
-	}
 }
 
 // tryBestUpdateStatesAfterCreation is called after resource already created, so there're just warnings if anything wrong.
@@ -346,6 +481,7 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		state.CreateTime = newState.CreateTime
 		state.Description = newState.Description
 		state.RegionId = newState.RegionId
+		state.Plan = newState.Plan
 	}
 
 	diags := resp.State.Set(ctx, state)
@@ -531,6 +667,95 @@ func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, 
 	return nil
 }
 
+func (r *ClusterResource) handleCuSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	// can not set both dynamic scaling and schedule scaling at the same time
+	if plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() && !plan.CuSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "Cannot set both dynamic scaling and schedule scaling at the same time")
+		return diags
+	}
+
+	if plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() {
+		minCU := int(plan.CuSettings.DynamicScaling.Min.ValueInt64())
+		maxCU := int(plan.CuSettings.DynamicScaling.Max.ValueInt64())
+
+		if minCU > maxCU {
+			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf("Minimum CU (%d) must be less than or equal to maximum CU (%d)", minCU, maxCU))
+			return diags
+		}
+
+		err := r.store.ModifyAutoscaling(ctx, state.ClusterId.ValueString(), minCU, maxCU)
+		if err != nil {
+			diags.AddError("Failed to modify cluster autoscaling", err.Error())
+			return diags
+		}
+	}
+
+	if plan.CuSettings != nil && !plan.CuSettings.IsSchedulesNull() {
+		schedules := make([]zilliz.ScheduleConfig, len(plan.CuSettings.ScheduleScaling))
+		for i, s := range plan.CuSettings.ScheduleScaling {
+			schedules[i] = zilliz.ScheduleConfig{
+				Timezone: s.Timezone.ValueString(),
+				Cron:     s.Cron.ValueString(),
+				Target:   int(s.Target.ValueInt64()),
+			}
+		}
+
+		err := r.store.ModifySchedules(ctx, state.ClusterId.ValueString(), schedules)
+		if err != nil {
+			diags.AddError("Failed to modify cluster schedules", err.Error())
+			return diags
+		}
+	}
+
+	return diags
+}
+
+func (r *ClusterResource) handleReplicaSettingsUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	// can not set both dynamic scaling and schedule scaling at the same time
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() && !plan.ReplicaSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "Cannot set both dynamic scaling and schedule scaling at the same time")
+		return diags
+	}
+
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() {
+		minReplica := int(plan.ReplicaSettings.DynamicScaling.Min.ValueInt64())
+		maxReplica := int(plan.ReplicaSettings.DynamicScaling.Max.ValueInt64())
+
+		if minReplica > maxReplica {
+			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf("Minimum replica (%d) must be less than or equal to maximum replica (%d)", minReplica, maxReplica))
+			return diags
+		}
+
+		err := r.store.ModifyReplicaAutoscaling(ctx, state.ClusterId.ValueString(), minReplica, maxReplica)
+		if err != nil {
+			diags.AddError("Failed to modify cluster autoscaling", err.Error())
+		}
+	}
+
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsSchedulesNull() {
+		schedules := make([]zilliz.ScheduleConfig, len(plan.ReplicaSettings.ScheduleScaling))
+		for i, s := range plan.ReplicaSettings.ScheduleScaling {
+			schedules[i] = zilliz.ScheduleConfig{
+				Timezone: s.Timezone.ValueString(),
+				Cron:     s.Cron.ValueString(),
+				Target:   int(s.Target.ValueInt64()),
+			}
+		}
+
+		err := r.store.ModifyReplicaSchedules(ctx, state.ClusterId.ValueString(), schedules)
+		if err != nil {
+			diags.AddError("Failed to modify cluster schedules", err.Error())
+			return diags
+		}
+	}
+
+	return diags
+}
+
 func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	tflog.Info(ctx, "Update Cluster...")
 
@@ -564,14 +789,14 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	if plan.isCuSizeChanged(state) {
+	if plan.isCuSizeChanged(state) && plan.isCuSettingsDisabled() {
 		resp.Diagnostics.Append(r.handleCuSizeUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	if plan.isReplicaChanged(state) {
+	if plan.isReplicaChanged(state) && plan.isReplicaSettingsDisabled() {
 		resp.Diagnostics.Append(r.handleReplicaUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -598,6 +823,30 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
+	if plan.isCuSettingsChanged(state) {
+		resp.Diagnostics.Append(r.handleCuSettingsUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	if plan.isReplicaSettingsChanged(state) {
+		resp.Diagnostics.Append(r.handleReplicaSettingsUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	if plan.isBucketInfoChanged(state) {
+		resp.Diagnostics.AddError("Invalid configuration change", "Cannot change bucket info after cluster is created")
+		return
+	}
+
+	if plan.isAwsCseKeyArnChanged(state) {
+		resp.Diagnostics.AddError("Invalid configuration change", "Cannot change AWS CSE key ARN after cluster is created")
+		return
+	}
+
 	cluster, err := r.store.Get(ctx, state.ClusterId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to get cluster", err.Error())
@@ -605,6 +854,9 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	state.populate(cluster)
+
+	state.CuSettings = plan.CuSettings
+	state.ReplicaSettings = plan.ReplicaSettings
 	state.Timeouts = plan.Timeouts
 
 	// Save updated data into Terraform state

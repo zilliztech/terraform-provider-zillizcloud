@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	"github.com/zilliztech/terraform-provider-zillizcloud/internal/util/conv"
 )
 
 type ClusterStore interface {
@@ -22,6 +23,10 @@ type ClusterStore interface {
 	ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error
 	UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error
 	GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error)
+	ModifyAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error
+	ModifySchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error
+	ModifyReplicaAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error
+	ModifyReplicaSchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -36,9 +41,28 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		return nil, err
 	}
 
+	var dynamicScaling *DynamicScaling
+	if cluster.Autoscaling.CU.Min != nil && cluster.Autoscaling.CU.Max != nil {
+		dynamicScaling = &DynamicScaling{
+			Min: types.Int64Value(int64(*cluster.Autoscaling.CU.Min)),
+			Max: types.Int64Value(int64(*cluster.Autoscaling.CU.Max)),
+		}
+	}
+
+	var schedules []ScheduleScaling
+	if len(cluster.Autoscaling.CU.Schedules) > 0 {
+		schedules = make([]ScheduleScaling, len(cluster.Autoscaling.CU.Schedules))
+		for i, s := range cluster.Autoscaling.CU.Schedules {
+			schedules[i] = ScheduleScaling{
+				Cron:   types.StringValue(s.Cron),
+				Target: types.Int64Value(int64(s.Target)),
+			}
+		}
+	}
+
 	return &ClusterResourceModel{
 		ClusterId:   types.StringValue(cluster.ClusterId),
-		Plan:        types.StringValue(string(cluster.Plan)),
+		Plan:        types.StringValue(cluster.Plan),
 		ClusterName: types.StringValue(cluster.ClusterName),
 		CuSize:      types.Int64Value(cluster.CuSize),
 		CuType:      types.StringValue(cluster.CuType),
@@ -71,6 +95,11 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 			}
 			return cluster.Replica
 		}()),
+		AwsCseKeyArn: types.StringValue(cluster.AwsCseKeyArn),
+		CuSettings: &CuSettings{
+			DynamicScaling:  dynamicScaling,
+			ScheduleScaling: schedules,
+		},
 	}, nil
 }
 
@@ -92,30 +121,58 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			}
 		}
 	}
-	zillizPlan := zilliz.Plan(cluster.Plan.ValueString())
+	zillizPlan := cluster.Plan.ValueString()
 	switch zillizPlan {
-	case zilliz.FreePlan:
+	case FreePlan:
 		response, err = c.client.CreateFreeCluster(zilliz.CreateServerlessClusterParams{
 			RegionId:    regionId,
 			ClusterName: cluster.ClusterName.ValueString(),
 			ProjectId:   cluster.ProjectId.ValueString(),
 		})
-	case zilliz.ServerlessPlan:
+	case ServerlessPlan:
 		response, err = c.client.CreateServerlessCluster(zilliz.CreateServerlessClusterParams{
 			RegionId:    regionId,
 			ClusterName: cluster.ClusterName.ValueString(),
 			ProjectId:   cluster.ProjectId.ValueString(),
 		})
 	default:
+
+		// only for the byoc case
+		var bucketInfo *zilliz.BucketInfo
+		if cluster.BucketInfo != nil {
+			bucketInfo = &zilliz.BucketInfo{
+				BucketName: cluster.BucketInfo.BucketName.ValueString(),
+				Prefix:     cluster.BucketInfo.Prefix.ValueStringPointer(),
+			}
+		}
+
+		// only for the byoc case
+		var awsCseKeyArn *string
+		if !cluster.AwsCseKeyArn.IsNull() && !cluster.AwsCseKeyArn.IsUnknown() {
+			awsCseKeyArn = conv.StringPtr(cluster.AwsCseKeyArn.ValueString())
+		}
+
 		// dedicated:
 		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
-			RegionId:    regionId,
-			Plan:        zilliz.Plan(cluster.Plan.ValueString()),
+			RegionId: regionId,
+			Plan: func() *string {
+				if cluster.Plan.IsNull() || cluster.Plan.IsUnknown() {
+					return nil
+				}
+				return conv.StringPtr(cluster.Plan.ValueString())
+			}(),
 			ClusterName: cluster.ClusterName.ValueString(),
-			CUSize:      int(cluster.CuSize.ValueInt64()),
-			CUType:      cluster.CuType.ValueString(),
-			ProjectId:   cluster.ProjectId.ValueString(),
-			Labels:      labels,
+			CUSize: func() int {
+				if cluster.CuSize.IsNull() || cluster.CuSize.IsUnknown() {
+					return 1
+				}
+				return int(cluster.CuSize.ValueInt64())
+			}(),
+			CUType:       cluster.CuType.ValueString(),
+			ProjectId:    cluster.ProjectId.ValueString(),
+			Labels:       labels,
+			BucketInfo:   bucketInfo,
+			AwsCseKeyArn: awsCseKeyArn,
 		})
 	}
 
@@ -192,6 +249,42 @@ func (c *ClusterStoreImpl) UpsertSecurityGroups(ctx context.Context, clusterId s
 
 func (c *ClusterStoreImpl) GetSecurityGroups(ctx context.Context, clusterId string) ([]string, error) {
 	return c.client.GetSecurityGroups(clusterId)
+}
+
+func (c *ClusterStoreImpl) ModifyAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error {
+	ptrInt := func(i int) *int {
+		return &i
+	}
+	params := &zilliz.ModifyClusterAutoscalingParams{}
+	params.Autoscaling.CU.Min = ptrInt(minCU)
+	params.Autoscaling.CU.Max = ptrInt(maxCU)
+	_, err := c.client.ModifyClusterAutoscaling(clusterId, params)
+	return err
+}
+
+func (c *ClusterStoreImpl) ModifySchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error {
+	params := &zilliz.ModifyClusterAutoscalingParams{}
+	params.Autoscaling.CU.Schedules = &schedules
+	_, err := c.client.ModifyClusterAutoscaling(clusterId, params)
+	return err
+}
+
+func (c *ClusterStoreImpl) ModifyReplicaAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error {
+	ptrInt := func(i int) *int {
+		return &i
+	}
+	params := &zilliz.ModifyReplicaSettings{}
+	params.Autoscaling.Replica.Min = ptrInt(minCU)
+	params.Autoscaling.Replica.Max = ptrInt(maxCU)
+	_, err := c.client.ModifyReplicaSettings(clusterId, params)
+	return err
+}
+
+func (c *ClusterStoreImpl) ModifyReplicaSchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error {
+	params := &zilliz.ModifyReplicaSettings{}
+	params.Autoscaling.Replica.Schedules = &schedules
+	_, err := c.client.ModifyReplicaSettings(clusterId, params)
+	return err
 }
 
 // convertLabelsToTypesMap converts a map[string]string into a Terraform types.Map of strings.

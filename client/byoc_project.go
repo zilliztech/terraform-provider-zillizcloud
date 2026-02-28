@@ -27,14 +27,41 @@ type CreateBYOCProjectRequest struct {
 }
 
 type AWSParam struct {
-	BucketID         string   `json:"bucketId"`
-	StorageRoleArn   string   `json:"storageRoleArn"`
-	EksRoleArn       string   `json:"eksRoleArn"`
-	BootstrapRoleArn string   `json:"bootstrapRoleArn"`
+	BucketID         string `json:"bucketId"`
+	StorageRoleArn   string `json:"storageRoleArn"`
+	EksRoleArn       string `json:"eksRoleArn"`
+	BootstrapRoleArn string `json:"bootstrapRoleArn"`
+
+	// CSE(Client Side Encryption) parameters
+	AwsCseRoleArn       string `json:"awsCseRoleArn"`
+	DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
+	ExternalID          string `json:"externalId"`
+
 	UserVpcID        string   `json:"userVpcId"`
 	SubnetIDs        []string `json:"subnetIds"`
 	SecurityGroupIDs []string `json:"securityGroupIds"`
 	VPCEndpointID    *string  `json:"endpointId"`
+}
+
+type AzureIdentityParam struct {
+	ClientID    string `json:"clientId"`
+	ResourceID  string `json:"resourceId"`
+	PrincipalID string `json:"principalId"`
+}
+
+type AzureParam struct {
+	// network parameters
+	VNetID            string   `json:"vnetId"`
+	SubnetIDs         []string `json:"subnetIds"`
+	NSGIDs            []string `json:"nsgIds"`
+	PrivateEndpointID *string  `json:"privateEndpointId"`
+	// storage parameters
+	StorageAccountName string `json:"storageAccountName"`
+	ContainerName      string `json:"containerName"`
+	// identity parameters
+	StorageIdentities   []AzureIdentityParam `json:"storageIdentities"`
+	KubeletIdentity     AzureIdentityParam   `json:"kubeletIdentity"`
+	MaintenanceIdentity AzureIdentityParam   `json:"maintenanceIdentity"`
 }
 
 func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYOCProjectResponse, error) {
@@ -148,6 +175,11 @@ type GetBYOCProjectResponse struct {
 		EndpointID       *string  `json:"endpointId"`
 		SecurityGroupIDs []string `json:"securityGroupIds"`
 		SubnetIDs        []string `json:"subnetIds"`
+
+		// CSE(Client Side Encryption) parameters fields
+		AwsCseRoleArn       string `json:"awsCseRoleArn"`
+		DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
+		ExternalID          string `json:"externalId"`
 
 		VPCID string `json:"vpcId"`
 	} `json:"awsConfig"`

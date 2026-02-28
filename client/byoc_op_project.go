@@ -1,7 +1,8 @@
 package client
 
 type CreateByocOpProjectRequest struct {
-	AWSParam *AWSParam `json:"awsParam"`
+	AWSParam   *AWSParam   `json:"awsParam,omitempty"`
+	AzureParam *AzureParam `json:"azureParam,omitempty"`
 
 	RegionID string  `json:"regionId"`
 	CloudID  CloudId `json:"cloudId"`
@@ -57,6 +58,7 @@ type DescribeByocOpProjectResponse struct {
 		} `json:"vmCombine"`
 		VPCID string `json:"vpcId"`
 	} `json:"awsConfig"`
+	AzureConfig     AzureParam  `json:"azureConfig"`
 	CloudID         string      `json:"cloudId"`
 	CreateTimeMilli int64       `json:"createTimeMilli"`
 	DataPlaneID     string      `json:"dataPlaneId"`

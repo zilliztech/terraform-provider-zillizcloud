@@ -16,6 +16,7 @@ type BYOCOpProjectResourceModel struct {
 	DataPlaneID types.String   `tfsdk:"data_plane_id"`
 	ExtConfig   types.String   `tfsdk:"ext_config"`
 	AWS         *AWSConfig     `tfsdk:"aws"`
+	Azure       *AzureConfig   `tfsdk:"azure"`
 	Timeouts    timeouts.Value `tfsdk:"timeouts"`
 	Status      types.Int64    `tfsdk:"status"`
 }
@@ -25,6 +26,7 @@ type AWSConfig struct {
 	Network NetworkConfig `tfsdk:"network"`
 	RoleARN RoleARNConfig `tfsdk:"role_arn"`
 	Storage StorageConfig `tfsdk:"storage"`
+	CSE     *CSEConfig    `tfsdk:"cse"`
 }
 type NetworkConfig struct {
 	VPCID            types.String `tfsdk:"vpc_id"`
@@ -41,6 +43,44 @@ type RoleARNConfig struct {
 
 type StorageConfig struct {
 	BucketID types.String `tfsdk:"bucket_id"`
+}
+
+// CSEConfig contains Client-Side Encryption configuration for AWS KMS
+type CSEConfig struct {
+	AwsCseRoleArn       types.String `tfsdk:"aws_cse_role_arn"`
+	DefaultAwsCseKeyArn types.String `tfsdk:"default_aws_cse_key_arn"`
+	ExternalID          types.String `tfsdk:"external_id"`
+}
+
+type AzureConfig struct {
+	Region   types.String        `tfsdk:"region"`
+	Network  AzureNetworkConfig  `tfsdk:"network"`
+	Identity AzureIdentityConfig `tfsdk:"identity"`
+	Storage  AzureStorageConfig  `tfsdk:"storage"`
+}
+
+type AzureNetworkConfig struct {
+	VNetID            types.String `tfsdk:"vnet_id"`
+	SubnetIDs         types.Set    `tfsdk:"subnet_ids"`
+	NSGIDs            types.Set    `tfsdk:"nsg_ids"`
+	PrivateEndpointID types.String `tfsdk:"private_endpoint_id"`
+}
+
+type AzureIdentityConfig struct {
+	Storages    types.Set     `tfsdk:"storages"`
+	Kubelet     AzureIdentity `tfsdk:"kubelet"`
+	Maintenance AzureIdentity `tfsdk:"maintenance"`
+}
+
+type AzureIdentity struct {
+	PrincipalID types.String `tfsdk:"principal_id"`
+	ClientID    types.String `tfsdk:"client_id"`
+	ResourceID  types.String `tfsdk:"resource_id"`
+}
+
+type AzureStorageConfig struct {
+	StorageAccountName types.String `tfsdk:"storage_account_name"`
+	ContainerName      types.String `tfsdk:"container_name"`
 }
 
 type Instances struct {
@@ -71,6 +111,7 @@ type InstancesOpConfig struct {
 
 func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel) {
 	data.AWS = input.AWS
+	data.Azure = input.Azure
 	data.Status = input.Status
 	data.DataPlaneID = input.DataPlaneID
 	data.ProjectID = input.ProjectID

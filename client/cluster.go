@@ -5,16 +5,6 @@ import (
 	"strings"
 )
 
-type Plan string
-
-var (
-	FreePlan       Plan = "Free"
-	ServerlessPlan Plan = "Serverless"
-	StandardPlan   Plan = "Standard"
-	EnterprisePlan Plan = "Enterprise"
-	BuiltInPlan    Plan = "" // one can leave plan empty for BYOC env
-)
-
 type ModifyClusterParams struct {
 	CuSize int `json:"cuSize"`
 }
@@ -72,6 +62,52 @@ func (c *Client) ResumeCluster(clusterId string) (*string, error) {
 }
 
 func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
+// ScheduleConfig represents a scheduled scaling configuration
+type ScheduleConfig struct {
+	Timezone string `json:"timezone"`
+	Cron     string `json:"cron"`
+	Target   int    `json:"target"`
+}
+
+// modify cluster cu size
+type ModifyClusterAutoscalingParams struct {
+	Autoscaling struct {
+		CU struct {
+			Min       *int              `json:"min,omitempty"`
+			Max       *int              `json:"max,omitempty"`
+			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
+		} `json:"cu"`
+	} `json:"autoscaling"`
+}
+
+type ModifyReplicaSettings struct {
+	Autoscaling struct {
+		Replica struct {
+			Min       *int              `json:"min,omitempty"`
+			Max       *int              `json:"max,omitempty"`
+			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
+		} `json:"replica"`
+	} `json:"autoscaling"`
+}
+
+func (c *Client) ModifyReplicaSettings(clusterId string, params *ModifyReplicaSettings) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
+func (c *Client) ModifyClusterAutoscaling(clusterId string, params *ModifyClusterAutoscalingParams) (*string, error) {
 	var response zillizResponse[ClusterResponse]
 	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
 	if err != nil {
@@ -155,7 +191,7 @@ type Cluster struct {
 	RegionId           string            `json:"regionId"`
 	ClusterType        string            `json:"clusterType"`
 	CuType             string            `json:"cuType"`
-	Plan               Plan              `json:"plan"`
+	Plan               string            `json:"plan"`
 	CuSize             int64             `json:"cuSize"`
 	Status             string            `json:"status"`
 	ConnectAddress     string            `json:"connectAddress"`
@@ -164,6 +200,19 @@ type Cluster struct {
 	ProjectId          string            `json:"projectId"`
 	Labels             map[string]string `json:"labels,omitempty"`
 	Replica            int64             `json:"replica,omitempty"`
+	AwsCseKeyArn       string            `json:"keyIdentifier,omitempty"`
+	Autoscaling        struct {
+		CU struct {
+			Min       *int             `json:"min,omitempty"`
+			Max       *int             `json:"max,omitempty"`
+			Schedules []ScheduleConfig `json:"schedules,omitempty"`
+		} `json:"cu"`
+	} `json:"autoscaling"`
+}
+
+type Autoscaling struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
 }
 
 func (c *Client) ListClusters() (Clusters, error) {
@@ -186,7 +235,7 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 	// TODO: remove this once we have a better way to determine the plan
 	// in03- is a free cluster
 	if strings.HasPrefix(cluster.ClusterId, "in03-") {
-		cluster.Plan = FreePlan
+		cluster.Plan = "Free"
 	}
 
 	switch cluster.Status {
@@ -200,13 +249,19 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 }
 
 type CreateClusterParams struct {
-	Plan        Plan              `json:"plan"`
-	ClusterName string            `json:"clusterName"`
-	CUSize      int               `json:"cuSize"`
-	CUType      string            `json:"cuType"`
-	ProjectId   string            `json:"projectId"`
-	RegionId    string            `json:"regionId"`
-	Labels      map[string]string `json:"labels,omitempty"`
+	Plan         *string           `json:"plan,omitempty"`
+	ClusterName  string            `json:"clusterName"`
+	CUSize       int               `json:"cuSize"`
+	CUType       string            `json:"cuType"`
+	ProjectId    string            `json:"projectId"`
+	RegionId     string            `json:"regionId"`
+	Labels       map[string]string `json:"labels,omitempty"`
+	BucketInfo   *BucketInfo       `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn *string           `json:"keyIdentifier,omitempty"`
+}
+type BucketInfo struct {
+	BucketName string  `json:"bucketName"`
+	Prefix     *string `json:"prefix,omitempty"`
 }
 
 type CreateServerlessClusterParams struct {

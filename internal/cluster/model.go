@@ -3,7 +3,6 @@ package cluster
 import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
 type StatusAction int
@@ -14,27 +13,144 @@ const (
 	StatusActionResume
 )
 
+type DynamicScaling struct {
+	Min types.Int64 `tfsdk:"min"`
+	Max types.Int64 `tfsdk:"max"`
+}
+
+func (d *DynamicScaling) Equal(other *DynamicScaling) bool {
+	if d == nil && other == nil {
+		return true
+	}
+	if d == nil || other == nil {
+		return false
+	}
+	return d.Min.Equal(other.Min) && d.Max.Equal(other.Max)
+}
+
+// schedule_scaling
+type CuSettings struct {
+	DynamicScaling  *DynamicScaling   `tfsdk:"dynamic_scaling"`
+	ScheduleScaling []ScheduleScaling `tfsdk:"schedule_scaling"`
+}
+
+type ReplicaSettings struct {
+	DynamicScaling  *DynamicScaling   `tfsdk:"dynamic_scaling"`
+	ScheduleScaling []ScheduleScaling `tfsdk:"schedule_scaling"`
+}
+
+func (c *ReplicaSettings) Equal(other *ReplicaSettings) bool {
+	if c == nil && other == nil {
+		return true
+	}
+	if c == nil || other == nil {
+		return false
+	}
+	return c.DynamicScaling.Equal(other.DynamicScaling) && SchedulesEqual(c.ScheduleScaling, other.ScheduleScaling)
+}
+
+func (c *CuSettings) IsdynamicScalingNull() bool {
+	return c.DynamicScaling == nil || c.DynamicScaling.Min.IsNull() || c.DynamicScaling.Max.IsNull()
+}
+
+func (c *CuSettings) IsSchedulesNull() bool {
+	return c == nil || len(c.ScheduleScaling) == 0
+}
+
+func (c *ReplicaSettings) IsdynamicScalingNull() bool {
+	return c.DynamicScaling == nil || c.DynamicScaling.Min.IsNull() || c.DynamicScaling.Max.IsNull()
+}
+
+func (c *ReplicaSettings) IsSchedulesNull() bool {
+	return c == nil || len(c.ScheduleScaling) == 0
+}
+
+func (c *CuSettings) Equal(other *CuSettings) bool {
+	if c == nil && other == nil {
+		return true
+	}
+	if c == nil || other == nil {
+		return false
+	}
+	return c.DynamicScaling.Equal(other.DynamicScaling) && SchedulesEqual(c.ScheduleScaling, other.ScheduleScaling)
+}
+
+type ScheduleScaling struct {
+	Timezone types.String `tfsdk:"timezone"`
+	Cron     types.String `tfsdk:"cron"`
+	Target   types.Int64  `tfsdk:"target"`
+}
+
+func (s *ScheduleScaling) Equal(other *ScheduleScaling) bool {
+	if s == nil && other == nil {
+		return true
+	}
+	if s == nil || other == nil {
+		return false
+	}
+	return s.Timezone.Equal(other.Timezone) && s.Cron.Equal(other.Cron) && s.Target.Equal(other.Target)
+}
+
+func SchedulesEqual(a, b []ScheduleScaling) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(&b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 type ClusterResourceModel struct {
-	ClusterId          types.String   `tfsdk:"id"`
-	Plan               types.String   `tfsdk:"plan"`
-	ClusterName        types.String   `tfsdk:"cluster_name"`
-	CuSize             types.Int64    `tfsdk:"cu_size"`
-	CuType             types.String   `tfsdk:"cu_type"`
-	ProjectId          types.String   `tfsdk:"project_id"`
-	Username           types.String   `tfsdk:"username"`
-	Password           types.String   `tfsdk:"password"`
-	Prompt             types.String   `tfsdk:"prompt"`
-	Description        types.String   `tfsdk:"description"`
-	RegionId           types.String   `tfsdk:"region_id"`
-	Status             types.String   `tfsdk:"status"`
-	DesiredStatus      types.String   `tfsdk:"desired_status"`
-	ConnectAddress     types.String   `tfsdk:"connect_address"`
-	PrivateLinkAddress types.String   `tfsdk:"private_link_address"`
-	CreateTime         types.String   `tfsdk:"create_time"`
-	Labels             types.Map      `tfsdk:"labels"`
-	SecurityGroups     types.Set      `tfsdk:"load_balancer_security_groups"`
-	Replica            types.Int64    `tfsdk:"replica"`
-	Timeouts           timeouts.Value `tfsdk:"timeouts"`
+	ClusterId          types.String     `tfsdk:"id"`
+	Plan               types.String     `tfsdk:"plan"`
+	ClusterName        types.String     `tfsdk:"cluster_name"`
+	CuSize             types.Int64      `tfsdk:"cu_size"`
+	CuType             types.String     `tfsdk:"cu_type"`
+	ProjectId          types.String     `tfsdk:"project_id"`
+	Username           types.String     `tfsdk:"username"`
+	Password           types.String     `tfsdk:"password"`
+	Prompt             types.String     `tfsdk:"prompt"`
+	Description        types.String     `tfsdk:"description"`
+	RegionId           types.String     `tfsdk:"region_id"`
+	Status             types.String     `tfsdk:"status"`
+	DesiredStatus      types.String     `tfsdk:"desired_status"`
+	ConnectAddress     types.String     `tfsdk:"connect_address"`
+	PrivateLinkAddress types.String     `tfsdk:"private_link_address"`
+	CreateTime         types.String     `tfsdk:"create_time"`
+	Labels             types.Map        `tfsdk:"labels"`
+	SecurityGroups     types.Set        `tfsdk:"load_balancer_security_groups"`
+	Replica            types.Int64      `tfsdk:"replica"`
+	CuSettings         *CuSettings      `tfsdk:"cu_settings"`
+	ReplicaSettings    *ReplicaSettings `tfsdk:"replica_settings"`
+	BucketInfo         *BucketInfo      `tfsdk:"bucket_info"`
+	AwsCseKeyArn       types.String     `tfsdk:"aws_cse_key_arn"`
+	Timeouts           timeouts.Value   `tfsdk:"timeouts"`
+}
+
+type BucketInfo struct {
+	BucketName types.String `tfsdk:"bucket_name"`
+	Prefix     types.String `tfsdk:"prefix"`
+}
+
+func (b *BucketInfo) Equal(other *BucketInfo) bool {
+	if b == nil && other == nil {
+		return true
+	}
+	if b == nil || other == nil {
+		return false
+	}
+	return b.BucketName.Equal(other.BucketName) && b.Prefix.Equal(other.Prefix)
+}
+
+func (c *ClusterResourceModel) isCuSettingsDisabled() bool {
+	return c.CuSettings == nil || c.CuSettings.DynamicScaling == nil || c.CuSettings.ScheduleScaling == nil
+}
+
+func (c *ClusterResourceModel) isReplicaSettingsDisabled() bool {
+	return c.ReplicaSettings == nil || c.ReplicaSettings.DynamicScaling == nil || c.ReplicaSettings.ScheduleScaling == nil
 }
 
 func (c *ClusterResourceModel) setUnknown() {
@@ -73,7 +189,7 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 
 	// only for free or serverless plan, set default value
 	plan := input.Plan.ValueString()
-	isFreeOrServerless := plan == string(zilliz.FreePlan) || plan == string(zilliz.ServerlessPlan)
+	isFreeOrServerless := plan == FreePlan || plan == ServerlessPlan
 	if isFreeOrServerless {
 		c.CuSize = types.Int64Value(1)
 		c.CuType = types.StringValue("Performance-optimized")
@@ -85,7 +201,7 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 // only for free or serverless plan, set default value
 func (c *ClusterResourceModel) completeForFreeOrServerless(input *ClusterResourceModel) {
 	plan := input.Plan.ValueString()
-	isFreeOrServerless := plan == string(zilliz.FreePlan) || plan == string(zilliz.ServerlessPlan)
+	isFreeOrServerless := plan == FreePlan || plan == ServerlessPlan
 	if isFreeOrServerless {
 		c.CuSize = types.Int64Value(1)
 		c.CuType = types.StringValue("Performance-optimized")
@@ -112,6 +228,14 @@ func (c *ClusterResourceModel) isClusterNameChanged(other ClusterResourceModel) 
 
 func (plan *ClusterResourceModel) isSecurityGroupsChanged(state ClusterResourceModel) bool {
 	return !plan.SecurityGroups.Equal(state.SecurityGroups)
+}
+
+func (c *ClusterResourceModel) isBucketInfoChanged(other ClusterResourceModel) bool {
+	return !c.BucketInfo.Equal(other.BucketInfo)
+}
+
+func (c *ClusterResourceModel) isAwsCseKeyArnChanged(other ClusterResourceModel) bool {
+	return c.AwsCseKeyArn.ValueString() != other.AwsCseKeyArn.ValueString()
 }
 
 func (c *ClusterResourceModel) isStatusChangeRequired(other ClusterResourceModel) bool {
@@ -150,4 +274,12 @@ func (c *ClusterResourceModel) getStatusAction(other ClusterResourceModel) Statu
 	}
 
 	return StatusActionNone
+}
+
+func (c *ClusterResourceModel) isCuSettingsChanged(other ClusterResourceModel) bool {
+	return !c.CuSettings.Equal(other.CuSettings)
+}
+
+func (c *ClusterResourceModel) isReplicaSettingsChanged(other ClusterResourceModel) bool {
+	return !c.ReplicaSettings.Equal(other.ReplicaSettings)
 }

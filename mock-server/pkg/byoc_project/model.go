@@ -14,11 +14,37 @@ type AWSParams struct {
 	EksRoleArn       string `json:"eksRoleArn"`
 	BootstrapRoleArn string `json:"bootstrapRoleArn"`
 
+	// CSE(Client Side Encryption) parameters
+	AwsCseRoleArn       string `json:"awsCseRoleArn"`
+	DefaultAwsCseKeyArn string `json:"defaultAwsCseKeyArn"`
+	ExternalID          string `json:"externalId"`
+
 	UserVpcID        string   `json:"userVpcId"`
 	SubnetIds        []string `json:"subnetIds"`
 	SecurityGroupIds []string `json:"securityGroupIds"`
 
 	EndpointId *string `json:"endpointId"`
+}
+
+type AzureIdentityParam struct {
+	ClientID    string `json:"clientId"`
+	PrincipalID string `json:"PrincipalID"`
+	ResourceID  string `json:"resourceId"`
+}
+
+type AzureParams struct {
+	// network parameters
+	VNetID            string   `json:"vnetId"`
+	SubnetIDs         []string `json:"subnetIds"`
+	NSGIDs            []string `json:"nsgIds"`
+	PrivateEndpointID *string  `json:"privateEndpointId"`
+	// storage parameters
+	StorageAccountName string `json:"storageAccountName"`
+	ContainerName      string `json:"containerName"`
+	// identity parameters
+	StorageIdentities   []AzureIdentityParam `json:"storageIdentities"`
+	KubeletIdentity     AzureIdentityParam   `json:"kubeletIdentity"`
+	MaintenanceIdentity AzureIdentityParam   `json:"maintenanceIdentity"`
 }
 
 // Main request structure
@@ -32,26 +58,32 @@ type CreateDataplaneRequest struct {
 	FundamentalVm string `json:"fundamentalVm"`
 	SearchVm      string `json:"searchVm"`
 	CoreVm        string `json:"coreVm"`
+	IndexVm       string `json:"indexVm"`
 
 	SearchMin      int64 `json:"searchMin"`
 	FundamentalMin int64 `json:"fundamentalMin"`
 	CoreMin        int64 `json:"coreMin"`
+	IndexMin       int64 `json:"indexMin"`
+
+	SearchMax      int64 `json:"searchMax"`
+	FundamentalMax int64 `json:"fundamentalMax"`
+	CoreMax        int64 `json:"coreMax"`
+	IndexMax       int64 `json:"indexMax"`
 
 	DeployType int `json:"deployType"`
 }
 type CreateOpDataplaneRequest struct {
-	AWSParam      AWSParams `json:"awsParam"`
-	ProjectName   string    `json:"projectName"`
-	ProjectID     string    `json:"projectId"`
-	DataPlaneID   string    `json:"dataPlaneId"`
-	RegionID      string    `json:"regionId"`
-	CloudID       string    `json:"cloudId"`
-	ByocID        string    `json:"byocId"`
-	FundamentalVm string    `json:"fundamentalVm"`
-	SearchVm      string    `json:"searchVm"`
-	CoreVm        string    `json:"coreVm"`
-	DeployType    int       `json:"deployType"`
-	ExtConfig     string    `json:"extConfig"`
+	AWSParam   *AWSParams   `json:"awsParam"`
+	AzureParam *AzureParams `json:"azureParam"`
+
+	ProjectID   string `json:"projectId"`
+	DataPlaneID string `json:"dataPlaneId"`
+	RegionID    string `json:"regionId"`
+	CloudID     string `json:"cloudId"`
+	ByocID      string `json:"byocId"`
+
+	DeployType int    `json:"deployType"`
+	ExtConfig  string `json:"extConfig"`
 }
 
 type Response[T any] struct {
@@ -75,19 +107,26 @@ type DataplaneResponse struct {
 			EksRoleArn       string `json:"eksRoleArn"`
 			StorageRoleArn   string `json:"storageRoleArn"`
 		} `json:"arn"`
-		VMCombine struct {
-			SearchVM       string `json:"searchVm"`
-			FundamentalVM  string `json:"fundamentalVm"`
-			CoreVM         string `json:"coreVm"`
-			SearchMin      int64  `json:"searchMin"`
-			FundamentalMin int64  `json:"fundamentalMin"`
-			CoreMin        int64  `json:"coreMin"`
-		} `json:"vmCombine"`
 		VpcID            string   `json:"vpcId"`
 		SubnetIds        []string `json:"subnetIds"`
 		SecurityGroupIds []string `json:"securityGroupIds"`
 		EndpointID       *string  `json:"endpointId,omitempty"`
 	} `json:"awsConfig"`
+	AzureConfig AzureParams `json:"azureConfig"`
+	VMCombine   struct {
+		SearchVM       string `json:"searchVm"`
+		FundamentalVM  string `json:"fundamentalVm"`
+		CoreVM         string `json:"coreVm"`
+		IndexVM        string `json:"indexVm"`
+		CoreMin        int64  `json:"coreMin"`
+		CoreMax        int64  `json:"coreMax"`
+		SearchMin      int64  `json:"searchMin"`
+		SearchMax      int64  `json:"searchMax"`
+		FundamentalMin int64  `json:"fundamentalMin"`
+		FundamentalMax int64  `json:"fundamentalMax"`
+		IndexMin       int64  `json:"indexMin"`
+		IndexMax       int64  `json:"indexMax"`
+	} `json:"vmCombine"`
 	GCPConfig       interface{} `json:"gcpConfig"`
 	CreateTimeMilli int64       `json:"createTimeMilli"`
 	LastUpdateMilli int64       `json:"lastUpdateMilli"`
@@ -108,17 +147,23 @@ func (r *CreateDataplaneRequest) ToDataplane() *DataplaneResponse {
 	response.AWSConfig.ARN.EksRoleArn = r.AWSParam.EksRoleArn
 	response.AWSConfig.ARN.StorageRoleArn = r.AWSParam.StorageRoleArn
 
-	response.AWSConfig.VMCombine.SearchVM = r.SearchVm
-	response.AWSConfig.VMCombine.FundamentalVM = r.FundamentalVm
-	response.AWSConfig.VMCombine.CoreVM = r.CoreVm
-	response.AWSConfig.VMCombine.CoreMin = r.CoreMin
-	response.AWSConfig.VMCombine.FundamentalMin = r.FundamentalMin
-	response.AWSConfig.VMCombine.SearchMin = r.SearchMin
-
 	response.AWSConfig.VpcID = r.AWSParam.UserVpcID
 	response.AWSConfig.SubnetIds = r.AWSParam.SubnetIds
 	response.AWSConfig.SecurityGroupIds = r.AWSParam.SecurityGroupIds
 	response.AWSConfig.EndpointID = r.AWSParam.EndpointId
+
+	response.VMCombine.SearchVM = r.SearchVm
+	response.VMCombine.FundamentalVM = r.FundamentalVm
+	response.VMCombine.CoreVM = r.CoreVm
+	response.VMCombine.IndexVM = r.IndexVm
+	response.VMCombine.CoreMin = r.CoreMin
+	response.VMCombine.CoreMax = r.CoreMax
+	response.VMCombine.FundamentalMin = r.FundamentalMin
+	response.VMCombine.FundamentalMax = r.FundamentalMax
+	response.VMCombine.SearchMin = r.SearchMin
+	response.VMCombine.SearchMax = r.SearchMax
+	response.VMCombine.IndexMin = r.IndexMin
+	response.VMCombine.IndexMax = r.IndexMax
 
 	response.CreateTimeMilli = time.Now().UnixMilli()
 	response.LastUpdateMilli = time.Now().UnixMilli()
@@ -216,6 +261,7 @@ func (s BYOCProjectStatus) String() string {
 //	  }
 type SettingsRequest struct {
 	ProjectName    string  `json:"projectName"`
+	IndexVm        string  `json:"indexVm"`
 	ProjectId      *string `json:"projectId"`
 	DataPlaneId    *string `json:"dataPlaneId"`
 	Id             *string `json:"id"`
@@ -324,15 +370,15 @@ func WithOpenPl(openPl int) Option {
 	}
 }
 
-func WithNodeQuota(Name string, min int) NodeQuota {
+func WithNodeQuota(Name string, min int, instanceTypes []string) NodeQuota {
 	return NodeQuota{
 		DesiredSize:   1,
 		DiskSize:      200,
-		InstanceTypes: []string{"m6i.2xlarge"},
+		InstanceTypes: instanceTypes,
 		MaxSize:       100,
 		MinSize:       min,
 		Name:          Name,
-		CapacityType:  "SPOT",
+		CapacityType:  "ON_DEMAND",
 	}
 }
 
@@ -352,40 +398,73 @@ func NewSettingsResponse(opts ...Option) *SettingsResponse {
 }
 
 type CreateDedicatedClusterRequest struct {
-	ClusterId   string            `json:"clusterId"`
-	ClusterName string            `json:"clusterName"`
-	ProjectId   string            `json:"projectId"`
-	Description string            `json:"description"`
-	RegionId    string            `json:"regionId"`
-	CuType      string            `json:"cuType"`
-	Plan        string            `json:"plan"`
-	Replica     int               `json:"replica"`
-	CuSize      int               `json:"cuSize"`
-	Labels      map[string]string `json:"labels"`
+	ClusterId    string             `json:"clusterId"`
+	ClusterName  string             `json:"clusterName"`
+	ProjectId    string             `json:"projectId"`
+	Description  string             `json:"description"`
+	RegionId     string             `json:"regionId"`
+	CuType       string             `json:"cuType"`
+	Plan         *string            `json:"plan,omitempty"`
+	Replica      int                `json:"replica"`
+	CuSize       int                `json:"cuSize"`
+	Labels       map[string]string  `json:"labels"`
+	BucketInfo   *ClusterBucketInfo `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn *string            `json:"keyIdentifier,omitempty"`
+}
+
+type ClusterBucketInfo struct {
+	BucketName string  `json:"bucketName"`
+	Prefix     *string `json:"prefix,omitempty"`
 }
 
 type DedicatedClusterResponse struct {
-	ClusterId          string            `json:"clusterId"`
-	ClusterName        string            `json:"clusterName"`
-	ProjectId          string            `json:"projectId"`
-	Description        string            `json:"description"`
-	RegionId           string            `json:"regionId"`
-	CuType             string            `json:"cuType"`
-	Plan               string            `json:"plan"`
-	Status             string            `json:"status"`
-	ConnectAddress     string            `json:"connectAddress"`
-	PrivateLinkAddress string            `json:"privateLinkAddress"`
-	CreateTime         string            `json:"createTime"`
-	Replica            int               `json:"replica"`
-	CuSize             int               `json:"cuSize"`
-	StorageSize        int               `json:"storageSize"`
-	SnapshotNumber     int               `json:"snapshotNumber"`
-	CreateProgress     int               `json:"createProgress"`
-	Labels             map[string]string `json:"labels"`
-	SecurityGroups     []string          `json:"securityGroups"`
-	Username           string            `json:"username"`
-	Password           string            `json:"password"`
-	Prompt             string            `json:"prompt"`
+	ClusterId          string             `json:"clusterId"`
+	ClusterName        string             `json:"clusterName"`
+	ProjectId          string             `json:"projectId"`
+	Description        string             `json:"description"`
+	RegionId           string             `json:"regionId"`
+	CuType             string             `json:"cuType"`
+	Plan               string             `json:"plan"`
+	Status             string             `json:"status"`
+	ConnectAddress     string             `json:"connectAddress"`
+	PrivateLinkAddress string             `json:"privateLinkAddress"`
+	CreateTime         string             `json:"createTime"`
+	Replica            int                `json:"replica"`
+	CuSize             int                `json:"cuSize"`
+	StorageSize        int                `json:"storageSize"`
+	SnapshotNumber     int                `json:"snapshotNumber"`
+	CreateProgress     int                `json:"createProgress"`
+	Labels             map[string]string  `json:"labels"`
+	SecurityGroups     []string           `json:"securityGroups"`
+	Username           string             `json:"username"`
+	Password           string             `json:"password"`
+	Prompt             string             `json:"prompt"`
+	Autoscaling        Autoscaling        `json:"autoscaling"`
+	BucketInfo         *ClusterBucketInfo `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn       string             `json:"keyIdentifier,omitempty"`
+}
+
+type Autoscaling struct {
+	CU      CU      `json:"cu"`
+	Replica Replica `json:"replica"`
+}
+
+type Replica struct {
+	Min       *int       `json:"min"`
+	Max       *int       `json:"max"`
+	Schedules []Schedule `json:"schedules"`
+}
+
+type CU struct {
+	Min       *int       `json:"min"`
+	Max       *int       `json:"max"`
+	Schedules []Schedule `json:"schedules"`
+}
+
+type Schedule struct {
+	Timezone string `json:"timezone"`
+	Cron     string `json:"cron"`
+	Target   int    `json:"target"`
 }
 
 type Project struct {
@@ -410,7 +489,8 @@ type ModifyReplicaRequest struct {
 }
 
 type ModifyClusterRequest struct {
-	CuSize int `json:"cuSize"`
+	CuSize      *int         `json:"cuSize,omitempty"`
+	Autoscaling *Autoscaling `json:"autoscaling,omitempty"`
 }
 
 type UpdateLabelsRequest struct {

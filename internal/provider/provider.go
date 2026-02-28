@@ -174,6 +174,7 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewIndexResource,
 		NewAliasResource,
 		NewPartitionsResource,
+		NewBackupPolicyResource,
 	}
 }
 

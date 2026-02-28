@@ -1,4 +1,4 @@
-# Zilliz Cloud BYOC Project Setup Guide (On Console)
+# Prepare Resources for AWS BYOC Project Setup Guide
 
 This guide explains how to configure a Bring-Your-Own-Cloud (BYOC) environment using the `zillizcloud_byoc_project` Terraform resource and Zilliz Cloud console. You'll deploy a fully managed Milvus cluster within your AWS infrastructure while maintaining complete control over your data and network environment.
 

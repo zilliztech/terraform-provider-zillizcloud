@@ -258,10 +258,10 @@ func CreateSettings(c *gin.Context) {
 		WithByocId(request.ByocId),
 		WithOpenPl(request.OpenPl),
 		WithNodeQuotas([]NodeQuota{
-			WithNodeQuota("index", 1),
-			WithNodeQuota("search", int(request.SearchMin)),
-			WithNodeQuota("fundamental", int(request.FundamentalMin)),
-			WithNodeQuota("core", int(request.CoreMin)),
+			WithNodeQuota("index", 1, []string{request.IndexVm}),
+			WithNodeQuota("search", int(request.SearchMin), []string{request.SearchVm}),
+			WithNodeQuota("fundamental", int(request.FundamentalMin), []string{request.FundamentalVm}),
+			WithNodeQuota("core", int(request.CoreMin), []string{request.CoreVm}),
 		}),
 		WithOpConfig("sk-op-token", "sk-op-agent-image-url"),
 	)
@@ -329,10 +329,32 @@ func ModifyCluster(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[ModifyCluster] clusterId: %s, changing cuSize from %d to %d, status: RUNNING -> MODIFYING -> RUNNING", clusterId, cluster.CuSize, request.CuSize)
+	if request.CuSize != nil && request.Autoscaling != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cuSize and autoscaling cannot be set at the same time"})
+		return
+	}
+
+	if request.Autoscaling != nil {
+		cluster.Autoscaling.CU = request.Autoscaling.CU
+		cluster.Autoscaling.Replica = request.Autoscaling.Replica
+		log.Printf("[ModifyCluster] clusterId: %s, changed autoscaling, status: RUNNING", clusterId)
+		clusterStore.Set(clusterId, cluster)
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+			"data": gin.H{
+				"clusterId": clusterId,
+			},
+		})
+		return
+	}
+
+	log.Printf("[ModifyCluster] clusterId: %s, changing cuSize from %d to %d, status: RUNNING -> MODIFYING -> RUNNING", clusterId, cluster.CuSize, *request.CuSize)
 
 	cluster.Status = "MODIFYING"
-	cluster.CuSize = request.CuSize
+	cluster.CuSize = *request.CuSize
+	cluster.Autoscaling = Autoscaling{
+		CU: CU{},
+	}
 	clusterStore.Set(clusterId, cluster)
 
 	go func() {

@@ -6,12 +6,16 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
@@ -25,6 +29,7 @@ const (
 
 var _ resource.Resource = &BYOCOpProjectResource{}
 var _ resource.ResourceWithConfigure = &BYOCOpProjectResource{}
+var _ resource.ResourceWithConfigValidators = &BYOCOpProjectResource{}
 
 func NewBYOCOpProjectResource() resource.Resource {
 	return &BYOCOpProjectResource{}
@@ -165,6 +170,199 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 							},
 						},
 					},
+					// CSE (Client-Side Encryption) configuration for AWS KMS encryption
+					// This enables users to encrypt their data using their own KMS keys
+					"cse": schema.SingleNestedAttribute{
+						MarkdownDescription: "CSE (Client-Side Encryption) configuration for AWS KMS encryption",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							// The IAM role ARN that has permissions to use the KMS key for encryption/decryption
+							"aws_cse_role_arn": schema.StringAttribute{
+								MarkdownDescription: "AWS IAM role ARN for client-side encryption operations",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							// The default KMS key ARN used for encrypting data
+							"default_aws_cse_key_arn": schema.StringAttribute{
+								MarkdownDescription: "Default AWS KMS key ARN for client-side encryption",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							// External ID for cross-account KMS key access (used in IAM role trust policy)
+							"external_id": schema.StringAttribute{
+								MarkdownDescription: "External ID for cross-account KMS key access",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+				},
+			},
+			"azure": schema.SingleNestedAttribute{
+				MarkdownDescription: "Azure configuration for the BYOC project",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"region": schema.StringAttribute{
+						MarkdownDescription: "Azure region",
+						Required:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.RequiresReplace(),
+						},
+					},
+					"network": schema.SingleNestedAttribute{
+						MarkdownDescription: "Network configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"vnet_id": schema.StringAttribute{
+								MarkdownDescription: "virtual network ID",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"subnet_ids": schema.SetAttribute{
+								MarkdownDescription: "List of subnet IDs",
+								Required:            true,
+								ElementType:         types.StringType,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.RequiresReplace(),
+								},
+							},
+							"nsg_ids": schema.SetAttribute{
+								MarkdownDescription: "List of network security group IDs",
+								Required:            true,
+								ElementType:         types.StringType,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.RequiresReplace(),
+								},
+							},
+							"private_endpoint_id": schema.StringAttribute{
+								MarkdownDescription: "Private endpoint ID",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+					"identity": schema.SingleNestedAttribute{
+						MarkdownDescription: "Identity configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"storages": schema.SetNestedAttribute{
+								MarkdownDescription: "Storage identity configuration (exactly 10 items required)",
+								Required:            true,
+								NestedObject: schema.NestedAttributeObject{
+									Attributes: map[string]schema.Attribute{
+										"client_id": schema.StringAttribute{
+											MarkdownDescription: "Client ID of the managed identity",
+											Required:            true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.RequiresReplace(),
+											},
+										},
+										"principal_id": schema.StringAttribute{
+											MarkdownDescription: "Principal ID of the managed identity",
+											Required:            true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.RequiresReplace(),
+											},
+										},
+										"resource_id": schema.StringAttribute{
+											MarkdownDescription: "Resource ID of the managed identity",
+											Required:            true,
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.RequiresReplace(),
+											},
+										},
+									},
+								},
+								Validators: []validator.Set{
+									setvalidator.SizeBetween(10, 10),
+								},
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.RequiresReplace(),
+								},
+							},
+							"kubelet": schema.SingleNestedAttribute{
+								MarkdownDescription: "Kubelet identity configuration",
+								Required:            true,
+								Attributes: map[string]schema.Attribute{
+									"client_id": schema.StringAttribute{
+										MarkdownDescription: "Client ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+									"principal_id": schema.StringAttribute{
+										MarkdownDescription: "Principal ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+									"resource_id": schema.StringAttribute{
+										MarkdownDescription: "Resource ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+								},
+							},
+							"maintenance": schema.SingleNestedAttribute{
+								MarkdownDescription: "Maintenance identity configuration",
+								Required:            true,
+								Attributes: map[string]schema.Attribute{
+									"client_id": schema.StringAttribute{
+										MarkdownDescription: "Client ID",
+										Required:            true,
+									},
+									"principal_id": schema.StringAttribute{
+										MarkdownDescription: "Principal ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+									"resource_id": schema.StringAttribute{
+										MarkdownDescription: "Resource ID",
+										Required:            true,
+										PlanModifiers: []planmodifier.String{
+											stringplanmodifier.RequiresReplace(),
+										},
+									},
+								},
+							},
+						},
+					},
+					"storage": schema.SingleNestedAttribute{
+						MarkdownDescription: "Storage configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"storage_account_name": schema.StringAttribute{
+								MarkdownDescription: "Storage account name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"container_name": schema.StringAttribute{
+								MarkdownDescription: "Storage container name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -175,6 +373,15 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 				Update: true,
 			}),
 		},
+	}
+}
+
+func (r *BYOCOpProjectResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.ExactlyOneOf(
+			path.MatchRoot("aws"),
+			path.MatchRoot("azure"),
+		),
 	}
 }
 

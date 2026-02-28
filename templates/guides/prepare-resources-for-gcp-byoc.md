@@ -1,4 +1,4 @@
-# Zilliz Cloud BYOC Project Setup Guide (In GCP)
+# Prepare Resources for GCP BYOC Project Setup Guide
 
 ## 1. Introduction
 
