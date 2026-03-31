@@ -167,6 +167,7 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		byoc_op.NewBYOCOpProjectResource,
 		byoc_op.NewBYOCOpProjectAgentResource,
 		NewProjectResource,
+		NewApiKeyResource,
 		NewUserResource,
 		NewUserRoleResource,
 		NewDatabaseResource,
