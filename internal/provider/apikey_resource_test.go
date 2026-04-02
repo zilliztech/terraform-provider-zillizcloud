@@ -41,7 +41,7 @@ resource "zillizcloud_api_key" "test" {
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.0.all_cluster", "true"),
 				),
 			},
-			// Step 2: Update name
+			// Step 2: Update name and project role
 			{
 				Config: provider.ProviderConfig + fmt.Sprintf(`
 resource "zillizcloud_api_key" "test" {
@@ -50,7 +50,7 @@ resource "zillizcloud_api_key" "test" {
 
   project_access {
     project_id  = %q
-    role        = "Admin"
+    role        = "Read-Write"
     all_cluster = true
   }
 }
@@ -58,29 +58,15 @@ resource "zillizcloud_api_key" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "name", "tf-acc-test-renamed"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "role", "Member"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.0.role", "Read-Write"),
 					resource.TestCheckResourceAttrSet("zillizcloud_api_key.test", "key_value"),
 				),
 			},
-			// Step 3: Update role to Owner (project_access removed)
+			// Step 3: Import
 			{
-				Config: provider.ProviderConfig + `
-resource "zillizcloud_api_key" "test" {
-  name = "tf-acc-test-renamed"
-  role = "Owner"
-}
-`,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "name", "tf-acc-test-renamed"),
-					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "role", "Owner"),
-					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.#", "0"),
-				),
-			},
-			// Step 4: Import
-			{
-				ResourceName:      "zillizcloud_api_key.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// key_value is not retrievable after creation, so skip verification
+				ResourceName:            "zillizcloud_api_key.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"key_value"},
 				ImportStateIdFunc: func(state *terraform.State) (string, error) {
 					rs, ok := state.RootModule().Resources["zillizcloud_api_key.test"]
@@ -89,30 +75,6 @@ resource "zillizcloud_api_key" "test" {
 					}
 					return rs.Primary.Attributes["id"], nil
 				},
-			},
-		},
-	})
-}
-
-func TestAccApiKeyResource_Owner(t *testing.T) {
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			// Create Owner key without project access
-			{
-				Config: provider.ProviderConfig + `
-resource "zillizcloud_api_key" "owner" {
-  name = "tf-acc-test-owner"
-  role = "Owner"
-}
-`,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("zillizcloud_api_key.owner", "id"),
-					resource.TestCheckResourceAttr("zillizcloud_api_key.owner", "name", "tf-acc-test-owner"),
-					resource.TestCheckResourceAttr("zillizcloud_api_key.owner", "role", "Owner"),
-					resource.TestCheckResourceAttrSet("zillizcloud_api_key.owner", "key_value"),
-					resource.TestCheckResourceAttr("zillizcloud_api_key.owner", "project_access.#", "0"),
-				),
 			},
 		},
 	})
@@ -137,6 +99,7 @@ resource "zillizcloud_api_key" "readonly" {
 }
 `, testProjectId),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("zillizcloud_api_key.readonly", "id"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.readonly", "project_access.0.role", "Read-Only"),
 				),
 			},

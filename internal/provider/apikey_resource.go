@@ -87,14 +87,23 @@ The API key value is only available at creation time and stored in Terraform sta
 			"creator_name": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "The name of the API key creator.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"creator_email": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "The email of the API key creator.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"create_time": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Creation time in ISO 8601 format.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -298,6 +307,10 @@ func (r *ApiKeyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 	err := r.client.DeleteApiKey(state.Id.ValueString())
 	if err != nil {
+		var apiErr *zilliz.Error
+		if errors.As(err, &apiErr) && apiErr.Code == 404 {
+			return
+		}
 		resp.Diagnostics.AddError("Failed to delete API key", err.Error())
 	}
 }
