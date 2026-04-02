@@ -227,6 +227,7 @@ func (r *BYOCOpProjectSettingsResource) Create(ctx context.Context, req resource
 
 	data.OpConfig = model.OpConfig
 	data.NodeQuotas = model.NodeQuotas
+	data.TieredNodeQuota = model.TieredNodeQuota
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -251,6 +252,7 @@ func (r *BYOCOpProjectSettingsResource) Read(ctx context.Context, req resource.R
 	// data.refresh(model)
 	data.OpConfig = model.OpConfig
 	data.NodeQuotas = model.NodeQuotas
+	data.TieredNodeQuota = model.TieredNodeQuota
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
