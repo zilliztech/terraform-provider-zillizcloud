@@ -2,8 +2,8 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -216,8 +216,8 @@ func (r *ApiKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	apiKey, err := r.client.GetApiKey(state.Id.ValueString())
 	if err != nil {
-		// Check if the error indicates the resource was not found (error code 80001)
-		if strings.Contains(err.Error(), "80001") || strings.Contains(strings.ToLower(err.Error()), "not found") {
+		var apiErr *zilliz.Error
+		if errors.As(err, &apiErr) && apiErr.Code == 404 {
 			resp.State.RemoveResource(ctx)
 			return
 		}
