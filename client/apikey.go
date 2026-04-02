@@ -5,25 +5,25 @@ type ApiKeyProjectAccess struct {
 	Role       string   `json:"role,omitempty"`
 	AllCluster *bool    `json:"allCluster,omitempty"`
 	ClusterIds []string `json:"clusterIds,omitempty"`
-	AllStage   *bool    `json:"allStage,omitempty"`
-	StageIds   []string `json:"stageIds,omitempty"`
+	AllVolume  *bool    `json:"allVolume,omitempty"`
+	VolumeIds  []string `json:"volumeIds,omitempty"`
 }
 
 type CreateApiKeyRequest struct {
 	Name     string                `json:"name"`
-	Role     string                `json:"role"`
+	OrgRole  string                `json:"orgRole"`
 	Projects []ApiKeyProjectAccess `json:"projects,omitempty"`
 }
 
 type UpdateApiKeyRequest struct {
 	Name     string                `json:"name,omitempty"`
-	Role     string                `json:"role,omitempty"`
+	OrgRole  string                `json:"orgRole,omitempty"`
 	Projects []ApiKeyProjectAccess `json:"projects,omitempty"`
 }
 
 type CreateApiKeyResponse struct {
-	ApiKey  string `json:"apiKey"`
-	ShortId string `json:"shortId"`
+	ApiKeyId string `json:"apiKeyId"`
+	ApiKey   string `json:"apiKey"`
 }
 
 type ApiKeyClusterResponse struct {
@@ -41,17 +41,19 @@ type ApiKeyProjectResponse struct {
 
 type ApiKeyResponse struct {
 	ApiKeyId     string                  `json:"apiKeyId"`
-	ShortId      string                  `json:"shortId"`
 	Name         string                  `json:"name"`
 	CreatorName  string                  `json:"creatorName"`
 	CreatorEmail string                  `json:"creatorEmail"`
-	Role         string                  `json:"role"`
+	OrgRole      string                  `json:"orgRole"`
 	Projects     []ApiKeyProjectResponse `json:"projects"`
-	CreateTime   int64                   `json:"createTime"`
+	CreateTime   string                  `json:"createTime"`
 }
 
 type ApiKeyListResponse struct {
-	ApiKeys []ApiKeyResponse `json:"apiKeys"`
+	ApiKeys     []ApiKeyResponse `json:"apiKeys"`
+	Count       int              `json:"count"`
+	CurrentPage int              `json:"currentPage"`
+	PageSize    int              `json:"pageSize"`
 }
 
 func (c *Client) CreateApiKey(req *CreateApiKeyRequest) (*CreateApiKeyResponse, error) {
