@@ -166,6 +166,11 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 					"fundamental": nodeSchema,
 				},
 			},
+			"tiered_node_quota": func() schema.SingleNestedAttribute {
+				s := nodeSchema
+				s.MarkdownDescription = "Tiered storage node group quota. Null when tiered storage is not enabled."
+				return s
+			}(),
 		},
 	}
 }

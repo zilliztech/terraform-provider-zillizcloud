@@ -172,6 +172,11 @@ func (s *byocOpProjectSettingsStore) Describe(ctx context.Context, projectID str
 		}
 		data.NodeQuotas = NodeQuotas
 
+		tiered, err := buildNodeQuotas("tiered", response.NodeQuotas)
+		if err != nil {
+			return data, err
+		}
+		data.TieredNodeQuota = tiered
 	}
 	return data, nil
 }
