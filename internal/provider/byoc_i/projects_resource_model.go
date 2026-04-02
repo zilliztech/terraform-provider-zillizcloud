@@ -128,6 +128,7 @@ type BYOCOpProjectSettingsResourceModel struct {
 	Region             types.String      `tfsdk:"region"`
 	OpConfig           types.Object      `tfsdk:"op_config"`
 	NodeQuotas         types.Object      `tfsdk:"node_quotas"`
+	TieredNodeQuota    types.Object      `tfsdk:"tiered_node_quota"`
 	PrivateLinkEnabled types.Bool        `tfsdk:"private_link_enabled"`
 }
 
@@ -161,6 +162,7 @@ type BYOCOpProjectSettingsDataModel struct {
 	Region             types.String `tfsdk:"region"`
 	OpConfig           types.Object `tfsdk:"op_config"`
 	NodeQuotas         types.Object `tfsdk:"node_quotas"`
+	TieredNodeQuota    types.Object `tfsdk:"tiered_node_quota"`
 	PrivateLinkEnabled types.Bool   `tfsdk:"private_link_enabled"`
 }
 
@@ -172,6 +174,7 @@ func (data *BYOCOpProjectSettingsDataModel) refresh(input BYOCOpProjectSettingsD
 	data.Region = input.Region
 	data.OpConfig = input.OpConfig
 	data.NodeQuotas = input.NodeQuotas
+	data.TieredNodeQuota = input.TieredNodeQuota
 	data.PrivateLinkEnabled = input.PrivateLinkEnabled
 }
 

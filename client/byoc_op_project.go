@@ -1,5 +1,13 @@
 package client
 
+// VmNodeGroup represents a node group in the new vmNodeGroups array format.
+type VmNodeGroup struct {
+	Name string `json:"name"`
+	Type string `json:"type"` // instance type, e.g. "m6i.2xlarge"
+	Min  int    `json:"min"`
+	Max  int    `json:"max"`
+}
+
 type CreateByocOpProjectRequest struct {
 	AWSParam   *AWSParam   `json:"awsParam,omitempty"`
 	AzureParam *AzureParam `json:"azureParam,omitempty"`
@@ -14,10 +22,12 @@ type CreateByocOpProjectRequest struct {
 
 	// optional
 	ExtConfig *string `json:"extConfig"`
-	// no need to set
-	FundamentalVM *string `json:"fundamentalVm"`
-	SearchVM      *string `json:"searchVm"`
-	CoreVM        *string `json:"coreVm"`
+	// legacy flat fields (kept for backward compat with older control-api)
+	FundamentalVM *string `json:"fundamentalVm,omitempty"`
+	SearchVM      *string `json:"searchVm,omitempty"`
+	CoreVM        *string `json:"coreVm,omitempty"`
+	// new array format for all node groups including tiered
+	VmNodeGroups []VmNodeGroup `json:"vmNodeGroups,omitempty"`
 }
 
 func (c *Client) CreateByocOpProject(params *CreateByocOpProjectRequest) (*CreateByocOpProjectResponse, error) {
