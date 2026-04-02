@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -33,20 +34,17 @@ type ApiKeyProjectAccessModel struct {
 	Role       types.String `tfsdk:"role"`
 	AllCluster types.Bool   `tfsdk:"all_cluster"`
 	ClusterIds types.List   `tfsdk:"cluster_ids"`
-	AllStage   types.Bool   `tfsdk:"all_stage"`
-	StageIds   types.List   `tfsdk:"stage_ids"`
 }
 
 type ApiKeyResourceModel struct {
-	Id             types.String               `tfsdk:"id"`
-	Name           types.String               `tfsdk:"name"`
-	Role           types.String               `tfsdk:"role"`
-	ProjectAccess  []ApiKeyProjectAccessModel `tfsdk:"project_access"`
-	KeyValue       types.String               `tfsdk:"key_value"`
-	ShortId        types.String               `tfsdk:"short_id"`
-	CreatorName    types.String               `tfsdk:"creator_name"`
-	CreatorEmail   types.String               `tfsdk:"creator_email"`
-	CreateTimeMilli types.Int64               `tfsdk:"create_time_milli"`
+	Id           types.String               `tfsdk:"id"`
+	Name         types.String               `tfsdk:"name"`
+	Role         types.String               `tfsdk:"role"`
+	ProjectAccess []ApiKeyProjectAccessModel `tfsdk:"project_access"`
+	KeyValue     types.String               `tfsdk:"key_value"`
+	CreatorName  types.String               `tfsdk:"creator_name"`
+	CreatorEmail types.String               `tfsdk:"creator_email"`
+	CreateTime   types.String               `tfsdk:"create_time"`
 }
 
 func (r *ApiKeyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -73,22 +71,15 @@ The API key value is only available at creation time and stored in Terraform sta
 			},
 			"role": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: `The organization role for this API key. Valid values: "Member", "Owner", "Billing Admin".`,
+				MarkdownDescription: `The organization role for this API key. Valid values: "Owner", "Member", "Billing-Admin".`,
 				Validators: []validator.String{
-					stringvalidator.OneOf("Member", "Owner", "Billing Admin"),
+					stringvalidator.OneOf("Owner", "Member", "Billing-Admin"),
 				},
 			},
 			"key_value": schema.StringAttribute{
 				Computed:            true,
 				Sensitive:           true,
 				MarkdownDescription: "The API key value. Only available at creation time.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"short_id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The short ID (masked key identifier).",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -101,9 +92,9 @@ The API key value is only available at creation time and stored in Terraform sta
 				Computed:            true,
 				MarkdownDescription: "The email of the API key creator.",
 			},
-			"create_time_milli": schema.Int64Attribute{
+			"create_time": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Creation time in Unix milliseconds.",
+				MarkdownDescription: "Creation time in ISO 8601 format.",
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -118,9 +109,9 @@ The API key value is only available at creation time and stored in Terraform sta
 						"role": schema.StringAttribute{
 							Optional:            true,
 							Computed:            true,
-							MarkdownDescription: `The project role. Valid values: "Project Member", "Project Owner".`,
+							MarkdownDescription: `The project role. Valid values: "Admin", "Read-Write", "Read-Only".`,
 							Validators: []validator.String{
-								stringvalidator.OneOf("Project Member", "Project Owner"),
+								stringvalidator.OneOf("Admin", "Read-Write", "Read-Only"),
 							},
 						},
 						"all_cluster": schema.BoolAttribute{
@@ -133,17 +124,6 @@ The API key value is only available at creation time and stored in Terraform sta
 							Optional:            true,
 							ElementType:         types.StringType,
 							MarkdownDescription: "Specific cluster IDs when all_cluster is false.",
-						},
-						"all_stage": schema.BoolAttribute{
-							Optional:            true,
-							Computed:            true,
-							Default:             booldefault.StaticBool(true),
-							MarkdownDescription: "Whether to include all stages in this project.",
-						},
-						"stage_ids": schema.ListAttribute{
-							Optional:            true,
-							ElementType:         types.StringType,
-							MarkdownDescription: "Specific stage IDs when all_stage is false.",
 						},
 					},
 				},
@@ -175,8 +155,8 @@ func (r *ApiKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	createReq := &zilliz.CreateApiKeyRequest{
-		Name: data.Name.ValueString(),
-		Role: data.Role.ValueString(),
+		Name:    data.Name.ValueString(),
+		OrgRole: data.Role.ValueString(),
 	}
 
 	for _, pa := range data.ProjectAccess {
@@ -186,18 +166,14 @@ func (r *ApiKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		}
 		allCluster := pa.AllCluster.ValueBool()
 		p.AllCluster = &allCluster
-		allStage := pa.AllStage.ValueBool()
-		p.AllStage = &allStage
+		// Default allVolume to true since the API requires it but we don't expose it in schema
+		allVolume := true
+		p.AllVolume = &allVolume
 
 		if !pa.ClusterIds.IsNull() {
 			var ids []string
 			resp.Diagnostics.Append(pa.ClusterIds.ElementsAs(ctx, &ids, false)...)
 			p.ClusterIds = ids
-		}
-		if !pa.StageIds.IsNull() {
-			var ids []string
-			resp.Diagnostics.Append(pa.StageIds.ElementsAs(ctx, &ids, false)...)
-			p.StageIds = ids
 		}
 		createReq.Projects = append(createReq.Projects, p)
 	}
@@ -212,33 +188,21 @@ func (r *ApiKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	data.Id = types.StringValue(createResp.ApiKeyId)
 	data.KeyValue = types.StringValue(createResp.ApiKey)
-	data.ShortId = types.StringValue(createResp.ShortId)
 
-	keys, err := r.client.ListApiKeys()
+	// Fetch the full API key details to populate computed fields
+	apiKey, err := r.client.GetApiKey(createResp.ApiKeyId)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to list API keys after creation", err.Error())
+		resp.Diagnostics.AddError("Failed to read API key after creation", err.Error())
 		return
 	}
 
-	var found *zilliz.ApiKeyResponse
-	for i := range keys {
-		if keys[i].ShortId == createResp.ShortId {
-			found = &keys[i]
-			break
-		}
-	}
-	if found == nil {
-		resp.Diagnostics.AddError("API key not found after creation", "Could not find the created API key in the list.")
-		return
-	}
-
-	data.Id = types.StringValue(found.ApiKeyId)
-	data.CreatorName = types.StringValue(found.CreatorName)
-	data.CreatorEmail = types.StringValue(found.CreatorEmail)
-	data.CreateTimeMilli = types.Int64Value(found.CreateTime)
-	data.Role = types.StringValue(found.Role)
-	populateProjectAccess(&data, found.Projects)
+	data.CreatorName = types.StringValue(apiKey.CreatorName)
+	data.CreatorEmail = types.StringValue(apiKey.CreatorEmail)
+	data.CreateTime = types.StringValue(apiKey.CreateTime)
+	data.Role = types.StringValue(apiKey.OrgRole)
+	populateProjectAccess(&data, apiKey.Projects)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -252,16 +216,20 @@ func (r *ApiKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	apiKey, err := r.client.GetApiKey(state.Id.ValueString())
 	if err != nil {
-		resp.State.RemoveResource(ctx)
+		// Check if the error indicates the resource was not found (error code 80001)
+		if strings.Contains(err.Error(), "80001") || strings.Contains(strings.ToLower(err.Error()), "not found") {
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Failed to read API key", err.Error())
 		return
 	}
 
 	state.Name = types.StringValue(apiKey.Name)
-	state.ShortId = types.StringValue(apiKey.ShortId)
-	state.Role = types.StringValue(apiKey.Role)
+	state.Role = types.StringValue(apiKey.OrgRole)
 	state.CreatorName = types.StringValue(apiKey.CreatorName)
 	state.CreatorEmail = types.StringValue(apiKey.CreatorEmail)
-	state.CreateTimeMilli = types.Int64Value(apiKey.CreateTime)
+	state.CreateTime = types.StringValue(apiKey.CreateTime)
 	populateProjectAccess(&state, apiKey.Projects)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -278,8 +246,8 @@ func (r *ApiKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	updateReq := &zilliz.UpdateApiKeyRequest{
-		Name: plan.Name.ValueString(),
-		Role: plan.Role.ValueString(),
+		Name:    plan.Name.ValueString(),
+		OrgRole: plan.Role.ValueString(),
 	}
 
 	for _, pa := range plan.ProjectAccess {
@@ -289,18 +257,14 @@ func (r *ApiKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 		allCluster := pa.AllCluster.ValueBool()
 		p.AllCluster = &allCluster
-		allStage := pa.AllStage.ValueBool()
-		p.AllStage = &allStage
+		// Default allVolume to true since the API requires it but we don't expose it in schema
+		allVolume := true
+		p.AllVolume = &allVolume
 
 		if !pa.ClusterIds.IsNull() {
 			var ids []string
 			resp.Diagnostics.Append(pa.ClusterIds.ElementsAs(ctx, &ids, false)...)
 			p.ClusterIds = ids
-		}
-		if !pa.StageIds.IsNull() {
-			var ids []string
-			resp.Diagnostics.Append(pa.StageIds.ElementsAs(ctx, &ids, false)...)
-			p.StageIds = ids
 		}
 		updateReq.Projects = append(updateReq.Projects, p)
 	}
@@ -316,10 +280,10 @@ func (r *ApiKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	state.Name = types.StringValue(updated.Name)
-	state.Role = types.StringValue(updated.Role)
+	state.Role = types.StringValue(updated.OrgRole)
 	state.CreatorName = types.StringValue(updated.CreatorName)
 	state.CreatorEmail = types.StringValue(updated.CreatorEmail)
-	state.CreateTimeMilli = types.Int64Value(updated.CreateTime)
+	state.CreateTime = types.StringValue(updated.CreateTime)
 	populateProjectAccess(&state, updated.Projects)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -350,12 +314,11 @@ func (r *ApiKeyResource) ImportState(ctx context.Context, req resource.ImportSta
 	var state ApiKeyResourceModel
 	state.Id = types.StringValue(apiKeyId)
 	state.Name = types.StringValue(apiKey.Name)
-	state.ShortId = types.StringValue(apiKey.ShortId)
-	state.Role = types.StringValue(apiKey.Role)
+	state.Role = types.StringValue(apiKey.OrgRole)
 	state.KeyValue = types.StringValue("")
 	state.CreatorName = types.StringValue(apiKey.CreatorName)
 	state.CreatorEmail = types.StringValue(apiKey.CreatorEmail)
-	state.CreateTimeMilli = types.Int64Value(apiKey.CreateTime)
+	state.CreateTime = types.StringValue(apiKey.CreateTime)
 	populateProjectAccess(&state, apiKey.Projects)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -372,7 +335,6 @@ func populateProjectAccess(data *ApiKeyResourceModel, projects []zilliz.ApiKeyPr
 			ProjectId:  types.StringValue(p.ProjectId),
 			Role:       types.StringValue(p.Role),
 			AllCluster: types.BoolValue(p.AllCluster),
-			AllStage:   types.BoolValue(true),
 		}
 
 		if len(p.Clusters) > 0 {
@@ -384,8 +346,6 @@ func populateProjectAccess(data *ApiKeyResourceModel, projects []zilliz.ApiKeyPr
 		} else {
 			pa.ClusterIds = types.ListNull(types.StringType)
 		}
-
-		pa.StageIds = types.ListNull(types.StringType)
 
 		access = append(access, pa)
 	}

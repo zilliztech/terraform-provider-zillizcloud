@@ -4,9 +4,8 @@ resource "zillizcloud_api_key" "metrics_reader" {
 
   project_access {
     project_id  = zillizcloud_project.prod.id
-    role        = "Project Member"
+    role        = "Admin"
     all_cluster = true
-    all_stage   = true
   }
 }
 
