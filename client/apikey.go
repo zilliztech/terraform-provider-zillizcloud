@@ -31,22 +31,29 @@ type ApiKeyClusterResponse struct {
 	ClusterName string `json:"clusterName"`
 }
 
+type ApiKeyVolumeResponse struct {
+	VolumeId   string `json:"volumeId"`
+	VolumeName string `json:"volumeName"`
+}
+
 type ApiKeyProjectResponse struct {
 	ProjectId   string                  `json:"projectId"`
 	ProjectName string                  `json:"projectName"`
 	Role        string                  `json:"role"`
 	AllCluster  bool                    `json:"allCluster"`
 	Clusters    []ApiKeyClusterResponse `json:"clusters"`
+	AllVolume   bool                    `json:"allVolume"`
+	Volumes     []ApiKeyVolumeResponse  `json:"volumes"`
 }
 
 type ApiKeyResponse struct {
-	ApiKeyId     string                  `json:"apiKeyId"`
-	Name         string                  `json:"name"`
-	CreatorName  string                  `json:"creatorName"`
-	CreatorEmail string                  `json:"creatorEmail"`
-	OrgRole      string                  `json:"orgRole"`
-	Projects     []ApiKeyProjectResponse `json:"projects"`
-	CreateTime   string                  `json:"createTime"`
+	ApiKeyId    string                  `json:"apiKeyId"`
+	Name        string                  `json:"name"`
+	CreatorName string                  `json:"creatorName"`
+	CreatedBy   string                  `json:"createdBy"`
+	OrgRole     string                  `json:"orgRole"`
+	Projects    []ApiKeyProjectResponse `json:"projects"`
+	CreateTime  string                  `json:"createTime"`
 }
 
 type ApiKeyListResponse struct {

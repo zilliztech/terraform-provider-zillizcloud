@@ -29,12 +29,6 @@ terraform {
 provider "zillizcloud" {
 }
 
-# Create an API key with Owner role (full org access)
-resource "zillizcloud_api_key" "owner_key" {
-  name = "ci-deploy-key"
-  role = "Owner"
-}
-
 # Create an API key with Member role scoped to a specific project
 resource "zillizcloud_api_key" "member_key" {
   name = "app-readonly-key"
@@ -45,6 +39,12 @@ resource "zillizcloud_api_key" "member_key" {
     role        = "Read-Only"
     all_cluster = true
   }]
+}
+
+# Create an API key with Billing-Admin role
+resource "zillizcloud_api_key" "billing_key" {
+  name = "billing-automation"
+  role = "Billing-Admin"
 }
 
 # The key value is only available at creation time.
@@ -61,7 +61,7 @@ output "api_key_value" {
 ### Required
 
 - `name` (String) The name of the API key.
-- `role` (String) The organization role for this API key. Valid values: "Owner", "Member", "Billing-Admin".
+- `role` (String) The organization role for this API key. Valid values: "Member", "Billing-Admin". Note: "Owner" keys cannot be created or updated via API; use the Console instead. "Owner" is accepted for import compatibility.
 
 ### Optional
 
@@ -70,7 +70,7 @@ output "api_key_value" {
 ### Read-Only
 
 - `create_time` (String) Creation time in ISO 8601 format.
-- `creator_email` (String) The email of the API key creator.
+- `created_by` (String) The creator identifier (email address or API key ID).
 - `creator_name` (String) The name of the API key creator.
 - `id` (String) The unique identifier of the API key.
 - `key_value` (String, Sensitive) The API key value. Only available at creation time.

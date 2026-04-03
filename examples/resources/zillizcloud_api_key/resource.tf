@@ -9,12 +9,6 @@ terraform {
 provider "zillizcloud" {
 }
 
-# Create an API key with Owner role (full org access)
-resource "zillizcloud_api_key" "owner_key" {
-  name = "ci-deploy-key"
-  role = "Owner"
-}
-
 # Create an API key with Member role scoped to a specific project
 resource "zillizcloud_api_key" "member_key" {
   name = "app-readonly-key"
@@ -25,6 +19,12 @@ resource "zillizcloud_api_key" "member_key" {
     role        = "Read-Only"
     all_cluster = true
   }]
+}
+
+# Create an API key with Billing-Admin role
+resource "zillizcloud_api_key" "billing_key" {
+  name = "billing-automation"
+  role = "Billing-Admin"
 }
 
 # The key value is only available at creation time.
