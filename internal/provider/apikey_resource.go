@@ -38,14 +38,14 @@ type ApiKeyProjectAccessModel struct {
 }
 
 type ApiKeyResourceModel struct {
-	Id           types.String               `tfsdk:"id"`
-	Name         types.String               `tfsdk:"name"`
-	Role         types.String               `tfsdk:"role"`
+	Id            types.String               `tfsdk:"id"`
+	Name          types.String               `tfsdk:"name"`
+	Role          types.String               `tfsdk:"role"`
 	ProjectAccess []ApiKeyProjectAccessModel `tfsdk:"project_access"`
-	KeyValue     types.String               `tfsdk:"key_value"`
-	CreatorName  types.String               `tfsdk:"creator_name"`
-	CreatorEmail types.String               `tfsdk:"creator_email"`
-	CreateTime   types.String               `tfsdk:"create_time"`
+	KeyValue      types.String               `tfsdk:"key_value"`
+	CreatorName   types.String               `tfsdk:"creator_name"`
+	CreatorEmail  types.String               `tfsdk:"creator_email"`
+	CreateTime    types.String               `tfsdk:"create_time"`
 }
 
 func (r *ApiKeyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

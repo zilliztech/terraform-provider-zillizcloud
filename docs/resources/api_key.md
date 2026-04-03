@@ -11,6 +11,7 @@ description: |-
 # zillizcloud_api_key (Resource)
 
 Manages an API key in Zilliz Cloud.
+
 This resource creates and manages shared API keys with scoped permissions.
 The API key value is only available at creation time and stored in Terraform state.
 
@@ -60,39 +61,29 @@ output "api_key_value" {
 ### Required
 
 - `name` (String) The name of the API key.
-- `role` (String) The organization role for this API key. Valid values: `"Owner"`, `"Member"`, `"Billing-Admin"`.
+- `role` (String) The organization role for this API key. Valid values: "Owner", "Member", "Billing-Admin".
 
 ### Optional
 
-- `project_access` (Block List) Project access configuration. Required when role is `"Member"`. (see [below for nested schema](#nestedblock--project_access))
+- `project_access` (Block List) Project access configuration. Required when role is Member. (see [below for nested schema](#nestedblock--project_access))
 
 ### Read-Only
 
-- `id` (String) The unique identifier of the API key.
-- `key_value` (String, Sensitive) The API key value. Only available at creation time. Retrieve with `terraform output -raw <output_name>`.
-- `creator_name` (String) The name of the API key creator.
+- `create_time` (String) Creation time in ISO 8601 format.
 - `creator_email` (String) The email of the API key creator.
-- `create_time` (String) Creation time in ISO 8601 format (e.g., `2024-07-30T16:49:50Z`).
+- `creator_name` (String) The name of the API key creator.
+- `id` (String) The unique identifier of the API key.
+- `key_value` (String, Sensitive) The API key value. Only available at creation time.
 
 <a id="nestedblock--project_access"></a>
 ### Nested Schema for `project_access`
 
-#### Required
+Required:
 
 - `project_id` (String) The project ID to grant access to.
 
-#### Optional
+Optional:
 
-- `role` (String) The project role. Valid values: `"Admin"`, `"Read-Write"`, `"Read-Only"`.
-- `all_cluster` (Boolean) Whether to include all clusters in this project. Defaults to `true`.
-- `cluster_ids` (List of String) Specific cluster IDs when `all_cluster` is `false`.
-
-## Import
-
-API keys can be imported using the API key ID:
-
-```shell
-terraform import zillizcloud_api_key.example key-xxxxxxxxxxxxxxxxxxxx
-```
-
-~> **Note:** The `key_value` attribute cannot be recovered after import since the API key value is only shown once at creation time. The imported resource will have an empty `key_value`.
+- `all_cluster` (Boolean) Whether to include all clusters in this project.
+- `cluster_ids` (List of String) Specific cluster IDs when all_cluster is false.
+- `role` (String) The project role. Valid values: "Admin", "Read-Write", "Read-Only".
