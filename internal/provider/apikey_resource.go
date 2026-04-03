@@ -44,7 +44,7 @@ type ApiKeyResourceModel struct {
 	ProjectAccess []ApiKeyProjectAccessModel `tfsdk:"project_access"`
 	KeyValue      types.String               `tfsdk:"key_value"`
 	CreatorName   types.String               `tfsdk:"creator_name"`
-	CreatorEmail  types.String               `tfsdk:"creator_email"`
+	CreatedBy     types.String               `tfsdk:"created_by"`
 	CreateTime    types.String               `tfsdk:"create_time"`
 }
 
@@ -72,7 +72,7 @@ The API key value is only available at creation time and stored in Terraform sta
 			},
 			"role": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: `The organization role for this API key. Valid values: "Owner", "Member", "Billing-Admin".`,
+				MarkdownDescription: `The organization role for this API key. Valid values: "Member", "Billing-Admin". Note: "Owner" keys cannot be created or updated via API; use the Console instead. "Owner" is accepted for import compatibility.`,
 				Validators: []validator.String{
 					stringvalidator.OneOf("Owner", "Member", "Billing-Admin"),
 				},
@@ -92,9 +92,9 @@ The API key value is only available at creation time and stored in Terraform sta
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"creator_email": schema.StringAttribute{
+			"created_by": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The email of the API key creator.",
+				MarkdownDescription: "The creator identifier (email address or API key ID).",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -223,7 +223,7 @@ func (r *ApiKeyResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	data.CreatorName = types.StringValue(apiKey.CreatorName)
-	data.CreatorEmail = types.StringValue(apiKey.CreatorEmail)
+	data.CreatedBy = types.StringValue(apiKey.CreatedBy)
 	data.CreateTime = types.StringValue(apiKey.CreateTime)
 	data.Role = types.StringValue(apiKey.OrgRole)
 	populateProjectAccess(&data, apiKey.Projects)
@@ -252,7 +252,7 @@ func (r *ApiKeyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	state.Name = types.StringValue(apiKey.Name)
 	state.Role = types.StringValue(apiKey.OrgRole)
 	state.CreatorName = types.StringValue(apiKey.CreatorName)
-	state.CreatorEmail = types.StringValue(apiKey.CreatorEmail)
+	state.CreatedBy = types.StringValue(apiKey.CreatedBy)
 	state.CreateTime = types.StringValue(apiKey.CreateTime)
 	populateProjectAccess(&state, apiKey.Projects)
 
@@ -306,7 +306,7 @@ func (r *ApiKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	state.Name = types.StringValue(updated.Name)
 	state.Role = types.StringValue(updated.OrgRole)
 	state.CreatorName = types.StringValue(updated.CreatorName)
-	state.CreatorEmail = types.StringValue(updated.CreatorEmail)
+	state.CreatedBy = types.StringValue(updated.CreatedBy)
 	state.CreateTime = types.StringValue(updated.CreateTime)
 	populateProjectAccess(&state, updated.Projects)
 
@@ -345,7 +345,7 @@ func (r *ApiKeyResource) ImportState(ctx context.Context, req resource.ImportSta
 	state.Role = types.StringValue(apiKey.OrgRole)
 	state.KeyValue = types.StringValue("")
 	state.CreatorName = types.StringValue(apiKey.CreatorName)
-	state.CreatorEmail = types.StringValue(apiKey.CreatorEmail)
+	state.CreatedBy = types.StringValue(apiKey.CreatedBy)
 	state.CreateTime = types.StringValue(apiKey.CreateTime)
 	populateProjectAccess(&state, apiKey.Projects)
 
