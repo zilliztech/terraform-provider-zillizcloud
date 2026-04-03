@@ -292,7 +292,7 @@ func RequestToCurl(req *http.Request) (string, error) {
 
 	// Method
 	if req.Method != http.MethodGet {
-		sb.WriteString(fmt.Sprintf(" -X %s", req.Method))
+		fmt.Fprintf(&sb, " -X %s", req.Method)
 	}
 
 	// Headers
@@ -304,7 +304,7 @@ func RequestToCurl(req *http.Request) (string, error) {
 
 	for _, k := range keys {
 		for _, v := range req.Header[k] {
-			sb.WriteString(fmt.Sprintf(` -H "%s: %s"`, k, v))
+			fmt.Fprintf(&sb, ` -H "%s: %s"`, k, v)
 		}
 	}
 
@@ -320,12 +320,12 @@ func RequestToCurl(req *http.Request) (string, error) {
 		if err == nil && len(bodyBytes) > 0 {
 			bodyStr := string(bodyBytes)
 			bodyStr = strings.TrimRight(bodyStr, "\r\n\t ")
-			sb.WriteString(fmt.Sprintf(` --data-binary '%s'`, escapeSingleQuote(maskSensitiveFields(bodyStr))))
+			fmt.Fprintf(&sb, ` --data-binary '%s'`, escapeSingleQuote(maskSensitiveFields(bodyStr)))
 		}
 	}
 
 	// URL
-	sb.WriteString(fmt.Sprintf(" '%s'", req.URL.String()))
+	fmt.Fprintf(&sb, " '%s'", req.URL.String())
 
 	return sb.String(), nil
 }
