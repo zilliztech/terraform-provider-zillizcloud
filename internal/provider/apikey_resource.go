@@ -20,6 +20,7 @@ import (
 var _ resource.Resource = &ApiKeyResource{}
 var _ resource.ResourceWithConfigure = &ApiKeyResource{}
 var _ resource.ResourceWithImportState = &ApiKeyResource{}
+var _ resource.ResourceWithValidateConfig = &ApiKeyResource{}
 
 func NewApiKeyResource() resource.Resource {
 	return &ApiKeyResource{}
@@ -138,6 +139,21 @@ The API key value is only available at creation time and stored in Terraform sta
 				},
 			},
 		},
+	}
+}
+
+func (r *ApiKeyResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data ApiKeyResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if data.Role.ValueString() == "Member" && len(data.ProjectAccess) == 0 {
+		resp.Diagnostics.AddError(
+			"Missing project_access",
+			`At least one "project_access" block is required when role is "Member".`,
+		)
 	}
 }
 
