@@ -2,6 +2,7 @@ package provider_test
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -75,6 +76,23 @@ resource "zillizcloud_api_key" "test" {
 					}
 					return rs.Primary.Attributes["id"], nil
 				},
+			},
+		},
+	})
+}
+
+func TestAccApiKeyResource_MemberWithoutProjectAccess(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
+resource "zillizcloud_api_key" "bad" {
+  name = "tf-acc-test-bad"
+  role = "Member"
+}
+`,
+				ExpectError: regexp.MustCompile(`Missing project_access`),
 			},
 		},
 	})
