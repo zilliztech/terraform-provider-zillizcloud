@@ -151,7 +151,7 @@ func (r *ApiKeyResource) ValidateConfig(ctx context.Context, req resource.Valida
 	if data.Role.ValueString() == "Member" && len(data.ProjectAccess) == 0 {
 		resp.Diagnostics.AddError(
 			"Missing project_access",
-			`At least one "project_access" block is required when role is "Member".`,
+			`At least one "project_access" entry is required when role is "Member".`,
 		)
 	}
 }
