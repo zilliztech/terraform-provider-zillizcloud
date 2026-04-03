@@ -40,11 +40,11 @@ resource "zillizcloud_api_key" "member_key" {
   name = "app-readonly-key"
   role = "Member"
 
-  project_access {
+  project_access = [{
     project_id  = "proj-xxxxxxxxxxxxxxxxxxxx"
     role        = "Read-Only"
     all_cluster = true
-  }
+  }]
 }
 
 # The key value is only available at creation time.
@@ -65,7 +65,7 @@ output "api_key_value" {
 
 ### Optional
 
-- `project_access` (Block List) Project access configuration. Required when role is Member. (see [below for nested schema](#nestedblock--project_access))
+- `project_access` (Attributes List) Project access configuration. Required when role is Member. (see [below for nested schema](#nestedatt--project_access))
 
 ### Read-Only
 
@@ -75,7 +75,7 @@ output "api_key_value" {
 - `id` (String) The unique identifier of the API key.
 - `key_value` (String, Sensitive) The API key value. Only available at creation time.
 
-<a id="nestedblock--project_access"></a>
+<a id="nestedatt--project_access"></a>
 ### Nested Schema for `project_access`
 
 Required:

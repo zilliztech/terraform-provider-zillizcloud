@@ -106,11 +106,10 @@ The API key value is only available at creation time and stored in Terraform sta
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"project_access": schema.ListNestedBlock{
+			"project_access": schema.ListNestedAttribute{
+				Optional:            true,
 				MarkdownDescription: "Project access configuration. Required when role is Member.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"project_id": schema.StringAttribute{
 							Required:            true,

@@ -20,11 +20,11 @@ resource "zillizcloud_api_key" "member_key" {
   name = "app-readonly-key"
   role = "Member"
 
-  project_access {
+  project_access = [{
     project_id  = "proj-xxxxxxxxxxxxxxxxxxxx"
     role        = "Read-Only"
     all_cluster = true
-  }
+  }]
 }
 
 # The key value is only available at creation time.

@@ -23,11 +23,11 @@ resource "zillizcloud_api_key" "test" {
   name = "tf-acc-test-member"
   role = "Member"
 
-  project_access {
+  project_access = [{
     project_id  = %q
     role        = "Admin"
     all_cluster = true
-  }
+  }]
 }
 `, testProjectId),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -49,11 +49,11 @@ resource "zillizcloud_api_key" "test" {
   name = "tf-acc-test-renamed"
   role = "Member"
 
-  project_access {
+  project_access = [{
     project_id  = %q
     role        = "Read-Write"
     all_cluster = true
-  }
+  }]
 }
 `, testProjectId),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -109,11 +109,11 @@ resource "zillizcloud_api_key" "readonly" {
   name = "tf-acc-test-readonly"
   role = "Member"
 
-  project_access {
+  project_access = [{
     project_id  = %q
     role        = "Read-Only"
     all_cluster = true
-  }
+  }]
 }
 `, testProjectId),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -128,11 +128,11 @@ resource "zillizcloud_api_key" "readonly" {
   name = "tf-acc-test-readonly"
   role = "Member"
 
-  project_access {
+  project_access = [{
     project_id  = %q
     role        = "Read-Write"
     all_cluster = true
-  }
+  }]
 }
 `, testProjectId),
 				Check: resource.ComposeAggregateTestCheckFunc(
