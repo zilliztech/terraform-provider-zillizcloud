@@ -41,17 +41,17 @@ resource "zillizcloud_api_key" "member_key" {
   }]
 }
 
+# Create an API key with Billing-Admin role
+resource "zillizcloud_api_key" "billing_key" {
+  name = "billing-automation"
+  role = "Billing-Admin"
+}
+
 # The key value is only available at creation time.
 # After apply, retrieve it with: terraform output -raw api_key_value
 output "api_key_value" {
   value     = zillizcloud_api_key.member_key.key_value
   sensitive = true
-}
-
-# Create an API key with Billing-Admin role
-resource "zillizcloud_api_key" "billing_key" {
-  name = "billing-automation"
-  role = "Billing-Admin"
 }
 ```
 
