@@ -222,3 +222,94 @@ resource "zillizcloud_cluster" "test" {
 		},
 	})
 }
+
+// TestAccUpdateCuSchedulePreservesReplicaDynamic verifies that switching cu_settings
+// from dynamic_scaling to schedule_scaling does not overwrite the existing replica_settings.
+func TestAccUpdateCuSchedulePreservesReplicaDynamic(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: create with cu dynamic + replica dynamic
+			{
+				Config: provider.ProviderConfig + `
+data "zillizcloud_project" "default" {
+}
+
+resource "zillizcloud_cluster" "test" {
+  cluster_name = "schedule-no-overwrite-test"
+  region_id    = "aws-us-west-2"
+  plan         = "Enterprise"
+  cu_type      = "Performance-optimized"
+  project_id   = data.zillizcloud_project.default.id
+  cu_settings = {
+    dynamic_scaling = {
+      min = 2
+      max = 4
+    }
+  }
+  replica_settings = {
+    dynamic_scaling = {
+      min = 1
+      max = 2
+    }
+  }
+  timeouts {
+    create = "120m"
+    update = "120m"
+  }
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.min", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.max", "2"),
+				),
+			},
+			// Step 2: switch cu to schedule_scaling — replica_settings must be preserved
+			{
+				Config: provider.ProviderConfig + `
+data "zillizcloud_project" "default" {
+}
+
+resource "zillizcloud_cluster" "test" {
+  cluster_name = "schedule-no-overwrite-test"
+  region_id    = "aws-us-west-2"
+  plan         = "Enterprise"
+  cu_type      = "Performance-optimized"
+  project_id   = data.zillizcloud_project.default.id
+  cu_settings = {
+    schedule_scaling = [
+      {
+        timezone = "UTC"
+        cron     = "0 0 * * *"
+        target   = 4
+      }
+    ]
+  }
+  replica_settings = {
+    dynamic_scaling = {
+      min = 1
+      max = 2
+    }
+  }
+  timeouts {
+    create = "120m"
+    update = "120m"
+  }
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "4"),
+					// replica_settings must not be overwritten
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.min", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.max", "2"),
+				),
+			},
+		},
+	})
+}
