@@ -1099,7 +1099,7 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 		  {
 			timezone = "UTC"
 			cron     = "0 0 * * *"
-			target   = 10
+			target   = 2
 		  }
 		]
 	  }
@@ -1113,7 +1113,7 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
 						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
 						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "10"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "2"),
 					),
 				},
 			},
