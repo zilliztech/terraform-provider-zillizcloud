@@ -28,9 +28,9 @@ func TestClient_Cluster(t *testing.T) {
 		}
 	}
 
-	checkClusterType := func(clusterType string) func(resp *Cluster) bool {
+	checkCUType := func(cuType string) func(resp *Cluster) bool {
 		return func(resp *Cluster) bool {
-			return resp.ClusterType == clusterType
+			return resp.CuType == cuType
 		}
 	}
 
@@ -103,7 +103,7 @@ func TestClient_Cluster(t *testing.T) {
 		checkfn := []func(resp *Cluster) bool{
 			checkPlan("Standard"),
 			checkCUSize(1),
-			checkClusterType("Performance-optimized"),
+			checkCUType("Performance-optimized"),
 		}
 
 		ctx, cancelfn := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -220,7 +220,7 @@ func TestClient_ServerlessCluster(t *testing.T) {
 
 		_, err := c.CreateServerlessCluster(params)
 		var e = Error{
-			Code: 80010,
+			Code: 40013,
 		}
 
 		if !errors.Is(err, e) {
@@ -327,7 +327,7 @@ func TestClient_FreeCluster(t *testing.T) {
 
 		_, err := c.CreateFreeCluster(params)
 		var e = Error{
-			Code: 80010,
+			Code: 40013,
 		}
 
 		if !errors.Is(err, e) {

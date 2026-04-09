@@ -896,14 +896,13 @@ func TestAccReplicaSettings(t *testing.T) {
 	})
 }
 
-func TestAccCuSettingsOnCreate(t *testing.T) {
-	t.Run("create_with_dynamic_scaling", func(t *testing.T) {
-		t.Parallel()
-		resource.Test(t, resource.TestCase{
-			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config: provider.ProviderConfig + `
+func TestAccCuSettingsCreateWithDynamicScaling(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -924,25 +923,25 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
-						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
-						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
-					),
-				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+				),
 			},
-		})
+		},
 	})
+}
 
-	t.Run("create_with_schedule_scaling", func(t *testing.T) {
-		t.Parallel()
-		resource.Test(t, resource.TestCase{
-			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config: provider.ProviderConfig + `
+func TestAccCuSettingsCreateWithScheduleScaling(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -966,26 +965,26 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "10"),
-						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
-					),
-				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "10"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+				),
 			},
-		})
+		},
 	})
+}
 
-	t.Run("create_then_update_dynamic_scaling", func(t *testing.T) {
-		t.Parallel()
-		resource.Test(t, resource.TestCase{
-			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				// Step 1: create with dynamic_scaling
-				{
-					Config: provider.ProviderConfig + `
+func TestAccCuSettingsCreateThenUpdateDynamicScaling(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: create with dynamic_scaling
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -1007,15 +1006,15 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
-					),
-				},
-				// Step 2: update values
-				{
-					Config: provider.ProviderConfig + `
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
+				),
+			},
+			// Step 2: update values
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -1037,24 +1036,24 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "4"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "8"),
-					),
-				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "4"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "8"),
+				),
 			},
-		})
+		},
 	})
+}
 
-	t.Run("create_dynamic_then_switch_to_schedule", func(t *testing.T) {
-		t.Parallel()
-		resource.Test(t, resource.TestCase{
-			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				// Step 1: create with dynamic_scaling
-				{
-					Config: provider.ProviderConfig + `
+func TestAccCuSettingsCreateDynamicThenSwitchToSchedule(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: create with dynamic_scaling
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -1076,15 +1075,15 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
-					),
-				},
-				// Step 2: switch to schedule_scaling
-				{
-					Config: provider.ProviderConfig + `
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
+				),
+			},
+			// Step 2: switch to schedule_scaling
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -1109,24 +1108,24 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "2"),
-					),
-				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "2"),
+				),
 			},
-		})
+		},
 	})
+}
 
-	t.Run("create_with_cu_size_conflict", func(t *testing.T) {
-		t.Parallel()
-		resource.Test(t, resource.TestCase{
-			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config: provider.ProviderConfig + `
+func TestAccCuSettingsCreateWithCuSizeConflict(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -1145,21 +1144,19 @@ func TestAccCuSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
-				},
+				ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
 			},
-		})
+		},
 	})
 }
 
-func TestAccReplicaSettingsOnCreate(t *testing.T) {
-	t.Run("create_with_dynamic_scaling", func(t *testing.T) {
-		t.Parallel()
-		resource.Test(t, resource.TestCase{
-			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config: provider.ProviderConfig + `
+func TestAccReplicaSettingsCreateWithDynamicScaling(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -1180,24 +1177,24 @@ func TestAccReplicaSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					Check: resource.ComposeAggregateTestCheckFunc(
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.min", "2"),
-						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.max", "4"),
-						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
-					),
-				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.min", "2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.max", "4"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+				),
 			},
-		})
+		},
 	})
+}
 
-	t.Run("create_with_replica_conflict", func(t *testing.T) {
-		t.Parallel()
-		resource.Test(t, resource.TestCase{
-			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config: provider.ProviderConfig + `
+func TestAccReplicaSettingsCreateWithReplicaConflict(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
 	data "zillizcloud_project" "default" {
 	}
 
@@ -1216,10 +1213,9 @@ func TestAccReplicaSettingsOnCreate(t *testing.T) {
 	  }
 	}
 	`,
-					ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
-				},
+				ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
 			},
-		})
+		},
 	})
 }
 
