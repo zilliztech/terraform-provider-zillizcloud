@@ -428,10 +428,11 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Validate replica value during create - must be 1
-	if !tfPlan.Replica.IsNull() && !tfPlan.Replica.IsUnknown() && tfPlan.Replica.ValueInt64() != 1 {
-		resp.Diagnostics.AddError("Invalid replica value for cluster creation", "Replica value must be 1 during cluster creation")
-		return
+	// If cu_settings.dynamic_scaling is configured but cu_size is not explicitly set,
+	// use the min value as the initial cu_size so the cluster starts at the correct size.
+	if tfPlan.CuSettings != nil && !tfPlan.CuSettings.IsdynamicScalingNull() &&
+		(tfPlan.CuSize.IsNull() || tfPlan.CuSize.IsUnknown()) {
+		tfPlan.CuSize = tfPlan.CuSettings.DynamicScaling.Min
 	}
 
 	tfState := tfPlan
@@ -448,7 +449,11 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tfState.Username = newState.Username
 	tfState.Password = newState.Password
 	tfState.Prompt = newState.Prompt
-	tfState.CuSize = types.Int64Value(1)
+	if !tfPlan.CuSize.IsNull() && !tfPlan.CuSize.IsUnknown() {
+		tfState.CuSize = tfPlan.CuSize
+	} else {
+		tfState.CuSize = types.Int64Value(1)
+	}
 	tfState.Plan = types.StringValue("unknown")
 
 	// Apply cu_settings immediately after creation (API does not require RUNNING state)
@@ -492,6 +497,23 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		state.Description = newState.Description
 		state.RegionId = newState.RegionId
 		state.Plan = newState.Plan
+	}
+
+	// Apply replica > 1 after cluster is RUNNING (ModifyReplica API requires RUNNING state and sufficient cuSize).
+	// Note: cannot use handleReplicaUpdate here because r.timeout is only set in Update, not Create.
+	if isRunning && !plan.Replica.IsNull() && !plan.Replica.IsUnknown() && plan.Replica.ValueInt64() > 1 {
+		err := r.store.ModifyReplica(ctx, state.ClusterId.ValueString(), int(plan.Replica.ValueInt64()))
+		if err != nil {
+			resp.Diagnostics.AddWarning("Failed to modify cluster replica", err.Error())
+		} else {
+			// Wait for RUNNING after replica change, using the remaining create context timeout
+			if deadline, ok := ctx.Deadline(); ok {
+				remaining := time.Until(deadline)
+				if waitErr := r.waitForStatus(ctx, remaining, state.ClusterId.ValueString(), "RUNNING"); waitErr != nil && !util.IsNetworkGiveUpError(waitErr) {
+					resp.Diagnostics.AddWarning("Cluster replica modified but not yet RUNNING", waitErr.Error())
+				}
+			}
+		}
 	}
 
 	diags := resp.State.Set(ctx, state)
