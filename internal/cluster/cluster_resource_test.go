@@ -895,3 +895,377 @@ func TestAccReplicaSettings(t *testing.T) {
 		})
 	})
 }
+
+func TestAccCuSettingsOnCreate(t *testing.T) {
+	t.Run("create_with_dynamic_scaling", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "create-cu-dynamic"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	  timeouts {
+		create = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+					),
+				},
+			},
+		})
+	})
+
+	t.Run("create_with_schedule_scaling", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "create-cu-schedule"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		schedule_scaling = [
+		  {
+			timezone = "UTC"
+			cron     = "0 0 * * *"
+			target   = 10
+		  }
+		]
+	  }
+	  timeouts {
+		create = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "10"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+					),
+				},
+			},
+		})
+	})
+
+	t.Run("create_then_update_dynamic_scaling", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				// Step 1: create with dynamic_scaling
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "create-cu-then-update"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	  timeouts {
+		create = "120m"
+		update = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
+					),
+				},
+				// Step 2: update values
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "create-cu-then-update"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 4
+		  max = 8
+		}
+	  }
+	  timeouts {
+		create = "120m"
+		update = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "4"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "8"),
+					),
+				},
+			},
+		})
+	})
+
+	t.Run("create_dynamic_then_switch_to_schedule", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				// Step 1: create with dynamic_scaling
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "create-cu-switch-type"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	  timeouts {
+		create = "120m"
+		update = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "4"),
+					),
+				},
+				// Step 2: switch to schedule_scaling
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "create-cu-switch-type"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_settings  = {
+		schedule_scaling = [
+		  {
+			timezone = "UTC"
+			cron     = "0 0 * * *"
+			target   = 2
+		  }
+		]
+	  }
+	  timeouts {
+		create = "120m"
+		update = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.timezone", "UTC"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.cron", "0 0 * * *"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.schedule_scaling.0.target", "2"),
+					),
+				},
+			},
+		})
+	})
+
+	t.Run("create_with_cu_size_conflict", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name = "create-cu-conflict"
+	  region_id    = "aws-us-west-2"
+	  plan         = "Enterprise"
+	  cu_type      = "Performance-optimized"
+	  project_id   = data.zillizcloud_project.default.id
+	  cu_size      = 2
+	  cu_settings  = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	}
+	`,
+					ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
+				},
+			},
+		})
+	})
+}
+
+func TestAccReplicaSettingsOnCreate(t *testing.T) {
+	t.Run("create_with_dynamic_scaling", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name     = "create-replica-dynamic"
+	  region_id        = "aws-us-west-2"
+	  plan             = "Enterprise"
+	  cu_type          = "Performance-optimized"
+	  project_id       = data.zillizcloud_project.default.id
+	  replica_settings = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	  timeouts {
+		create = "120m"
+	  }
+	}
+	`,
+					Check: resource.ComposeAggregateTestCheckFunc(
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.min", "2"),
+						resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.max", "4"),
+						resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+					),
+				},
+			},
+		})
+	})
+
+	t.Run("create_with_replica_conflict", func(t *testing.T) {
+		t.Parallel()
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				{
+					Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name     = "create-replica-conflict"
+	  region_id        = "aws-us-west-2"
+	  plan             = "Enterprise"
+	  cu_type          = "Performance-optimized"
+	  project_id       = data.zillizcloud_project.default.id
+	  replica          = 2
+	  replica_settings = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 4
+		}
+	  }
+	}
+	`,
+					ExpectError: regexp.MustCompile(`These attributes cannot be configured together`),
+				},
+			},
+		})
+	})
+}
+
+func TestAccCreateWithBothSettings(t *testing.T) {
+	t.Parallel()
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
+	data "zillizcloud_project" "default" {
+	}
+
+	resource "zillizcloud_cluster" "test" {
+	  cluster_name     = "create-both-settings"
+	  region_id        = "aws-us-west-2"
+	  plan             = "Enterprise"
+	  cu_type          = "Performance-optimized"
+	  project_id       = data.zillizcloud_project.default.id
+	  cu_settings = {
+		dynamic_scaling = {
+		  min = 2
+		  max = 8
+		}
+	  }
+	  replica_settings = {
+		dynamic_scaling = {
+		  min = 1
+		  max = 3
+		}
+	  }
+	  timeouts {
+		create = "120m"
+	  }
+	}
+	`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "status", "RUNNING"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.min", "2"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "cu_settings.dynamic_scaling.max", "8"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.min", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_cluster.test", "replica_settings.dynamic_scaling.max", "3"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_cluster.test", "connect_address"),
+				),
+			},
+		},
+	})
+}
