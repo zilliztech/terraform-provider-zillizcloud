@@ -539,6 +539,16 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.CuSize = cluster.CuSize
 	state.CuType = cluster.CuType
 
+	// Populate cu_settings from API so drift detection works for clusters
+	// whose autoscaling was configured outside this resource (e.g. via the
+	// console, or created before cu_settings was added to HCL). Only refresh
+	// when the API actually reports dynamic_scaling or schedule_scaling, so
+	// users who never configured autoscaling don't see phantom diffs.
+	if cluster.CuSettings != nil &&
+		(cluster.CuSettings.DynamicScaling != nil || len(cluster.CuSettings.ScheduleScaling) > 0) {
+		state.CuSettings = cluster.CuSettings
+	}
+
 	if state.DesiredStatus.IsNull() {
 		state.DesiredStatus = cluster.Status
 	}
