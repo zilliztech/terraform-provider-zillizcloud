@@ -434,18 +434,6 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Validate cu_settings is not set during create
-	if tfPlan.CuSettings != nil {
-		resp.Diagnostics.AddError("Invalid cu_settings for cluster creation", "cu_settings cannot be set during cluster creation. Please create the cluster first, then update it to configure cu_settings.")
-		return
-	}
-
-	// Validate replica_settings is not set during create
-	if tfPlan.ReplicaSettings != nil {
-		resp.Diagnostics.AddError("Invalid replica_settings for cluster creation", "replica_settings cannot be set during cluster creation. Please create the cluster first, then update it to configure replica_settings.")
-		return
-	}
-
 	tfState := tfPlan
 
 	tfState.completeForFreeOrServerless(&tfPlan)
@@ -462,6 +450,28 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tfState.Prompt = newState.Prompt
 	tfState.CuSize = types.Int64Value(1)
 	tfState.Plan = types.StringValue("unknown")
+
+	// Apply cu_settings immediately after creation (API does not require RUNNING state)
+	if tfPlan.CuSettings != nil {
+		cuDiags := r.handleCuSettingsUpdate(ctx, tfPlan, tfState)
+		if cuDiags.HasError() {
+			for _, d := range cuDiags.Errors() {
+				resp.Diagnostics.AddWarning(d.Summary(), d.Detail())
+			}
+			// Keep CuSettings in state to match the plan — Terraform requires consistency.
+			// Next Read will detect actual state and trigger an update if needed.
+		}
+	}
+
+	// Apply replica_settings immediately after creation (API does not require RUNNING state)
+	if tfPlan.ReplicaSettings != nil {
+		rsDiags := r.handleReplicaSettingsUpdate(ctx, tfPlan, tfState)
+		if rsDiags.HasError() {
+			for _, d := range rsDiags.Errors() {
+				resp.Diagnostics.AddWarning(d.Summary(), d.Detail())
+			}
+		}
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, tfState)...)
 
