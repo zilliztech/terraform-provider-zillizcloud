@@ -14,7 +14,7 @@ func TestClone(t *testing.T) {
 		t.Errorf("got %v, want nil", err)
 	}
 
-	expected := "https://controller.api.aws-west2.zillizcloud.com/v1/"
+	expected := "https://api.cloud.zilliz.com/v2"
 	if client.baseUrl != expected {
 		t.Errorf("got %s, want %s", client.baseUrl, expected)
 	}
@@ -39,7 +39,7 @@ func TestNewClient(t *testing.T) {
 				WithApiKey("gibberish_key"),
 			},
 			expect: expect{
-				baseUrl: "https://controller.api.gibberish_id.zillizcloud.com/v1/",
+				baseUrl: "https://api.cloud.zilliz.com/v2",
 				err:     nil,
 			},
 		},
@@ -58,7 +58,7 @@ func TestNewClient(t *testing.T) {
 				WithApiKey("key"),
 			},
 			expect: expect{
-				baseUrl: "https://controller.api.gcp-us-west1.zillizcloud.com/v1/",
+				baseUrl: "https://api.cloud.zilliz.com/v2",
 				err:     nil,
 			},
 		},

@@ -9,13 +9,13 @@ func TestClient_BaseUrlFromCloudRegion(t *testing.T) {
 		cloudRegionId string
 		want          string
 	}{
-		{"aws-us-east-2", "https://controller.api.aws-us-east-2.zillizcloud.com/v1/"},
-		{"aws-us-east-1", "https://controller.api.aws-us-east-1.zillizcloud.com/v1/"},
-		{"az-eastus", "https://controller.api.az-eastus.zillizcloud.com/v1/"},
-		{"ali-cn-beijing", "https://controller.api.ali-cn-beijing.cloud.zilliz.com.cn/v1/"},
-		{"tc-ap-shanghai", "https://controller.api.tc-ap-shanghai.cloud.zilliz.com.cn/v1/"},
-		{"unknown-eastus", "https://controller.api.unknown-eastus.zillizcloud.com/v1/"},
-		{"unknown", "https://controller.api.unknown.zillizcloud.com/v1/"},
+		{"aws-us-east-2", "https://api.cloud.zilliz.com/v2"},
+		{"aws-us-east-1", "https://api.cloud.zilliz.com/v2"},
+		{"az-eastus", "https://api.cloud.zilliz.com/v2"},
+		{"ali-cn-beijing", "https://api.cloud.zilliz.com.cn/v2"},
+		{"tc-ap-shanghai", "https://api.cloud.zilliz.com.cn/v2"},
+		{"unknown-eastus", "https://api.cloud.zilliz.com/v2"},
+		{"unknown", "https://api.cloud.zilliz.com/v2"},
 	}
 
 	for _, tc := range testCases {
