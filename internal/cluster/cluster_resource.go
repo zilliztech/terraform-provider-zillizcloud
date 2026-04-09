@@ -224,22 +224,22 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				DeprecationMessage:  "This field is deprecated. Use the zillizcloud_cluster_load_balancer_security_groups resource instead.",
 			},
 			"cu_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
+				MarkdownDescription: "Query CU (computing unit) scaling configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"dynamic_scaling": schema.SingleNestedAttribute{
-						MarkdownDescription: "Dynamic scaling configuration for query CUs.",
+						MarkdownDescription: "Dynamic scaling configuration for query CUs (computing units).",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"min": schema.Int64Attribute{
-								MarkdownDescription: "Minimum number of compute units (CU) for autoscaling. Must be at least 1.",
+								MarkdownDescription: "Minimum number of query CUs (computing units) for autoscaling. Must be at least 1.",
 								Optional:            true,
 								Validators: []validator.Int64{
 									int64validator.AtLeast(1),
 								},
 							},
 							"max": schema.Int64Attribute{
-								MarkdownDescription: "Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.",
+								MarkdownDescription: "Maximum number of query CUs (computing units) for autoscaling. Must be greater than or equal to min.",
 								Optional:            true,
 								Validators: []validator.Int64{
 									int64validator.AtLeast(1),
@@ -248,7 +248,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						},
 					},
 					"schedule_scaling": schema.ListNestedAttribute{
-						MarkdownDescription: "Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions.",
+						MarkdownDescription: "Scheduled scaling configuration for query CUs (computing units). Allows you to schedule CU scaling at specific times using cron expressions.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -263,7 +263,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 									Required:            true,
 								},
 								"target": schema.Int64Attribute{
-									MarkdownDescription: "Target number of compute units (CU) for the scheduled scaling. Must be at least 1.",
+									MarkdownDescription: "Target number of query CUs (computing units) for the scheduled scaling. Must be at least 1.",
 									Required:            true,
 									Validators: []validator.Int64{
 										int64validator.AtLeast(1),
@@ -275,22 +275,22 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"replica_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Query compute unit configuration for the cluster. The cu_settings and cu_size cannot be set simultaneously.",
+				MarkdownDescription: "Query CU replica scaling configuration for the cluster. The replica_settings and replica cannot be set simultaneously.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"dynamic_scaling": schema.SingleNestedAttribute{
-						MarkdownDescription: "Dynamic scaling configuration for query CUs.",
+						MarkdownDescription: "Dynamic scaling configuration for query CU replicas.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"min": schema.Int64Attribute{
-								MarkdownDescription: "Minimum number of compute units (CU) for autoscaling. Must be at least 1.",
+								MarkdownDescription: "Minimum number of query CU replicas for autoscaling. Must be at least 1.",
 								Optional:            true,
 								Validators: []validator.Int64{
 									int64validator.AtLeast(1),
 								},
 							},
 							"max": schema.Int64Attribute{
-								MarkdownDescription: "Maximum number of compute units (CU) for autoscaling. Must be greater than or equal to min.",
+								MarkdownDescription: "Maximum number of query CU replicas for autoscaling. Must be greater than or equal to min.",
 								Optional:            true,
 								Validators: []validator.Int64{
 									int64validator.AtLeast(1),
@@ -299,7 +299,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 						},
 					},
 					"schedule_scaling": schema.ListNestedAttribute{
-						MarkdownDescription: "Scheduled scaling configuration for query CUs. Allows you to schedule CU scaling at specific times using cron expressions.",
+						MarkdownDescription: "Scheduled scaling configuration for query CU replicas. Allows you to schedule replica scaling at specific times using cron expressions.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -314,7 +314,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 									Required:            true,
 								},
 								"target": schema.Int64Attribute{
-									MarkdownDescription: "Target number of compute units (CU) for the scheduled scaling. Must be at least 1.",
+									MarkdownDescription: "Target number of query CU replicas for the scheduled scaling. Must be at least 1.",
 									Required:            true,
 									Validators: []validator.Int64{
 										int64validator.AtLeast(1),

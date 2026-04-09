@@ -44,3 +44,39 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
   cu_type      = "Performance-optimized"             # The type of compute unit, optimized for performance
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
 }
+
+# Create a cluster with CU autoscaling enabled from the start
+resource "zillizcloud_cluster" "autoscaling_cluster" {
+  cluster_name = "Cluster-05"
+  region_id    = "aws-us-east-2"
+  plan         = "Enterprise"
+  cu_type      = "Performance-optimized"
+  project_id   = data.zillizcloud_project.default.id
+  cu_settings = {
+    dynamic_scaling = {
+      min = 2
+      max = 8
+    }
+  }
+}
+
+# Create a cluster with both CU and replica autoscaling
+resource "zillizcloud_cluster" "full_autoscaling_cluster" {
+  cluster_name = "Cluster-06"
+  region_id    = "aws-us-east-2"
+  plan         = "Enterprise"
+  cu_type      = "Performance-optimized"
+  project_id   = data.zillizcloud_project.default.id
+  cu_settings = {
+    dynamic_scaling = {
+      min = 2
+      max = 8
+    }
+  }
+  replica_settings = {
+    dynamic_scaling = {
+      min = 1
+      max = 3
+    }
+  }
+}
