@@ -456,24 +456,39 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	tfState.Plan = types.StringValue("unknown")
 
-	// Apply cu_settings immediately after creation (API does not require RUNNING state)
-	if tfPlan.CuSettings != nil {
-		cuDiags := r.handleCuSettingsUpdate(ctx, tfPlan, tfState)
-		if cuDiags.HasError() {
-			for _, d := range cuDiags.Errors() {
-				resp.Diagnostics.AddWarning(d.Summary(), d.Detail())
-			}
-			// Keep CuSettings in state to match the plan — Terraform requires consistency.
-			// Next Read will detect actual state and trigger an update if needed.
-		}
-	}
+	// Apply cu_settings and/or replica_settings immediately after creation (API does not require RUNNING state).
+	// When both are present, use a combined API call to avoid one overwriting the other.
+	hasCuSettings := tfPlan.CuSettings != nil && !tfPlan.CuSettings.IsdynamicScalingNull()
+	hasReplicaSettings := tfPlan.ReplicaSettings != nil && !tfPlan.ReplicaSettings.IsdynamicScalingNull()
 
-	// Apply replica_settings immediately after creation (API does not require RUNNING state)
-	if tfPlan.ReplicaSettings != nil {
-		rsDiags := r.handleReplicaSettingsUpdate(ctx, tfPlan, tfState)
-		if rsDiags.HasError() {
-			for _, d := range rsDiags.Errors() {
-				resp.Diagnostics.AddWarning(d.Summary(), d.Detail())
+	if hasCuSettings && hasReplicaSettings {
+		// Combined call to set both cu and replica autoscaling in one request
+		ptrInt := func(i int64) *int { v := int(i); return &v }
+		err := r.store.ModifyAutoscalingCombined(ctx, tfState.ClusterId.ValueString(),
+			ptrInt(tfPlan.CuSettings.DynamicScaling.Min.ValueInt64()),
+			ptrInt(tfPlan.CuSettings.DynamicScaling.Max.ValueInt64()),
+			ptrInt(tfPlan.ReplicaSettings.DynamicScaling.Min.ValueInt64()),
+			ptrInt(tfPlan.ReplicaSettings.DynamicScaling.Max.ValueInt64()),
+		)
+		if err != nil {
+			resp.Diagnostics.AddWarning("Failed to modify cluster autoscaling", err.Error())
+		}
+	} else {
+		if tfPlan.CuSettings != nil {
+			cuDiags := r.handleCuSettingsUpdate(ctx, tfPlan, tfState)
+			if cuDiags.HasError() {
+				for _, d := range cuDiags.Errors() {
+					resp.Diagnostics.AddWarning(d.Summary(), d.Detail())
+				}
+			}
+		}
+
+		if tfPlan.ReplicaSettings != nil {
+			rsDiags := r.handleReplicaSettingsUpdate(ctx, tfPlan, tfState)
+			if rsDiags.HasError() {
+				for _, d := range rsDiags.Errors() {
+					resp.Diagnostics.AddWarning(d.Summary(), d.Detail())
+				}
 			}
 		}
 	}
@@ -855,17 +870,38 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
-	if plan.isCuSettingsChanged(state) {
-		resp.Diagnostics.Append(r.handleCuSettingsUpdate(ctx, plan, state)...)
-		if resp.Diagnostics.HasError() {
+	cuSettingsChanged := plan.isCuSettingsChanged(state)
+	replicaSettingsChanged := plan.isReplicaSettingsChanged(state)
+
+	// When both cu_settings and replica_settings change, use a combined API call
+	// to avoid one overwriting the other (the API replaces the entire autoscaling object).
+	if cuSettingsChanged && replicaSettingsChanged &&
+		plan.CuSettings != nil && !plan.CuSettings.IsdynamicScalingNull() &&
+		plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsdynamicScalingNull() {
+		ptrInt := func(i int64) *int { v := int(i); return &v }
+		err := r.store.ModifyAutoscalingCombined(ctx, state.ClusterId.ValueString(),
+			ptrInt(plan.CuSettings.DynamicScaling.Min.ValueInt64()),
+			ptrInt(plan.CuSettings.DynamicScaling.Max.ValueInt64()),
+			ptrInt(plan.ReplicaSettings.DynamicScaling.Min.ValueInt64()),
+			ptrInt(plan.ReplicaSettings.DynamicScaling.Max.ValueInt64()),
+		)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to modify cluster autoscaling", err.Error())
 			return
 		}
-	}
+	} else {
+		if cuSettingsChanged {
+			resp.Diagnostics.Append(r.handleCuSettingsUpdate(ctx, plan, state)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
 
-	if plan.isReplicaSettingsChanged(state) {
-		resp.Diagnostics.Append(r.handleReplicaSettingsUpdate(ctx, plan, state)...)
-		if resp.Diagnostics.HasError() {
-			return
+		if replicaSettingsChanged {
+			resp.Diagnostics.Append(r.handleReplicaSettingsUpdate(ctx, plan, state)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
 		}
 	}
 

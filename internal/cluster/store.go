@@ -27,6 +27,7 @@ type ClusterStore interface {
 	ModifySchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error
 	ModifyReplicaAutoscaling(ctx context.Context, clusterId string, minCU int, maxCU int) error
 	ModifyReplicaSchedules(ctx context.Context, clusterId string, schedules []zilliz.ScheduleConfig) error
+	ModifyAutoscalingCombined(ctx context.Context, clusterId string, cuMin, cuMax *int, replicaMin, replicaMax *int) error
 }
 
 var _ ClusterStore = (*ClusterStoreImpl)(nil)
@@ -266,6 +267,16 @@ func (c *ClusterStoreImpl) ModifySchedules(ctx context.Context, clusterId string
 	params := &zilliz.ModifyClusterAutoscalingParams{}
 	params.Autoscaling.CU.Schedules = &schedules
 	_, err := c.client.ModifyClusterAutoscaling(clusterId, params)
+	return err
+}
+
+func (c *ClusterStoreImpl) ModifyAutoscalingCombined(ctx context.Context, clusterId string, cuMin, cuMax *int, replicaMin, replicaMax *int) error {
+	params := &zilliz.ModifyAutoscalingCombinedParams{}
+	params.Autoscaling.CU.Min = cuMin
+	params.Autoscaling.CU.Max = cuMax
+	params.Autoscaling.Replica.Min = replicaMin
+	params.Autoscaling.Replica.Max = replicaMax
+	_, err := c.client.ModifyAutoscalingCombined(clusterId, params)
 	return err
 }
 

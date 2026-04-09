@@ -107,6 +107,32 @@ func (c *Client) ModifyReplicaSettings(clusterId string, params *ModifyReplicaSe
 	return &response.Data.ClusterId, err
 }
 
+// ModifyAutoscalingCombinedParams sends both cu and replica autoscaling in a single request
+// to avoid the later call overwriting the earlier one.
+type ModifyAutoscalingCombinedParams struct {
+	Autoscaling struct {
+		CU struct {
+			Min       *int              `json:"min,omitempty"`
+			Max       *int              `json:"max,omitempty"`
+			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
+		} `json:"cu"`
+		Replica struct {
+			Min       *int              `json:"min,omitempty"`
+			Max       *int              `json:"max,omitempty"`
+			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
+		} `json:"replica"`
+	} `json:"autoscaling"`
+}
+
+func (c *Client) ModifyAutoscalingCombined(clusterId string, params *ModifyAutoscalingCombinedParams) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
 func (c *Client) ModifyClusterAutoscaling(clusterId string, params *ModifyClusterAutoscalingParams) (*string, error) {
 	var response zillizResponse[ClusterResponse]
 	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
