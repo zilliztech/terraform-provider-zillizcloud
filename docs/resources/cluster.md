@@ -115,7 +115,7 @@ resource "zillizcloud_cluster" "full_autoscaling_cluster" {
 - `desired_status` (String) The desired status of the cluster. Possible values are RUNNING and SUSPENDED. Defaults to RUNNING.
 - `labels` (Map of String) A map of labels to assign to the cluster. Labels are key-value pairs that can be used to organize and categorize clusters.
 - `load_balancer_security_groups` (Set of String, Deprecated) A set of security group IDs to associate with the load balancer of the cluster.
-- `plan` (String) The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.
+- `plan` (String, Deprecated) The plan tier of the Zilliz Cloud service. Available options are Serverless, Standard and Enterprise.
 - `region_id` (String) The ID of the region where the cluster exists.
 - `replica` (Number) The number of replicas for the cluster. Defaults to 1.
 - `replica_settings` (Attributes) Query CU replica scaling configuration for the cluster. The replica_settings and replica cannot be set simultaneously. (see [below for nested schema](#nestedatt--replica_settings))
