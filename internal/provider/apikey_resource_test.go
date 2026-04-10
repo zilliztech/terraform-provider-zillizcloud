@@ -11,6 +11,7 @@ import (
 )
 
 const testProjectId = "proj-dee71c5a02aee5d781b156"
+const testClusterId = "in01-85c9ae8df55f5cd" // Zilliz-Gclust-02, used for cluster_ids tests
 
 func TestAccApiKeyResource_Member(t *testing.T) {
 	resource.Test(t, resource.TestCase{
@@ -137,6 +138,87 @@ resource "zillizcloud_api_key" "readonly" {
 `, testProjectId),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("zillizcloud_api_key.readonly", "project_access.0.role", "Read-Write"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccApiKeyResource_ClusterIdsInferAllClusterFalse verifies that when
+// cluster_ids is set without explicitly setting all_cluster = false,
+// ModifyPlan automatically sets all_cluster to false and the apply succeeds.
+func TestAccApiKeyResource_ClusterIdsInferAllClusterFalse(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: cluster_ids without all_cluster — should auto-infer false
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "cluster_ids_test" {
+  name = "tf-acc-test-clusterids"
+  role = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    cluster_ids = [%q]
+  }]
+}
+`, testProjectId, testClusterId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("zillizcloud_api_key.cluster_ids_test", "id"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.cluster_ids_test", "project_access.0.all_cluster", "false"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.cluster_ids_test", "project_access.0.cluster_ids.#", "1"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.cluster_ids_test", "project_access.0.cluster_ids.0", testClusterId),
+				),
+			},
+			// Step 2: same config, re-apply should be no-op
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "cluster_ids_test" {
+  name = "tf-acc-test-clusterids"
+  role = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    cluster_ids = [%q]
+  }]
+}
+`, testProjectId, testClusterId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_api_key.cluster_ids_test", "project_access.0.all_cluster", "false"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.cluster_ids_test", "project_access.0.cluster_ids.0", testClusterId),
+				),
+			},
+		},
+	})
+}
+
+// TestAccApiKeyResource_ClusterIdsExplicitAllClusterFalse verifies backward
+// compatibility: explicitly setting all_cluster = false with cluster_ids works.
+func TestAccApiKeyResource_ClusterIdsExplicitAllClusterFalse(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "explicit_test" {
+  name = "tf-acc-test-explicit-ac"
+  role = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    all_cluster = false
+    cluster_ids = [%q]
+  }]
+}
+`, testProjectId, testClusterId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("zillizcloud_api_key.explicit_test", "id"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.explicit_test", "project_access.0.all_cluster", "false"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.explicit_test", "project_access.0.cluster_ids.0", testClusterId),
 				),
 			},
 		},
