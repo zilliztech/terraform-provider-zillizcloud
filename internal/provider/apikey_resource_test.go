@@ -99,6 +99,30 @@ resource "zillizcloud_api_key" "bad" {
 	})
 }
 
+func TestAccApiKeyResource_AllClusterTrueWithClusterIdsConflict(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "conflict" {
+  name = "tf-acc-test-conflict"
+  role = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    all_cluster = true
+    cluster_ids = [%q]
+  }]
+}
+`, testProjectId, testClusterId),
+				ExpectError: regexp.MustCompile(`Conflicting configuration`),
+			},
+		},
+	})
+}
+
 func TestAccApiKeyResource_ProjectRoles(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,

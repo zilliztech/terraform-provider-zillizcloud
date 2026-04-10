@@ -155,6 +155,20 @@ func (r *ApiKeyResource) ValidateConfig(ctx context.Context, req resource.Valida
 			`At least one "project_access" entry is required when role is "Member".`,
 		)
 	}
+
+	for _, pa := range data.ProjectAccess {
+		// In config phase, all_cluster is null when user omitted it (Default
+		// hasn't been applied yet). A non-null true means user explicitly
+		// wrote all_cluster = true, which conflicts with cluster_ids.
+		if !pa.AllCluster.IsNull() && pa.AllCluster.ValueBool() && !pa.ClusterIds.IsNull() {
+			resp.Diagnostics.AddError(
+				"Conflicting configuration",
+				`Cannot set all_cluster = true and cluster_ids at the same time. `+
+					`Either remove all_cluster (or set it to false) when using cluster_ids, `+
+					`or remove cluster_ids when using all_cluster = true.`,
+			)
+		}
+	}
 }
 
 func (r *ApiKeyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
