@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
@@ -136,14 +138,43 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	err = client.CreateUser(&zilliz.CreateUserParams{
-		Username: data.Username.ValueString(),
-		Password: data.Password.ValueString(),
-	})
-	if err != nil {
+	// Retry creating the user — freshly created clusters may return 401
+	// while the vectordb endpoint initializes its auth system.
+	// Exponential backoff: 2s, 4s, 8s, 16s, 30s, 30s, ... (cap 30s, ~2min total)
+	var createErr error
+	backoff := 2 * time.Second
+	const maxBackoff = 30 * time.Second
+	const maxAttempts = 8
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		createErr = client.CreateUser(&zilliz.CreateUserParams{
+			Username: data.Username.ValueString(),
+			Password: data.Password.ValueString(),
+		})
+		if createErr == nil {
+			break
+		}
+		if !isRetryableClusterError(createErr) || attempt == maxAttempts {
+			break
+		}
+		tflog.Info(ctx, fmt.Sprintf("Cluster endpoint not ready, retrying in %s (attempt %d/%d)...", backoff, attempt, maxAttempts))
+		select {
+		case <-ctx.Done():
+			resp.Diagnostics.AddError(
+				"Timed out creating user",
+				fmt.Sprintf("ConnectAddress: %s, Username: %s, error: %s", data.ConnectAddress.ValueString(), data.Username.ValueString(), createErr.Error()),
+			)
+			return
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+	}
+	if createErr != nil {
 		resp.Diagnostics.AddError(
 			"Failed to create user",
-			fmt.Sprintf("ConnectAddress: %s, Username: %s, error: %s", data.ConnectAddress.ValueString(), data.Username.ValueString(), err.Error()),
+			fmt.Sprintf("ConnectAddress: %s, Username: %s, error: %s", data.ConnectAddress.ValueString(), data.Username.ValueString(), createErr.Error()),
 		)
 		return
 	}
@@ -335,4 +366,17 @@ func ParseUserID(id string) (string, string, bool) {
 		return "", "", false
 	}
 	return parts[2], parts[4], true
+}
+
+// isRetryableClusterError returns true for transient errors that occur when a
+// freshly created cluster's vectordb endpoint is not yet fully initialized.
+func isRetryableClusterError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "status code: 401") ||
+		strings.Contains(msg, "status code: 503") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no such host")
 }

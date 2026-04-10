@@ -21,6 +21,7 @@ var _ resource.Resource = &ApiKeyResource{}
 var _ resource.ResourceWithConfigure = &ApiKeyResource{}
 var _ resource.ResourceWithImportState = &ApiKeyResource{}
 var _ resource.ResourceWithValidateConfig = &ApiKeyResource{}
+var _ resource.ResourceWithModifyPlan = &ApiKeyResource{}
 
 func NewApiKeyResource() resource.Resource {
 	return &ApiKeyResource{}
@@ -153,6 +154,52 @@ func (r *ApiKeyResource) ValidateConfig(ctx context.Context, req resource.Valida
 			"Missing project_access",
 			`At least one "project_access" entry is required when role is "Member".`,
 		)
+	}
+
+	for _, pa := range data.ProjectAccess {
+		// In config phase, all_cluster is null when user omitted it (Default
+		// hasn't been applied yet). A non-null true means user explicitly
+		// wrote all_cluster = true, which conflicts with cluster_ids.
+		if !pa.AllCluster.IsNull() && pa.AllCluster.ValueBool() && !pa.ClusterIds.IsNull() {
+			resp.Diagnostics.AddError(
+				"Conflicting configuration",
+				`Cannot set all_cluster = true and cluster_ids at the same time. `+
+					`Either remove all_cluster (or set it to false) when using cluster_ids, `+
+					`or remove cluster_ids when using all_cluster = true.`,
+			)
+		}
+	}
+}
+
+func (r *ApiKeyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Destroy — nothing to do.
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var plan ApiKeyResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// When cluster_ids is provided, all_cluster must be false. Auto-correct
+	// the plan so users don't have to specify both explicitly.
+	modified := false
+	for i := range plan.ProjectAccess {
+		if plan.ProjectAccess[i].ClusterIds.IsNull() || plan.ProjectAccess[i].ClusterIds.IsUnknown() {
+			continue
+		}
+		var ids []string
+		resp.Diagnostics.Append(plan.ProjectAccess[i].ClusterIds.ElementsAs(ctx, &ids, false)...)
+		if len(ids) > 0 && plan.ProjectAccess[i].AllCluster.ValueBool() {
+			plan.ProjectAccess[i].AllCluster = types.BoolValue(false)
+			modified = true
+		}
+	}
+
+	if modified {
+		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 	}
 }
 
