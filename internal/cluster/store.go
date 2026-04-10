@@ -38,22 +38,57 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		return nil, err
 	}
 
-	var dynamicScaling *DynamicScaling
+	// Parse CU autoscaling
+	var cuDynamic *DynamicScaling
 	if cluster.Autoscaling.CU.Min != nil && cluster.Autoscaling.CU.Max != nil {
-		dynamicScaling = &DynamicScaling{
+		cuDynamic = &DynamicScaling{
 			Min: types.Int64Value(int64(*cluster.Autoscaling.CU.Min)),
 			Max: types.Int64Value(int64(*cluster.Autoscaling.CU.Max)),
 		}
 	}
-
-	var schedules []ScheduleScaling
+	var cuSchedules []ScheduleScaling
 	if len(cluster.Autoscaling.CU.Schedules) > 0 {
-		schedules = make([]ScheduleScaling, len(cluster.Autoscaling.CU.Schedules))
+		cuSchedules = make([]ScheduleScaling, len(cluster.Autoscaling.CU.Schedules))
 		for i, s := range cluster.Autoscaling.CU.Schedules {
-			schedules[i] = ScheduleScaling{
-				Cron:   types.StringValue(s.Cron),
-				Target: types.Int64Value(int64(s.Target)),
+			cuSchedules[i] = ScheduleScaling{
+				Timezone: types.StringValue(s.Timezone),
+				Cron:     types.StringValue(s.Cron),
+				Target:   types.Int64Value(int64(s.Target)),
 			}
+		}
+	}
+	var cuSettings *CuSettings
+	if cuDynamic != nil || len(cuSchedules) > 0 {
+		cuSettings = &CuSettings{
+			DynamicScaling:  cuDynamic,
+			ScheduleScaling: cuSchedules,
+		}
+	}
+
+	// Parse Replica autoscaling
+	var replicaDynamic *DynamicScaling
+	if cluster.Autoscaling.Replica.Min != nil && cluster.Autoscaling.Replica.Max != nil {
+		replicaDynamic = &DynamicScaling{
+			Min: types.Int64Value(int64(*cluster.Autoscaling.Replica.Min)),
+			Max: types.Int64Value(int64(*cluster.Autoscaling.Replica.Max)),
+		}
+	}
+	var replicaSchedules []ScheduleScaling
+	if len(cluster.Autoscaling.Replica.Schedules) > 0 {
+		replicaSchedules = make([]ScheduleScaling, len(cluster.Autoscaling.Replica.Schedules))
+		for i, s := range cluster.Autoscaling.Replica.Schedules {
+			replicaSchedules[i] = ScheduleScaling{
+				Timezone: types.StringValue(s.Timezone),
+				Cron:     types.StringValue(s.Cron),
+				Target:   types.Int64Value(int64(s.Target)),
+			}
+		}
+	}
+	var replicaSettings *ReplicaSettings
+	if replicaDynamic != nil || len(replicaSchedules) > 0 {
+		replicaSettings = &ReplicaSettings{
+			DynamicScaling:  replicaDynamic,
+			ScheduleScaling: replicaSchedules,
 		}
 	}
 
@@ -92,11 +127,9 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 			}
 			return cluster.Replica
 		}()),
-		AwsCseKeyArn: types.StringValue(cluster.AwsCseKeyArn),
-		CuSettings: &CuSettings{
-			DynamicScaling:  dynamicScaling,
-			ScheduleScaling: schedules,
-		},
+		AwsCseKeyArn:    types.StringValue(cluster.AwsCseKeyArn),
+		CuSettings:      cuSettings,
+		ReplicaSettings: replicaSettings,
 	}, nil
 }
 

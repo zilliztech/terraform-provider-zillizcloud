@@ -557,6 +557,12 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.CuSize = cluster.CuSize
 	state.CuType = cluster.CuType
 
+	// Sync autoscaling settings from API unconditionally so drift detection
+	// works in all directions: console adds, console changes, console removes.
+	// store.Get returns nil when the cluster has no autoscaling configured.
+	state.CuSettings = cluster.CuSettings
+	state.ReplicaSettings = cluster.ReplicaSettings
+
 	if state.DesiredStatus.IsNull() {
 		state.DesiredStatus = cluster.Status
 	}

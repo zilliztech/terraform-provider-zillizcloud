@@ -233,6 +233,11 @@ type Cluster struct {
 			Max       *int             `json:"max,omitempty"`
 			Schedules []ScheduleConfig `json:"schedules,omitempty"`
 		} `json:"cu"`
+		Replica struct {
+			Min       *int             `json:"min,omitempty"`
+			Max       *int             `json:"max,omitempty"`
+			Schedules []ScheduleConfig `json:"schedules,omitempty"`
+		} `json:"replica"`
 	} `json:"autoscaling"`
 }
 
