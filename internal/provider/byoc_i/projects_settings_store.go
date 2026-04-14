@@ -161,22 +161,22 @@ func (s *byocOpProjectSettingsStore) Describe(ctx context.Context, projectID str
 			return data, err
 		}
 
+		tiered, err := buildNodeQuotas("tiered", response.NodeQuotas)
+		if err != nil {
+			return data, err
+		}
+
 		NodeQuotas, diag := types.ObjectValue(nodeQuotasGenerateAttrTypes, map[string]attr.Value{
 			"core":        core,
 			"index":       index,
 			"search":      search,
 			"fundamental": fundamental,
+			"tiered":      tiered,
 		})
 		if diag.HasError() {
 			return data, fmt.Errorf("failed to abstract NodeQuotas from response")
 		}
 		data.NodeQuotas = NodeQuotas
-
-		tiered, err := buildNodeQuotas("tiered", response.NodeQuotas)
-		if err != nil {
-			return data, err
-		}
-		data.TieredNodeQuota = tiered
 	}
 	return data, nil
 }
@@ -241,4 +241,5 @@ var nodeQuotasGenerateAttrTypes = map[string]attr.Type{
 	"index":       types.ObjectType{AttrTypes: nodeQuotasAttrTypes},
 	"search":      types.ObjectType{AttrTypes: nodeQuotasAttrTypes},
 	"fundamental": types.ObjectType{AttrTypes: nodeQuotasAttrTypes},
+	"tiered":      types.ObjectType{AttrTypes: nodeQuotasAttrTypes},
 }
