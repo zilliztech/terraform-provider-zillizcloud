@@ -33,6 +33,7 @@ BYOC-I Project Settings resource for managing project configurations.
 - `node_quotas` (Attributes) (see [below for nested schema](#nestedatt--node_quotas))
 - `op_config` (Attributes) Operation configuration settings (see [below for nested schema](#nestedatt--op_config))
 - `project_id` (String) The ID of the project
+- `tiered_node_quota` (Attributes) Tiered storage node group quota. Null when tiered storage is not enabled. (see [below for nested schema](#nestedatt--tiered_node_quota))
 
 <a id="nestedatt--instances"></a>
 ### Nested Schema for `instances`
@@ -98,7 +99,6 @@ Read-Only:
 - `fundamental` (Attributes) VM configuration (see [below for nested schema](#nestedatt--node_quotas--fundamental))
 - `index` (Attributes) VM configuration (see [below for nested schema](#nestedatt--node_quotas--index))
 - `search` (Attributes) VM configuration (see [below for nested schema](#nestedatt--node_quotas--search))
-- `tiered` (Attributes) Tiered storage node group quota. Null when tiered storage is not enabled. (see [below for nested schema](#nestedatt--node_quotas--tiered))
 
 <a id="nestedatt--node_quotas--core"></a>
 ### Nested Schema for `node_quotas.core`
@@ -152,8 +152,18 @@ Read-Only:
 - `min_size` (Number) Minimum number of instances
 
 
-<a id="nestedatt--node_quotas--tiered"></a>
-### Nested Schema for `node_quotas.tiered`
+
+<a id="nestedatt--op_config"></a>
+### Nested Schema for `op_config`
+
+Read-Only:
+
+- `agent_image_url` (String) Agent image URL
+- `token` (String) Operation token
+
+
+<a id="nestedatt--tiered_node_quota"></a>
+### Nested Schema for `tiered_node_quota`
 
 Read-Only:
 
@@ -163,13 +173,3 @@ Read-Only:
 - `instance_types` (String) Instance type
 - `max_size` (Number) Maximum number of instances
 - `min_size` (Number) Minimum number of instances
-
-
-
-<a id="nestedatt--op_config"></a>
-### Nested Schema for `op_config`
-
-Read-Only:
-
-- `agent_image_url` (String) Agent image URL
-- `token` (String) Operation token

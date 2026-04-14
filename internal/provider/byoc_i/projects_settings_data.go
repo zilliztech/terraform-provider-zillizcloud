@@ -114,13 +114,13 @@ func (r *BYOCOpProjectSettingsData) Schema(ctx context.Context, req datasource.S
 					"index":       nodeSchema,
 					"search":      nodeSchema,
 					"fundamental": nodeSchema,
-					"tiered": func() schema.SingleNestedAttribute {
-						s := nodeSchema
-						s.MarkdownDescription = "Tiered storage node group quota. Null when tiered storage is not enabled."
-						return s
-					}(),
 				},
 			},
+			"tiered_node_quota": func() schema.SingleNestedAttribute {
+				s := nodeSchema
+				s.MarkdownDescription = "Tiered storage node group quota. Null when tiered storage is not enabled."
+				return s
+			}(),
 		},
 	}
 }
@@ -239,22 +239,22 @@ func (s *byocOpProjectSettingsDataStore) Describe(ctx context.Context, projectID
 			return data, err
 		}
 
-		tiered, err := buildNodeQuotas("tiered", response.NodeQuotas)
-		if err != nil {
-			return data, err
-		}
-
 		NodeQuotas, diag := types.ObjectValue(nodeQuotasGenerateAttrTypes, map[string]attr.Value{
 			"core":        core,
 			"index":       index,
 			"search":      search,
 			"fundamental": fundamental,
-			"tiered":      tiered,
 		})
 		if diag.HasError() {
 			return data, fmt.Errorf("failed to abstract NodeQuotas from response")
 		}
 		data.NodeQuotas = NodeQuotas
+
+		tiered, err := buildNodeQuotas("tiered", response.NodeQuotas)
+		if err != nil {
+			return data, err
+		}
+		data.TieredNodeQuota = tiered
 	}
 
 	return data, nil
