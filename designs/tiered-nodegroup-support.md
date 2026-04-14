@@ -2,125 +2,116 @@
 
 ## Goal
 
-Support `vmNodeGroups` array in Create and Describe APIs, enabling tiered (and future custom) node groups while maintaining backward compatibility with the old flat-field API (`searchVm`, `coreVm`, etc.).
+Expose the `tiered` node group quota returned by the BYOC-I settings API through the `zillizcloud_byoc_i_project_settings` data source and resource, so that terraform-zilliz-examples can provision a tiered storage node group when the backend has tiered enabled for the project.
 
-## Current State
+## Problem
 
-### Data Source (`zillizcloud_byoc_i_project_settings`)
-- `node_quotas` schema: hardcoded `SingleNestedAttribute` with keys `core`, `index`, `search`, `fundamental`
-- `buildNodeQuotas()` filters API response `[]NodeQuota` by name → returns null object if not found
-- **Problem**: no `tiered` key in schema; API may now return tiered in `NodeQuotas`
-
-### Resource (`zillizcloud_byoc_i_project`)
-- `CreateByocOpProjectRequest` has flat fields: `SearchVM`, `CoreVM`, `FundamentalVM`
-- **Problem**: no `vmNodeGroups` field; no way to pass tiered config
-
-### API Client
-- `NodeQuota` struct already supports arbitrary `Name` field
-- `GetByocOpProjectSettingsResponse.NodeQuotas` is `[]NodeQuota` (array, not hardcoded)
-- **Problem**: client types don't have `VmNodeGroups` on create request
+- `node_quotas` schema is a `SingleNestedAttribute` with fixed keys `core`, `index`, `search`, `fundamental`. There is no `tiered` key, so even when the API returns a tiered entry in its `NodeQuotas` array, users cannot read it from Terraform.
+- `buildNodeQuotas()` already filters the API response `[]NodeQuota` by name and returns a null object if the name is missing, so the "tiered not enabled" case is easy to represent — the question is only where to hang the new attribute.
 
 ## Design
 
-### Principle: Forward Compatible, Backward Safe
+### Principle: Minimal Schema Change, Forward Compatible
 
-1. **Data source output**: Change `node_quotas` from `SingleNestedAttribute` (fixed keys) to `MapNestedAttribute` (dynamic keys). This way any node group name the API returns (core, search, tiered, future ones) is automatically exposed.
-2. **Create request**: Add `VmNodeGroups` field. When populated, the API uses the new array format. Old flat fields are still sent for backward compat with older control-api versions.
-3. **Describe response**: Add `VmNodeGroups` to `DescribeByocOpProjectResponse` for completeness, but the data source already reads from `NodeQuotas` in settings API which is already an array.
+Add `tiered_node_quota` as a **separate top-level computed attribute** next to `node_quotas`. Do **not** touch the `node_quotas` schema.
+
+Rejected alternatives and why:
+
+1. **Add `tiered` as a fifth key inside `node_quotas` (`SingleNestedAttribute`)**
+   With a fixed-key nested object, the `tiered` attribute would *always* be present in state, set to null when the API does not return it. HCL callers that iterate `for name, ng in node_quotas` would suddenly see a 5th iteration with a null value and have to filter it out. Every existing example — including the master branch that users have already deployed — would start surfacing `node_quotas.tiered = null` and need changes to iterate safely. That breaks the "forward compatible" goal.
+
+2. **Switch `node_quotas` to `MapNestedAttribute` (dynamic keys)**
+   Clean in theory: the API returns whatever node groups it wants, and Terraform exposes them as a map. But this changes the state schema type (`SingleNestedAttribute` → `MapNestedAttribute`), which is a breaking state-schema change. Existing HCL references like `node_quotas.core` would need to become `node_quotas["core"]`, and every deployed state would need migration. Hard "no" for a point release.
+
+3. **Add `tiered` as a separate top-level field** (chosen)
+   `node_quotas` stays byte-identical in schema and state. Users who don't know about tiered see no change at all — their HCL keeps working, `terraform plan` shows no drift, and state format is unchanged. Users who want tiered opt in by reading a new top-level field `tiered_node_quota`.
 
 ### Changes
 
-#### A. Client: `byoc_op_project.go`
+#### A. Schema: `projects_settings_data.go` and `projects_settings_resource.go`
+
+Add a new top-level attribute `tiered_node_quota` alongside `node_quotas`. Reuse the same `nodeSchema` (disk_size / min_size / max_size / desired_size / instance_types / capacity_type) with a custom markdown description:
 
 ```go
-// Add to CreateByocOpProjectRequest:
-VmNodeGroups []VmNodeGroup `json:"vmNodeGroups,omitempty"`
+"tiered_node_quota": func() schema.SingleNestedAttribute {
+    s := nodeSchema
+    s.MarkdownDescription = "Tiered storage node group quota. Null when tiered storage is not enabled."
+    return s
+}(),
+```
 
-// New type:
-type VmNodeGroup struct {
-    Name string `json:"name"`
-    Type string `json:"type"`  // instance type e.g. "m6i.2xlarge"
-    Min  int    `json:"min"`
-    Max  int    `json:"max"`
+`node_quotas` is **unchanged**.
+
+#### B. Store: `projects_settings_store.go` and `projects_settings_data.go`
+
+In `Describe()`, after building `NodeQuotas` for the four existing keys, call `buildNodeQuotas("tiered", response.NodeQuotas)` once more and assign the result to the new top-level model field:
+
+```go
+tiered, err := buildNodeQuotas("tiered", response.NodeQuotas)
+if err != nil {
+    return data, err
 }
+data.TieredNodeQuota = tiered
 ```
 
-#### B. Data Source: `projects_settings_data.go`
+`buildNodeQuotas()` is unchanged — it already returns `types.ObjectNull(...)` when the named node group is missing from the API response, which gives `tiered_node_quota = null` for old API responses.
 
-Change `node_quotas` schema from `SingleNestedAttribute` to `MapNestedAttribute`:
+#### C. Model: `projects_resource_model.go`
+
+Add `TieredNodeQuota types.Object` to both `BYOCOpProjectSettingsResourceModel` and `BYOCOpProjectSettingsDataModel`. The `refresh()` helper on the data model copies it through. `NodeQuotas` struct is unchanged (still 4 keys).
+
+#### D. Resource Create/Read: `projects_settings_resource.go`
+
+After the post-create / post-read `Describe()`, sync the new field alongside the existing ones:
 
 ```go
-// Before:
-"node_quotas": schema.SingleNestedAttribute{
-    Attributes: map[string]schema.Attribute{
-        "core":        nodeSchema,
-        "index":       nodeSchema,
-        "search":      nodeSchema,
-        "fundamental": nodeSchema,
-    },
-}
-
-// After:
-"node_quotas": schema.MapNestedAttribute{
-    Computed: true,
-    NestedObject: schema.NestedAttributeObject{
-        Attributes: nodeSchemaAttributes,  // disk_size, min_size, max_size, etc.
-    },
-}
+data.OpConfig = model.OpConfig
+data.NodeQuotas = model.NodeQuotas
+data.TieredNodeQuota = model.TieredNodeQuota
 ```
-
-Update `Describe()` in `projects_settings_data.go` and `projects_settings_store.go`:
-- Instead of calling `buildNodeQuotas()` 4 times for fixed names, iterate all `response.NodeQuotas` and build a map.
-
-#### C. Data Source Model: `projects_settings_model.go`
-
-```go
-// Before:
-NodeQuotas types.Object `tfsdk:"node_quotas"`
-
-// After:
-NodeQuotas types.Map `tfsdk:"node_quotas"`
-```
-
-#### D. Resource Store: `projects_resource_store.go`
-
-In `Create()`, build `VmNodeGroups` from the instances config and include in request:
-
-```go
-// Build vmNodeGroups from the instances config
-var vmNodeGroups []zilliz.VmNodeGroup
-// ... populate from resource model ...
-request.VmNodeGroups = vmNodeGroups
-```
-
-#### E. Terraform Examples: `data.tf`
-
-The `k8s_node_groups` local already does `for name, ng in node_quotas`. With `MapNestedAttribute`, it becomes a native map — the existing for-each just works.
 
 ### Backward Compatibility
 
 | Scenario | Behavior |
 |----------|----------|
-| Old API (no tiered in NodeQuotas) | `node_quotas` map won't have "tiered" key → `enable_tiered = false` → no nodegroup created |
-| New API (tiered in NodeQuotas, max>0) | `node_quotas` map has "tiered" key → `enable_tiered = true` → nodegroup created |
-| Old Terraform config (no vmNodeGroups) | `VmNodeGroups` is nil/empty → API falls back to flat fields |
-| New Terraform config (has vmNodeGroups) | `VmNodeGroups` sent → API uses array format |
-| Existing state with SingleNested node_quotas | **BREAKING**: `SingleNestedAttribute` → `MapNestedAttribute` changes state schema. Users need `terraform state replace-provider` or state migration. Mitigation: add state upgrade in data source. |
+| Old API (no tiered in NodeQuotas array) | `tiered_node_quota = null` (via `buildNodeQuotas` returning `ObjectNull`); no change to `node_quotas` |
+| New API (tiered in NodeQuotas, max>0) | `tiered_node_quota` populated with quota values |
+| Existing examples referencing `node_quotas.core` etc. | Still works — `node_quotas` schema preserved |
+| Existing examples iterating `for name, ng in node_quotas` | Still works — iterates the same 4 keys, no new null entry |
+| Existing state from older provider | No state migration required — `node_quotas` unchanged; `tiered_node_quota` is a new Computed attribute populated on next refresh |
 
-### State Migration Note
+### Consumer Side (terraform-zilliz-examples)
 
-Changing `node_quotas` from `SingleNestedAttribute` to `MapNestedAttribute` is a schema change. For data sources, this is less impactful than resources (data sources don't have persistent state that needs migration — they're re-read every plan). But the **terraform-zilliz-examples** code that references `data.zillizcloud_byoc_i_project_settings.this.node_quotas.core` would need to change to `data.zillizcloud_byoc_i_project_settings.this.node_quotas["core"]`.
+Examples that want tiered merge the new top-level field into the node-group map conditionally:
 
-### Validation
+```hcl
+_tiered_from_api = data.zillizcloud_byoc_i_project_settings.this.tiered_node_quota != null ? {
+  tiered = data.zillizcloud_byoc_i_project_settings.this.tiered_node_quota
+} : {}
 
-The `k8s_node_groups` variable validation in the EKS module requires `max_size > 0`. With optional groups (search/tiered having max=0 defaults), this validation will fail. Fix: relax to `max_size >= 0` (already handled in terraform-zilliz-examples PR).
+k8s_node_groups = {
+  for name, ng in merge(
+    local._optional_ng_defaults,
+    data.zillizcloud_byoc_i_project_settings.this.node_quotas,
+    local._tiered_from_api,
+  ) : name => merge(ng, {
+    disk_size = ng.disk_size > 0 ? ng.disk_size : 100  # tiered (i4i) returns 0 — floor to EBS root size
+  })
+}
+
+enable_tiered = (
+  data.zillizcloud_byoc_i_project_settings.this.tiered_node_quota != null
+  && local.k8s_node_groups["tiered"].max_size > 0
+)
+```
 
 ## File Changes
 
 | File | Change |
 |------|--------|
-| `client/byoc_op_project.go` | Add `VmNodeGroups` field + `VmNodeGroup` type |
-| `internal/provider/byoc_i/projects_settings_data.go` | `node_quotas` schema → `MapNestedAttribute`; Describe() builds dynamic map |
-| `internal/provider/byoc_i/projects_settings_store.go` | Describe() builds dynamic map from NodeQuotas array |
-| `internal/provider/byoc_i/projects_settings_model.go` | `NodeQuotas` field type: `types.Object` → `types.Map` |
-| `internal/provider/byoc_i/projects_resource_store.go` | Create() populates `VmNodeGroups` in request |
+| `internal/provider/byoc_i/projects_settings_data.go` | Add `tiered_node_quota` top-level schema attribute; `Describe()` populates `data.TieredNodeQuota` |
+| `internal/provider/byoc_i/projects_settings_resource.go` | Add `tiered_node_quota` top-level schema attribute; sync field in Create/Read |
+| `internal/provider/byoc_i/projects_settings_store.go` | `Describe()` calls `buildNodeQuotas("tiered", ...)` and assigns to `data.TieredNodeQuota` |
+| `internal/provider/byoc_i/projects_resource_model.go` | Add `TieredNodeQuota types.Object` field to both resource and data models |
+| `docs/data-sources/byoc_i_project_settings.md` | Regenerated via `go generate` |
+| `docs/resources/byoc_i_project_settings.md` | Regenerated via `go generate` |
