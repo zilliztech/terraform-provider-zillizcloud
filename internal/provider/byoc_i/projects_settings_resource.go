@@ -166,6 +166,11 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 					"fundamental": nodeSchema,
 				},
 			},
+			"tiered_node_quota": func() schema.SingleNestedAttribute {
+				s := nodeSchema
+				s.MarkdownDescription = "Tiered storage node group quota. Null when tiered storage is not enabled."
+				return s
+			}(),
 		},
 	}
 }
@@ -222,6 +227,7 @@ func (r *BYOCOpProjectSettingsResource) Create(ctx context.Context, req resource
 
 	data.OpConfig = model.OpConfig
 	data.NodeQuotas = model.NodeQuotas
+	data.TieredNodeQuota = model.TieredNodeQuota
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -246,6 +252,7 @@ func (r *BYOCOpProjectSettingsResource) Read(ctx context.Context, req resource.R
 	// data.refresh(model)
 	data.OpConfig = model.OpConfig
 	data.NodeQuotas = model.NodeQuotas
+	data.TieredNodeQuota = model.TieredNodeQuota
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

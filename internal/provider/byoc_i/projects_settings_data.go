@@ -116,6 +116,11 @@ func (r *BYOCOpProjectSettingsData) Schema(ctx context.Context, req datasource.S
 					"fundamental": nodeSchema,
 				},
 			},
+			"tiered_node_quota": func() schema.SingleNestedAttribute {
+				s := nodeSchema
+				s.MarkdownDescription = "Tiered storage node group quota. Null when tiered storage is not enabled."
+				return s
+			}(),
 		},
 	}
 }
@@ -244,6 +249,12 @@ func (s *byocOpProjectSettingsDataStore) Describe(ctx context.Context, projectID
 			return data, fmt.Errorf("failed to abstract NodeQuotas from response")
 		}
 		data.NodeQuotas = NodeQuotas
+
+		tiered, err := buildNodeQuotas("tiered", response.NodeQuotas)
+		if err != nil {
+			return data, err
+		}
+		data.TieredNodeQuota = tiered
 	}
 
 	return data, nil
