@@ -119,7 +119,7 @@ func (r *EndpointResource) findEndpoint(projectId, endpointId string) (*zilliz.E
 				return &eps[i], nil
 			}
 		}
-		if page*pageSize >= pg.Count || len(eps) == 0 {
+		if len(eps) == 0 || pg.Count == 0 || page*pageSize >= pg.Count {
 			return nil, nil
 		}
 		page++
@@ -157,17 +157,17 @@ func (r *EndpointResource) Create(ctx context.Context, req resource.CreateReques
 		resp.Diagnostics.AddError("Failed to read endpoint after create", err.Error())
 		return
 	}
-	if ep != nil {
-		data.CloudId = types.StringValue(ep.CloudId)
-		data.EndpointService = types.StringValue(ep.EndpointService)
-		data.EndpointServiceStatus = types.StringValue(ep.EndpointServiceStatus)
-		data.EndpointStatus = types.StringValue(ep.EndpointStatus)
-	} else {
-		data.CloudId = types.StringNull()
-		data.EndpointService = types.StringNull()
-		data.EndpointServiceStatus = types.StringNull()
-		data.EndpointStatus = types.StringNull()
+	if ep == nil {
+		resp.Diagnostics.AddError(
+			"Endpoint not found after create",
+			fmt.Sprintf("endpoint_id=%s was not visible in ListEndpoints immediately after creation",
+				created.EndpointId))
+		return
 	}
+	data.CloudId = types.StringValue(ep.CloudId)
+	data.EndpointService = types.StringValue(ep.EndpointService)
+	data.EndpointServiceStatus = types.StringValue(ep.EndpointServiceStatus)
+	data.EndpointStatus = types.StringValue(ep.EndpointStatus)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -196,6 +196,8 @@ func (r *EndpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 	state.RegionId = types.StringValue(ep.RegionId)
 	if ep.GcpProjectId != nil {
 		state.GcpProjectId = types.StringValue(*ep.GcpProjectId)
+	} else {
+		state.GcpProjectId = types.StringNull()
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
