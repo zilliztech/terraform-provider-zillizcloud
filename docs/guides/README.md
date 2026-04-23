@@ -17,6 +17,7 @@ This guide provides a comprehensive overview of using Terraform with Zilliz Clou
 * **Scaling Clusters**: Learn how to leverage Terraform to upgrade the compute unit size of your Zilliz Cloud clusters to meet changing workload demands: [Upgrading Zilliz Cloud Cluster Compute Unit Size with Terraform](./scale-cluster.md)
 * **Importing Existing Clusters**: Utilize Terraform to import existing Zilliz Cloud clusters into your Terraform state, enabling them to be managed alongside other infrastructure using Terraform configurations: [Import Existing Zilliz Cloud Cluster With Terraform](./import-cluster.md)
 * **Retrieving Cloud Region**: Retrieve region IDs for Zilliz Cloud clusters across various cloud providers using the `zillizcloud_regions` data source. This tutorial demonstrates how to list regions for AWS, GCP, and Azure: [Acquiring Region IDs for Zilliz Cloud Clusters](./list-regions.md)
+* **Connecting Privately to Zilliz Cloud**: Provision a private, in-VPC connection from AWS to a Zilliz Cloud Enterprise cluster using AWS PrivateLink, including service discovery, VPC endpoint creation, and Route 53 DNS wiring: [Connecting Privately to Zilliz Cloud with AWS PrivateLink](./aws-privatelink.md)
 
 By leveraging Terraform and the Zilliz Cloud Terraform provider, you can streamline your Zilliz Cloud infrastructure management, promoting efficiency and consistency within your cloud deployments.
 

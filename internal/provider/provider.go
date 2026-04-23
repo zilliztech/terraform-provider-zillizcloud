@@ -176,6 +176,8 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewAliasResource,
 		NewPartitionsResource,
 		NewBackupPolicyResource,
+		NewEndpointResource,
+		NewEndpointWhitelistResource,
 	}
 }
 
@@ -195,6 +197,8 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewIndexesDataSource,
 		NewAliasesDataSource,
 		NewPartitionsDataSource,
+		NewEndpointServicesDataSource,
+		NewEndpointsDataSource,
 	}
 }
 

@@ -1,0 +1,16 @@
+aws_region = "us-west-2"
+
+vpc_id = "vpc-0123456789abcdef0"
+subnet_ids = [
+  "subnet-0123456789abcdef0",
+  "subnet-0fedcba9876543210",
+]
+security_group_ids = [
+  "sg-0123456789abcdef0",
+]
+
+zilliz_project_id   = "proj-ebc5ac7f430702aec8c57b"
+zilliz_region_id    = "aws-us-west-2"
+
+# Prefer exporting TF_VAR_zilliz_api_key in your shell instead of committing this.
+zilliz_api_key = "REPLACE_ME"
