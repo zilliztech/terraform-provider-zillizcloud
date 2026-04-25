@@ -13,7 +13,9 @@ type roundTripFunc func(req *http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
-type mockHTTPClient struct{ do func(*http.Request) (*http.Response, error) }
+type mockHTTPClient struct {
+	do func(*http.Request) (*http.Response, error)
+}
 
 func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) { return m.do(req) }
 
@@ -30,14 +32,14 @@ func newMockClient(t *testing.T, handler func(*http.Request) (*http.Response, er
 	return c
 }
 
-func jsonResponse(t *testing.T, status int, body any) *http.Response {
+func jsonResponse(t *testing.T, body any) *http.Response {
 	t.Helper()
 	b, err := json.Marshal(body)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
 	return &http.Response{
-		StatusCode: status,
+		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(bytes.NewReader(b)),
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 	}
@@ -54,7 +56,7 @@ func TestUnitListEndpointServices(t *testing.T) {
 		if req.URL.Query().Get("regionId") != "aws-us-west-2" {
 			t.Errorf("regionId=%s", req.URL.Query().Get("regionId"))
 		}
-		return jsonResponse(t, 200, map[string]any{
+		return jsonResponse(t, map[string]any{
 			"code": 0,
 			"data": map[string]any{
 				"endpointServices": []map[string]any{
@@ -82,7 +84,7 @@ func TestUnitListEndpoints(t *testing.T) {
 		if !strings.Contains(req.URL.Path, "/projects/proj-1/endpoints") {
 			t.Errorf("path=%s", req.URL.Path)
 		}
-		return jsonResponse(t, 200, map[string]any{
+		return jsonResponse(t, map[string]any{
 			"code": 0,
 			"data": map[string]any{
 				"endpoints": []map[string]any{
@@ -119,7 +121,7 @@ func TestUnitCreateEndpoint(t *testing.T) {
 		if body.EndpointId != "vpce-abc" || body.RegionId != "aws-us-west-2" {
 			t.Errorf("body=%+v", body)
 		}
-		return jsonResponse(t, 200, map[string]any{
+		return jsonResponse(t, map[string]any{
 			"code": 0,
 			"data": map[string]any{"endpointId": "vpce-abc", "regionId": "aws-us-west-2"},
 		}), nil
@@ -148,7 +150,7 @@ func TestUnitDeleteEndpoint(t *testing.T) {
 			if _, ok := req.URL.Query()["gcpProjectId"]; ok {
 				t.Errorf("gcpProjectId should not be present")
 			}
-			return jsonResponse(t, 200, map[string]any{
+			return jsonResponse(t, map[string]any{
 				"code": 0, "data": map[string]any{"endpointId": "vpce-abc"},
 			}), nil
 		})
@@ -163,7 +165,7 @@ func TestUnitDeleteEndpoint(t *testing.T) {
 			if req.URL.Query().Get("gcpProjectId") != "my-gcp-proj" {
 				t.Errorf("gcpProjectId=%s", req.URL.Query().Get("gcpProjectId"))
 			}
-			return jsonResponse(t, 200, map[string]any{
+			return jsonResponse(t, map[string]any{
 				"code": 0, "data": map[string]any{"endpointId": "vpce-abc"},
 			}), nil
 		})
@@ -188,7 +190,7 @@ func TestUnitAddEndpointWhitelist(t *testing.T) {
 		if body.OuterUserId != "user-abc" {
 			t.Errorf("body=%+v", body)
 		}
-		return jsonResponse(t, 200, map[string]any{"code": 0, "data": "success"}), nil
+		return jsonResponse(t, map[string]any{"code": 0, "data": "success"}), nil
 	})
 
 	err := c.AddEndpointWhitelist("proj-1", &AddEndpointWhitelistRequest{
