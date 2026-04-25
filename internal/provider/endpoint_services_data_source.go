@@ -33,7 +33,7 @@ type EndpointServicesDataSourceModel struct {
 	CurrentPage      types.Int64           `tfsdk:"current_page"`
 	PageSize         types.Int64           `tfsdk:"page_size"`
 	EndpointServices []EndpointServiceItem `tfsdk:"endpoint_services"`
-	Count            types.Int64           `tfsdk:"count"`
+	TotalCount       types.Int64           `tfsdk:"total_count"`
 }
 
 func (d *EndpointServicesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -56,7 +56,7 @@ func (d *EndpointServicesDataSource) Schema(ctx context.Context, req datasource.
 				MarkdownDescription: "Page size (1-100, defaults to 10).",
 				Optional:            true,
 			},
-			"count": schema.Int64Attribute{
+			"total_count": schema.Int64Attribute{
 				MarkdownDescription: "Total count of endpoint services.",
 				Computed:            true,
 			},
@@ -121,7 +121,7 @@ func (d *EndpointServicesDataSource) Read(ctx context.Context, req datasource.Re
 			WhitelistRequired: types.BoolValue(s.WhitelistRequired),
 		})
 	}
-	state.Count = types.Int64Value(int64(page.Count))
+	state.TotalCount = types.Int64Value(int64(page.Count))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

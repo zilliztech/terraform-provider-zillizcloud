@@ -36,7 +36,7 @@ type EndpointsDataSourceModel struct {
 	CurrentPage types.Int64    `tfsdk:"current_page"`
 	PageSize    types.Int64    `tfsdk:"page_size"`
 	Endpoints   []EndpointItem `tfsdk:"endpoints"`
-	Count       types.Int64    `tfsdk:"count"`
+	TotalCount  types.Int64    `tfsdk:"total_count"`
 }
 
 func (d *EndpointsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -59,7 +59,7 @@ func (d *EndpointsDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				MarkdownDescription: "Page size (1-100, defaults to 10).",
 				Optional:            true,
 			},
-			"count": schema.Int64Attribute{
+			"total_count": schema.Int64Attribute{
 				MarkdownDescription: "Total count of endpoints.",
 				Computed:            true,
 			},
@@ -134,7 +134,7 @@ func (d *EndpointsDataSource) Read(ctx context.Context, req datasource.ReadReque
 			GcpProjectId:          gcp,
 		})
 	}
-	state.Count = types.Int64Value(int64(page.Count))
+	state.TotalCount = types.Int64Value(int64(page.Count))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
