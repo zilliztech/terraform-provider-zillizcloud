@@ -68,7 +68,11 @@ func (r *EndpointResource) Schema(ctx context.Context, req resource.SchemaReques
 			"gcp_project_id": schema.StringAttribute{
 				MarkdownDescription: "GCP project ID (required for GCP regions).",
 				Optional:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"cloud_id": schema.StringAttribute{
 				Computed: true,
@@ -168,6 +172,11 @@ func (r *EndpointResource) Create(ctx context.Context, req resource.CreateReques
 	data.EndpointService = types.StringValue(ep.EndpointService)
 	data.EndpointServiceStatus = types.StringValue(ep.EndpointServiceStatus)
 	data.EndpointStatus = types.StringValue(ep.EndpointStatus)
+	if ep.GcpProjectId != nil && *ep.GcpProjectId != "" {
+		data.GcpProjectId = types.StringValue(*ep.GcpProjectId)
+	} else {
+		data.GcpProjectId = types.StringNull()
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -194,7 +203,7 @@ func (r *EndpointResource) Read(ctx context.Context, req resource.ReadRequest, r
 	state.EndpointServiceStatus = types.StringValue(ep.EndpointServiceStatus)
 	state.EndpointStatus = types.StringValue(ep.EndpointStatus)
 	state.RegionId = types.StringValue(ep.RegionId)
-	if ep.GcpProjectId != nil {
+	if ep.GcpProjectId != nil && *ep.GcpProjectId != "" {
 		state.GcpProjectId = types.StringValue(*ep.GcpProjectId)
 	} else {
 		state.GcpProjectId = types.StringNull()
