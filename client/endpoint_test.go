@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
 )
 
@@ -50,8 +49,8 @@ func TestUnitListEndpointServices(t *testing.T) {
 		if req.Method != "GET" {
 			t.Errorf("method=%s", req.Method)
 		}
-		if !strings.Contains(req.URL.String(), "/endpointServices") {
-			t.Errorf("url=%s", req.URL.String())
+		if req.URL.Path != "/v2/privateEndpointServices" {
+			t.Errorf("path=%s", req.URL.Path)
 		}
 		if req.URL.Query().Get("regionId") != "aws-us-west-2" {
 			t.Errorf("regionId=%s", req.URL.Query().Get("regionId"))
@@ -81,7 +80,7 @@ func TestUnitListEndpointServices(t *testing.T) {
 
 func TestUnitListEndpoints(t *testing.T) {
 	c := newMockClient(t, func(req *http.Request) (*http.Response, error) {
-		if !strings.Contains(req.URL.Path, "/projects/proj-1/endpoints") {
+		if req.URL.Path != "/v2/projects/proj-1/privateEndpoints" {
 			t.Errorf("path=%s", req.URL.Path)
 		}
 		return jsonResponse(t, map[string]any{
@@ -114,6 +113,9 @@ func TestUnitCreateEndpoint(t *testing.T) {
 		if req.Method != "POST" {
 			t.Errorf("method=%s", req.Method)
 		}
+		if req.URL.Path != "/v2/projects/proj-1/privateEndpoints" {
+			t.Errorf("path=%s", req.URL.Path)
+		}
 		var body CreateEndpointRequest
 		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 			t.Fatalf("decode: %v", err)
@@ -144,6 +146,9 @@ func TestUnitDeleteEndpoint(t *testing.T) {
 			if req.Method != "DELETE" {
 				t.Errorf("method=%s", req.Method)
 			}
+			if req.URL.Path != "/v2/projects/proj-1/privateEndpoints/vpce-abc" {
+				t.Errorf("path=%s", req.URL.Path)
+			}
 			if req.URL.Query().Get("regionId") != "aws-us-west-2" {
 				t.Errorf("regionId missing")
 			}
@@ -162,6 +167,9 @@ func TestUnitDeleteEndpoint(t *testing.T) {
 	t.Run("with gcpProjectId", func(t *testing.T) {
 		gcp := "my-gcp-proj"
 		c := newMockClient(t, func(req *http.Request) (*http.Response, error) {
+			if req.URL.Path != "/v2/projects/proj-1/privateEndpoints/vpce-abc" {
+				t.Errorf("path=%s", req.URL.Path)
+			}
 			if req.URL.Query().Get("gcpProjectId") != "my-gcp-proj" {
 				t.Errorf("gcpProjectId=%s", req.URL.Query().Get("gcpProjectId"))
 			}
@@ -180,7 +188,7 @@ func TestUnitAddEndpointWhitelist(t *testing.T) {
 		if req.Method != "POST" {
 			t.Errorf("method=%s", req.Method)
 		}
-		if !strings.HasSuffix(req.URL.Path, "/projects/proj-1/endpointWhitelist") {
+		if req.URL.Path != "/v2/projects/proj-1/privateEndpointWhitelist" {
 			t.Errorf("path=%s", req.URL.Path)
 		}
 		var body AddEndpointWhitelistRequest

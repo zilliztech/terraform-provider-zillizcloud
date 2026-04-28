@@ -24,32 +24,32 @@ type Endpoint struct {
 	GcpProjectId          *string `json:"gcpProjectId"`
 }
 
-// listEndpointServicesData is the inner payload for GET /v2/endpointServices.
+// listEndpointServicesData is the inner payload for GET /v2/privateEndpointServices.
 type listEndpointServicesData struct {
 	EndpointServices []EndpointService `json:"endpointServices"`
 	zillizPage
 }
 
-// listEndpointsData is the inner payload for GET /v2/projects/{projectId}/endpoints.
+// listEndpointsData is the inner payload for GET /v2/projects/{projectId}/privateEndpoints.
 type listEndpointsData struct {
 	Endpoints []Endpoint `json:"endpoints"`
 	zillizPage
 }
 
-// CreateEndpointRequest is the body for POST /v2/projects/{projectId}/endpoints.
+// CreateEndpointRequest is the body for POST /v2/projects/{projectId}/privateEndpoints.
 type CreateEndpointRequest struct {
 	RegionId     string `json:"regionId"`
 	EndpointId   string `json:"endpointId"`
 	GcpProjectId string `json:"gcpProjectId,omitempty"`
 }
 
-// CreateEndpointResponse is the response payload for POST /v2/projects/{projectId}/endpoints.
+// CreateEndpointResponse is the response payload for POST /v2/projects/{projectId}/privateEndpoints.
 type CreateEndpointResponse struct {
 	EndpointId string `json:"endpointId"`
 	RegionId   string `json:"regionId"`
 }
 
-// AddEndpointWhitelistRequest is the body for POST /v2/projects/{projectId}/endpointWhitelist.
+// AddEndpointWhitelistRequest is the body for POST /v2/projects/{projectId}/privateEndpointWhitelist.
 type AddEndpointWhitelistRequest struct {
 	RegionId    string `json:"regionId"`
 	OuterUserId string `json:"outerUserId"`
@@ -69,7 +69,7 @@ func (c *Client) ListEndpointServices(regionId string, currentPage, pageSize int
 	q.Set("pageSize", fmt.Sprintf("%d", pageSize))
 
 	var response zillizResponse[listEndpointServicesData]
-	err := c.do("GET", "endpointServices?"+q.Encode(), nil, &response)
+	err := c.do("GET", "privateEndpointServices?"+q.Encode(), nil, &response)
 	if err != nil {
 		return nil, zillizPage{}, err
 	}
@@ -89,7 +89,7 @@ func (c *Client) ListEndpoints(projectId string, currentPage, pageSize int) ([]E
 	q.Set("pageSize", fmt.Sprintf("%d", pageSize))
 
 	var response zillizResponse[listEndpointsData]
-	err := c.do("GET", "projects/"+projectId+"/endpoints?"+q.Encode(), nil, &response)
+	err := c.do("GET", "projects/"+projectId+"/privateEndpoints?"+q.Encode(), nil, &response)
 	if err != nil {
 		return nil, zillizPage{}, err
 	}
@@ -99,7 +99,7 @@ func (c *Client) ListEndpoints(projectId string, currentPage, pageSize int) ([]E
 // CreateEndpoint creates a private link endpoint under a project.
 func (c *Client) CreateEndpoint(projectId string, req *CreateEndpointRequest) (*CreateEndpointResponse, error) {
 	var response zillizResponse[CreateEndpointResponse]
-	err := c.do("POST", "projects/"+projectId+"/endpoints", req, &response)
+	err := c.do("POST", "projects/"+projectId+"/privateEndpoints", req, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +114,11 @@ func (c *Client) DeleteEndpoint(projectId, endpointId, regionId string, gcpProje
 		q.Set("gcpProjectId", *gcpProjectId)
 	}
 	var response zillizResponse[map[string]any]
-	return c.do("DELETE", "projects/"+projectId+"/endpoints/"+endpointId+"?"+q.Encode(), nil, &response)
+	return c.do("DELETE", "projects/"+projectId+"/privateEndpoints/"+endpointId+"?"+q.Encode(), nil, &response)
 }
 
 // AddEndpointWhitelist adds an external cloud account to the endpoint whitelist.
 func (c *Client) AddEndpointWhitelist(projectId string, req *AddEndpointWhitelistRequest) error {
 	var response zillizResponse[string]
-	return c.do("POST", "projects/"+projectId+"/endpointWhitelist", req, &response)
+	return c.do("POST", "projects/"+projectId+"/privateEndpointWhitelist", req, &response)
 }
