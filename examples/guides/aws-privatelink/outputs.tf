@@ -14,6 +14,6 @@ output "aws_vpc_endpoint_dns_entries" {
 }
 
 output "zilliz_endpoint" {
-  description = "The zillizcloud_endpoint resource, including its server-side state."
-  value       = zillizcloud_endpoint.this
+  description = "The zillizcloud_private_endpoint resource, including its server-side state."
+  value       = zillizcloud_private_endpoint.this
 }

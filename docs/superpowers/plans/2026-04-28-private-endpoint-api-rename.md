@@ -560,4 +560,3 @@ git status --short
 ```
 
 Expected: no uncommitted files from this implementation. Existing unrelated untracked files such as `.agents/`, `examples/guides/aws-privatelink/.envrc`, or other user-created files may remain and should not be modified or removed.
-

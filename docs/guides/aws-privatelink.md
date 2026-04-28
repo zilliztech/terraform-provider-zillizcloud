@@ -44,10 +44,10 @@ The Interface VPC Endpoint is the in-VPC entry point. AWS PrivateDNS is intentio
 
 ### Step 1 — Discover the PrivateLink service name
 
-Zilliz Cloud publishes one PrivateLink service per region. Use the `zillizcloud_endpoint_services` data source to look it up by region instead of hardcoding the `vpce-svc-…` string.
+Zilliz Cloud publishes one PrivateLink service per region. Use the `zillizcloud_private_endpoint_services` data source to look it up by region instead of hardcoding the `vpce-svc-…` string.
 
 ```hcl
-data "zillizcloud_endpoint_services" "this" {
+data "zillizcloud_private_endpoint_services" "this" {
   region_id = var.zilliz_region_id
 }
 ```
@@ -59,7 +59,7 @@ The first element of `endpoint_services[*].endpoint_service` is the AWS service 
 ```hcl
 resource "aws_vpc_endpoint" "zilliz" {
   vpc_id              = var.vpc_id
-  service_name        = data.zillizcloud_endpoint_services.this.endpoint_services[0].endpoint_service
+  service_name        = data.zillizcloud_private_endpoint_services.this.endpoint_services[0].endpoint_service
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.subnet_ids
   security_group_ids  = var.security_group_ids
@@ -86,10 +86,10 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
 
 ### Step 4 — Register the endpoint with Zilliz Cloud
 
-The Zilliz PrivateLink service won't accept traffic from a VPC endpoint that hasn't been registered against the project and region. Use `zillizcloud_endpoint` to authorize the AWS VPCE id you just created.
+The Zilliz PrivateLink service won't accept traffic from a VPC endpoint that hasn't been registered against the project and region. Use `zillizcloud_private_endpoint` to authorize the AWS VPCE id you just created.
 
 ```hcl
-resource "zillizcloud_endpoint" "this" {
+resource "zillizcloud_private_endpoint" "this" {
   project_id  = var.zilliz_project_id
   region_id   = var.zilliz_region_id
   endpoint_id = aws_vpc_endpoint.zilliz.id

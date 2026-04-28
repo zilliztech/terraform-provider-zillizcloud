@@ -16,7 +16,7 @@
 # We use index [0] because Zilliz publishes a single service per region.
 # Sourcing this from a data source avoids hardcoding a vpce-svc-… string
 # that is region- and deployment-specific.
-data "zillizcloud_endpoint_services" "this" {
+data "zillizcloud_private_endpoint_services" "this" {
   region_id = var.zilliz_region_id
 }
 
@@ -29,7 +29,7 @@ data "zillizcloud_endpoint_services" "this" {
 # control.
 resource "aws_vpc_endpoint" "zilliz" {
   vpc_id              = var.vpc_id
-  service_name        = data.zillizcloud_endpoint_services.this.endpoint_services[0].endpoint_service
+  service_name        = data.zillizcloud_private_endpoint_services.this.endpoint_services[0].endpoint_service
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.subnet_ids
   security_group_ids  = var.security_group_ids
@@ -39,7 +39,7 @@ resource "aws_vpc_endpoint" "zilliz" {
 # Authorize this specific VPC endpoint on the Zilliz side. The Zilliz
 # PrivateLink service won't accept traffic from a VPCE that hasn't been
 # registered against the project + region.
-resource "zillizcloud_endpoint" "this" {
+resource "zillizcloud_private_endpoint" "this" {
   project_id  = var.zilliz_project_id
   region_id   = var.zilliz_region_id
   endpoint_id = aws_vpc_endpoint.zilliz.id
