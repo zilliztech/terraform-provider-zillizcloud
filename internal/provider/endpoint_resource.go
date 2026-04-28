@@ -37,7 +37,7 @@ type EndpointResourceModel struct {
 }
 
 func (r *EndpointResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_endpoint"
+	resp.TypeName = req.ProviderTypeName + "_private_endpoint"
 }
 
 func (r *EndpointResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {

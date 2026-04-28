@@ -40,7 +40,7 @@ type EndpointsDataSourceModel struct {
 }
 
 func (d *EndpointsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_endpoints"
+	resp.TypeName = req.ProviderTypeName + "_private_endpoints"
 }
 
 func (d *EndpointsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
