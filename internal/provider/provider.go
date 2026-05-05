@@ -18,6 +18,7 @@ import (
 	byoc_op "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc_i"
 
 	cluster "github.com/zilliztech/terraform-provider-zillizcloud/internal/cluster"
+	on_demand_cluster "github.com/zilliztech/terraform-provider-zillizcloud/internal/on_demand_cluster"
 )
 
 // Ensure ZillizProvider satisfies various provider interfaces.
@@ -161,6 +162,7 @@ func (p *ZillizProvider) parseBurst(burstValue types.Int64) (int64, error) {
 func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		cluster.NewClusterResource,
+		on_demand_cluster.NewOnDemandClusterResource,
 		cluster.NewClusterLoadBalancerSecurityGroupsResource,
 		byoc.NewBYOCProjectResource,
 		byoc_op.NewBYOCOpProjectSettingsResource,
