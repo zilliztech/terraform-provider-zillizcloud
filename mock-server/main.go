@@ -44,6 +44,13 @@ func main() {
 			clusters.PUT("/:clusterId/securityGroups", byoc_project.UpsertSecurityGroups)
 			clusters.DELETE("/:clusterId/drop", byoc_project.DropCluster)
 		}
+		volumes := v2.Group("/volumes")
+		{
+			volumes.GET("", byoc_project.ListVolumes)
+			volumes.POST("/create", byoc_project.CreateVolume)
+			volumes.GET("/:volumeName", byoc_project.DescribeVolume)
+			volumes.DELETE("/:volumeName", byoc_project.DeleteVolume)
+		}
 		byoc := v2.Group("/byoc")
 		{
 			dataplane := byoc.Group("/dataplane")
