@@ -1,0 +1,4 @@
+interface:
+  display_name: "Terraform Acc Test"
+  short_description: "Run Terraform provider acceptance tests"
+  default_prompt: "Use $terraform-acc-test to run the Terraform provider acceptance test for the requested package or resource."
