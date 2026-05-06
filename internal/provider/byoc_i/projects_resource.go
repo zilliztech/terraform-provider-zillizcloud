@@ -27,9 +27,11 @@ const (
 	defaultBYOCOpProjectUpdateTimeout time.Duration = 60 * time.Minute
 )
 
-var _ resource.Resource = &BYOCOpProjectResource{}
-var _ resource.ResourceWithConfigure = &BYOCOpProjectResource{}
-var _ resource.ResourceWithConfigValidators = &BYOCOpProjectResource{}
+var (
+	_ resource.Resource                     = &BYOCOpProjectResource{}
+	_ resource.ResourceWithConfigure        = &BYOCOpProjectResource{}
+	_ resource.ResourceWithConfigValidators = &BYOCOpProjectResource{}
+)
 
 func NewBYOCOpProjectResource() resource.Resource {
 	return &BYOCOpProjectResource{}
@@ -446,7 +448,13 @@ func (r *BYOCOpProjectResource) Read(ctx context.Context, req resource.ReadReque
 	}
 
 	// Overwrite items with refreshed state
-	data.refresh(project)
+	data.ID = project.ID
+	data.AWS = project.AWS
+	data.Azure = project.Azure
+	data.Status = project.Status
+	data.DataPlaneID = project.DataPlaneID
+	data.ProjectID = project.ProjectID
+	data.ExtConfig = project.ExtConfig
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
