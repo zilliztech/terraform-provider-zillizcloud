@@ -23,15 +23,6 @@ func TestClient_ListProject(t *testing.T) {
 	})
 
 	t.Run("get project list with wrong api key", func(t *testing.T) {
-		var tmp string
-		if apiKey != "" {
-			tmp = apiKey
-		}
-		defer func() {
-			apiKey = tmp
-		}()
-
-		apiKey = "gibberish_api_key"
 		c, teardown := zillizClient[[]Project](t)
 		defer teardown()
 

@@ -180,6 +180,7 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		NewBackupPolicyResource,
 		NewEndpointResource,
 		NewEndpointWhitelistResource,
+		NewVolumeResource,
 	}
 }
 
