@@ -20,8 +20,10 @@ import (
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
-var _ resource.Resource = &VolumeResource{}
-var _ resource.ResourceWithConfigure = &VolumeResource{}
+var (
+	_ resource.Resource              = &VolumeResource{}
+	_ resource.ResourceWithConfigure = &VolumeResource{}
+)
 
 var (
 	volumeDeleteTimeout      = 2 * time.Minute
@@ -308,13 +310,6 @@ func (r *VolumeResource) Delete(ctx context.Context, req resource.DeleteRequest,
 			fmt.Sprintf("volume_name=%s error=%s", volumeName, err.Error()),
 		)
 		return
-	}
-
-	if err := r.waitUntilVolumeDeleted(ctx, volumeName); err != nil {
-		resp.Diagnostics.AddError(
-			"Timed out deleting volume",
-			fmt.Sprintf("volume_name=%s error=%s", volumeName, err.Error()),
-		)
 	}
 }
 
