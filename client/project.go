@@ -3,18 +3,25 @@ package client
 type Project struct {
 	ProjectId       string `json:"projectId"`
 	ProjectName     string `json:"projectName"`
+	CreateTime      string `json:"createTime"`
 	CreateTimeMilli int64  `json:"createTimeMilli"`
 	InstanceCount   int64  `json:"instanceCount"`
 	Plan            string `json:"plan"`
+	OrgType         string `json:"orgType,omitempty"`
 }
 
 type CreateProjectRequest struct {
-	ProjectName string `json:"projectName"`
-	Plan        string `json:"plan"`
+	ProjectName string   `json:"projectName"`
+	Plan        string   `json:"plan"`
+	Regions     []string `json:"regions,omitempty"`
 }
 
 type UpgradeProjectPlanRequest struct {
 	Plan string `json:"plan"`
+}
+
+type AddProjectRegionsRequest struct {
+	Regions []string `json:"regions"`
 }
 
 func (c *Client) CreateProject(params *CreateProjectRequest) (*string, error) {
@@ -44,4 +51,10 @@ func (c *Client) UpgradeProjectPlan(projectId string, plan string) (*string, err
 	var response zillizResponse[string]
 	err := c.do("PATCH", "projects/"+projectId+"/plan", &UpgradeProjectPlanRequest{Plan: plan}, &response)
 	return &response.Data, err
+}
+
+func (c *Client) AddProjectRegions(projectId string, regions []string) ([]string, error) {
+	var response zillizResponse[[]string]
+	err := c.do("POST", "projects/"+projectId+"/regions", &AddProjectRegionsRequest{Regions: regions}, &response)
+	return response.Data, err
 }

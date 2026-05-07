@@ -46,7 +46,10 @@ func TestProviderRegistersVolumeResource(t *testing.T) {
 
 func TestVolumeResourceSchemaAttributes(t *testing.T) {
 	ctx := context.Background()
-	res := NewVolumeResource().(*VolumeResource)
+	res, ok := NewVolumeResource().(*VolumeResource)
+	if !ok {
+		t.Fatal("unexpected type")
+	}
 	schema := testVolumeResourceSchema(t, res)
 
 	tests := []struct {

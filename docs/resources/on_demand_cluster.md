@@ -24,7 +24,9 @@ terraform {
 provider "zillizcloud" {
 }
 
+# The project must have the on-demand cluster feature enabled before creating an on-demand cluster.
 data "zillizcloud_project" "default" {
+  id = "proj-xxxxxxxxxxxxxxxxxxxxxxx"
 }
 
 resource "zillizcloud_on_demand_cluster" "example" {
