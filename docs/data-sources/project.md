@@ -22,5 +22,9 @@ description: |-
 
 ### Read-Only
 
+- `create_time` (String) Project creation time returned by the project API.
 - `created_at` (Number) Created At
 - `instance_count` (Number) Instance Count
+- `org_type` (String) Organization type returned by the project API.
+- `plan` (String) Project plan.
+- `project_name` (String) Project Name

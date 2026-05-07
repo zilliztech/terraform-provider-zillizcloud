@@ -31,8 +31,12 @@ type ProjectDataSource struct {
 type ProjectsDataSourceModel struct {
 	Id            types.String `tfsdk:"id"`
 	Name          types.String `tfsdk:"name"`
+	ProjectName   types.String `tfsdk:"project_name"`
 	InstanceCount types.Int64  `tfsdk:"instance_count"`
 	CreatedAt     types.Int64  `tfsdk:"created_at"`
+	CreateTime    types.String `tfsdk:"create_time"`
+	Plan          types.String `tfsdk:"plan"`
+	OrgType       types.String `tfsdk:"org_type"`
 }
 
 func (d *ProjectDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -51,12 +55,28 @@ func (d *ProjectDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				DeprecationMessage:  "This attribute is deprecated and will be removed in a future version. Please use 'id' instead.",
 				Optional:            true,
 			},
+			"project_name": schema.StringAttribute{
+				MarkdownDescription: "Project Name",
+				Computed:            true,
+			},
 			"instance_count": schema.Int64Attribute{
 				MarkdownDescription: "Instance Count",
 				Computed:            true,
 			},
 			"created_at": schema.Int64Attribute{
 				MarkdownDescription: "Created At",
+				Computed:            true,
+			},
+			"create_time": schema.StringAttribute{
+				MarkdownDescription: "Project creation time returned by the project API.",
+				Computed:            true,
+			},
+			"plan": schema.StringAttribute{
+				MarkdownDescription: "Project plan.",
+				Computed:            true,
+			},
+			"org_type": schema.StringAttribute{
+				MarkdownDescription: "Organization type returned by the project API.",
 				Computed:            true,
 			},
 		},
@@ -93,53 +113,62 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	tflog.Trace(ctx, "sending list projects request...")
-	projects, err := d.client.ListProjects()
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to ListProjects, got error: %s", err))
-		return
-	}
-
-	if state.Name.IsNull() {
-		state.Name = types.StringValue("Default Project")
-	}
-
-	var filteredProjects []zilliz.Project
-	for _, p := range projects {
-
-		if types.StringValue(p.ProjectId) == state.Id {
-			filteredProjects = append(filteredProjects, p)
-			break
+	var p zilliz.Project
+	if !state.Id.IsNull() && state.Id.ValueString() != "" {
+		project, err := d.client.GetProjectById(state.Id.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Project not found for id %q: %s", state.Id.ValueString(), err))
+			return
+		}
+		p = *project
+	} else {
+		tflog.Trace(ctx, "sending list projects request...")
+		projects, err := d.client.ListProjects()
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to ListProjects, got error: %s", err))
+			return
 		}
 
-		if p.ProjectId == os.Getenv("ZILLIZCLOUD_PROJECT_ID") {
-			filteredProjects = append(filteredProjects, p)
-			break
+		name := state.Name.ValueString()
+		if state.Name.IsNull() || name == "" {
+			if projectID := os.Getenv("ZILLIZCLOUD_PROJECT_ID"); projectID != "" {
+				for _, project := range projects {
+					if project.ProjectId == projectID {
+						p = project
+						break
+					}
+				}
+			}
+		} else {
+			for _, project := range projects {
+				if project.ProjectName == name {
+					if p.ProjectId != "" {
+						resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Multiple projects found with name: %s", name))
+						return
+					}
+					p = project
+				}
+			}
 		}
 
-		// deprecated: use id instead
-		if types.StringValue(p.ProjectName) == state.Name {
-			filteredProjects = append(filteredProjects, p)
+		if p.ProjectId == "" {
+			if name != "" {
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Project not found with name: %s", name))
+			} else {
+				resp.Diagnostics.AddError("Client Error", "Project not found")
+			}
+			return
 		}
 	}
-	projects = filteredProjects
 
-	// not found
-	if len(projects) == 0 {
-		resp.Diagnostics.AddError("Client Error", "Project not found")
-		return
-	}
-
-	if len(projects) > 1 {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Multiple projects found with name: %s", state.Name))
-		return
-	}
-
-	p := projects[0]
 	state.Id = types.StringValue(p.ProjectId)
 	state.Name = types.StringValue(p.ProjectName)
+	state.ProjectName = types.StringValue(p.ProjectName)
 	state.InstanceCount = types.Int64Value(p.InstanceCount)
 	state.CreatedAt = types.Int64Value(p.CreateTimeMilli)
+	state.CreateTime = types.StringValue(p.CreateTime)
+	state.Plan = types.StringValue(p.Plan)
+	state.OrgType = types.StringValue(p.OrgType)
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)

@@ -1,20 +1,28 @@
 package client
 
 type Project struct {
-	ProjectId       string `json:"projectId"`
-	ProjectName     string `json:"projectName"`
-	CreateTimeMilli int64  `json:"createTimeMilli"`
-	InstanceCount   int64  `json:"instanceCount"`
-	Plan            string `json:"plan"`
+	ProjectId       string   `json:"projectId"`
+	ProjectName     string   `json:"projectName"`
+	CreateTime      string   `json:"createTime"`
+	CreateTimeMilli int64    `json:"createTimeMilli"`
+	InstanceCount   int64    `json:"instanceCount"`
+	Plan            string   `json:"plan"`
+	RegionIds       []string `json:"regionIds"`
+	OrgType         string   `json:"orgType,omitempty"`
 }
 
 type CreateProjectRequest struct {
-	ProjectName string `json:"projectName"`
-	Plan        string `json:"plan"`
+	ProjectName string   `json:"projectName"`
+	Plan        string   `json:"plan"`
+	Regions     []string `json:"regionIds,omitempty"`
 }
 
 type UpgradeProjectPlanRequest struct {
 	Plan string `json:"plan"`
+}
+
+type AddProjectRegionsRequest struct {
+	Regions []string `json:"regionIds"`
 }
 
 func (c *Client) CreateProject(params *CreateProjectRequest) (*string, error) {
@@ -39,9 +47,22 @@ func (c *Client) GetProjectById(projectId string) (*Project, error) {
 	return &response.Data, err
 }
 
+// delete project by id
+func (c *Client) DeleteProjectById(projectId string) error {
+	var response zillizResponse[struct{}]
+	err := c.do("DELETE", "projects/"+projectId, nil, &response)
+	return err
+}
+
 // uprade project plan
 func (c *Client) UpgradeProjectPlan(projectId string, plan string) (*string, error) {
 	var response zillizResponse[string]
 	err := c.do("PATCH", "projects/"+projectId+"/plan", &UpgradeProjectPlanRequest{Plan: plan}, &response)
 	return &response.Data, err
+}
+
+func (c *Client) AddProjectRegions(projectId string, regions []string) ([]string, error) {
+	var response zillizResponse[[]string]
+	err := c.do("POST", "projects/"+projectId+"/regions", &AddProjectRegionsRequest{Regions: regions}, &response)
+	return response.Data, err
 }
