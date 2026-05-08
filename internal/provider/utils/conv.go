@@ -71,7 +71,7 @@ func SliceToMap(input any) (map[string]any, error) {
 		item := v.Index(i)
 
 		// Dereference pointer if needed
-		if item.Kind() == reflect.Ptr {
+		if item.Kind() == reflect.Pointer {
 			item = item.Elem()
 		}
 
