@@ -19,12 +19,14 @@ import (
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
-var _ resource.Resource = &ProjectResource{}
-var _ resource.ResourceWithConfigure = &ProjectResource{}
-var _ resource.ResourceWithImportState = &ProjectResource{}
+var (
+	_ resource.Resource                = &ProjectResource{}
+	_ resource.ResourceWithConfigure   = &ProjectResource{}
+	_ resource.ResourceWithImportState = &ProjectResource{}
+)
 
-const projectResourceMarkdownDescription = "Manages a standard project in Zilliz Cloud.\n" +
-	"This resource allows you to create and manage standard projects.\n" +
+const projectResourceMarkdownDescription = "Manages a project in Zilliz Cloud.\n" +
+	"This resource allows you to create and manage projects.\n" +
 	"Typical use case: creating projects with specific plan types and region bindings.\n\n" +
 	"Project region bindings are append-only. The project API can add regions to a project but cannot remove them, so removing values from `region_ids` returns a Terraform error instead of silently ignoring the change."
 

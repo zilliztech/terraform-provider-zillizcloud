@@ -3,22 +3,19 @@
 page_title: "zillizcloud_project Resource - zillizcloud"
 subcategory: ""
 description: |-
-  Manages a standard project in Zilliz Cloud.
-  This resource allows you to create and manage standard projects.
+  Manages a project in Zilliz Cloud.
+  This resource allows you to create and manage projects.
   Typical use case: creating projects with specific plan types and region bindings.
   Project region bindings are append-only. The project API can add regions to a project but cannot remove them, so removing values from region_ids returns a Terraform error instead of silently ignoring the change.
-  Project deletion is not yet implemented by the project API. Terraform destroy returns an error and preserves state until project delete support is available.
 ---
 
 # zillizcloud_project (Resource)
 
-Manages a standard project in Zilliz Cloud.
-This resource allows you to create and manage standard projects.
+Manages a project in Zilliz Cloud.
+This resource allows you to create and manage projects.
 Typical use case: creating projects with specific plan types and region bindings.
 
 Project region bindings are append-only. The project API can add regions to a project but cannot remove them, so removing values from `region_ids` returns a Terraform error instead of silently ignoring the change.
-
-Project deletion is not yet implemented by the project API. Terraform destroy returns an error and preserves state until project delete support is available.
 
 ## Example Usage
 
