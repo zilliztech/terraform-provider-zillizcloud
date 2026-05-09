@@ -1,0 +1,34 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: terralist-provider-publisher
+  namespace: terralist
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["terralist-secret", "terralist-gpg"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["terralist"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: terralist-provider-publisher-jenkins
+  namespace: terralist
+subjects:
+  - kind: ServiceAccount
+    name: jenkins-agent
+    namespace: jenkins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: terralist-provider-publisher

@@ -1,0 +1,66 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job">
+  <actions/>
+  <description>Build and publish terraform-provider-zillizcloud artifacts to Terralist using PVC staging.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <net.uaznia.lukanus.hudson.plugins.gitparameter.GitParameterDefinition plugin="git-parameter">
+          <name>BRANCH</name>
+          <description>Git branch to build and publish from.</description>
+          <uuid>CB3F585D-6363-45BF-B169-9EE7480E8A47</uuid>
+          <type>PT_BRANCH</type>
+          <branch></branch>
+          <tagFilter>*</tagFilter>
+          <branchFilter>origin/(.*)</branchFilter>
+          <sortMode>DESCENDING_SMART</sortMode>
+          <defaultValue>on-demand-cluster</defaultValue>
+          <selectedValue>TOP</selectedValue>
+          <quickFilterEnabled>true</quickFilterEnabled>
+          <listSize>10</listSize>
+          <requiredParameter>false</requiredParameter>
+        </net.uaznia.lukanus.hudson.plugins.gitparameter.GitParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>VERSION</name>
+          <description>Provider version to publish, without a leading v. Example: 0.6.37-rc5</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PLATFORMS</name>
+          <description>Comma-separated GOOS/GOARCH targets to build and publish.</description>
+          <defaultValue>linux/amd64,darwin/arm64,darwin/amd64</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SKIP_INSTALL_VERIFY</name>
+          <description>Skip the final terraform init install check.</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>https://github.com/zilliztech/terraform-provider-zillizcloud.git</url>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/${BRANCH}</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="empty-list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>Jenkinsfile.terralist-publish</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

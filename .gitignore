@@ -42,3 +42,5 @@ cliff.toml
 .ralph/
 .agents/planning/
 .agents/scratchpad/
+
+.env.*
