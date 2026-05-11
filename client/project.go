@@ -1,11 +1,12 @@
 package client
 
 type Project struct {
-	ProjectId       string `json:"projectId"`
-	ProjectName     string `json:"projectName"`
-	CreateTimeMilli int64  `json:"createTimeMilli"`
-	InstanceCount   int64  `json:"instanceCount"`
-	Plan            string `json:"plan"`
+	ProjectId       string   `json:"projectId"`
+	ProjectName     string   `json:"projectName"`
+	CreateTimeMilli int64    `json:"createTimeMilli"`
+	InstanceCount   int64    `json:"instanceCount"`
+	Plan            string   `json:"plan"`
+	RegionIds       []string `json:"regionIds"`
 }
 
 type CreateProjectRequest struct {

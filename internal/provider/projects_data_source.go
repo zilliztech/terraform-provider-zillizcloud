@@ -33,6 +33,7 @@ type ProjectsDataSourceModel struct {
 	Name          types.String `tfsdk:"name"`
 	InstanceCount types.Int64  `tfsdk:"instance_count"`
 	CreatedAt     types.Int64  `tfsdk:"created_at"`
+	RegionIds     types.List   `tfsdk:"region_ids"`
 }
 
 func (d *ProjectDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -58,6 +59,11 @@ func (d *ProjectDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"created_at": schema.Int64Attribute{
 				MarkdownDescription: "Created At",
 				Computed:            true,
+			},
+			"region_ids": schema.ListAttribute{
+				MarkdownDescription: "Region IDs bound to the project",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 		},
 	}
@@ -140,9 +146,15 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	state.Name = types.StringValue(p.ProjectName)
 	state.InstanceCount = types.Int64Value(p.InstanceCount)
 	state.CreatedAt = types.Int64Value(p.CreateTimeMilli)
+	regionIds, diags := types.ListValueFrom(ctx, types.StringType, p.RegionIds)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.RegionIds = regionIds
 
 	// Set state
-	diags := resp.State.Set(ctx, &state)
+	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
