@@ -12,7 +12,7 @@ provider "zillizcloud" {
 
 // specific project
 data "zillizcloud_project" "selected_project" {
-  id = "proj-ad010914c0e4bd421f7d7e"
+  id = "proj-xxxxxxxxxxxxxxx"
 }
 
 output "selected_project_details" {

@@ -36,6 +36,7 @@ type ProjectsDataSourceModel struct {
 	CreatedAt     types.Int64  `tfsdk:"created_at"`
 	CreateTime    types.String `tfsdk:"create_time"`
 	Plan          types.String `tfsdk:"plan"`
+	RegionIds     types.Set    `tfsdk:"region_ids"`
 	OrgType       types.String `tfsdk:"org_type"`
 }
 
@@ -74,6 +75,11 @@ func (d *ProjectDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"plan": schema.StringAttribute{
 				MarkdownDescription: "Project plan.",
 				Computed:            true,
+			},
+			"region_ids": schema.SetAttribute{
+				MarkdownDescription: "Region IDs bound to the project.",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 			"org_type": schema.StringAttribute{
 				MarkdownDescription: "Organization type returned by the project API.",
@@ -159,6 +165,13 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			}
 			return
 		}
+
+		project, err := d.client.GetProjectById(p.ProjectId)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to GetProjectById for id %q: %s", p.ProjectId, err))
+			return
+		}
+		p = *project
 	}
 
 	state.Id = types.StringValue(p.ProjectId)
@@ -168,6 +181,16 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	state.CreatedAt = types.Int64Value(p.CreateTimeMilli)
 	state.CreateTime = types.StringValue(p.CreateTime)
 	state.Plan = types.StringValue(p.Plan)
+	if len(p.RegionIds) > 0 {
+		regionIds, regionDiags := types.SetValueFrom(ctx, types.StringType, p.RegionIds)
+		resp.Diagnostics.Append(regionDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.RegionIds = regionIds
+	} else {
+		state.RegionIds = types.SetNull(types.StringType)
+	}
 	state.OrgType = types.StringValue(p.OrgType)
 
 	// Set state

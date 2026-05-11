@@ -28,3 +28,4 @@ description: |-
 - `org_type` (String) Organization type returned by the project API.
 - `plan` (String) Project plan.
 - `project_name` (String) Project Name
+- `region_ids` (Set of String) Region IDs bound to the project.

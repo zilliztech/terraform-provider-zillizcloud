@@ -29,6 +29,7 @@ func TestProjectDataSourceLookupByID(t *testing.T) {
 			InstanceCount: 2,
 			CreateTime:    "2026-05-07T08:00:00Z",
 			Plan:          "Enterprise",
+			RegionIds:     []string{"aws-us-east-1", "gcp-us-west1"},
 			OrgType:       "SAAS",
 		})
 	})
@@ -47,18 +48,31 @@ func TestProjectDataSourceLookupByID(t *testing.T) {
 	if got.Id.ValueString() != "proj-1" || got.ProjectName.ValueString() != "Project One" || got.Plan.ValueString() != "Enterprise" || got.CreateTime.ValueString() != "2026-05-07T08:00:00Z" {
 		t.Fatalf("state = %#v", got)
 	}
+	assertProjectRegionIDs(t, ctx, got.RegionIds, []string{"aws-us-east-1", "gcp-us-west1"})
 }
 
 func TestProjectDataSourceLookupByDeprecatedName(t *testing.T) {
 	ctx := context.Background()
 	d, schema := testProjectDataSource(t, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet || req.URL.Path != "/projects" {
-			t.Fatalf("request = %s %s, want GET /projects", req.Method, req.URL.Path)
+		if req.Method != http.MethodGet {
+			t.Fatalf("method = %s, want GET", req.Method)
 		}
-		writeProviderProjectResponse(t, w, []zilliz.Project{
-			{ProjectId: "proj-1", ProjectName: "Project One", Plan: "Standard"},
-			{ProjectId: "proj-2", ProjectName: "Project Two", Plan: "Enterprise"},
-		})
+		switch req.URL.Path {
+		case "/projects":
+			writeProviderProjectResponse(t, w, []zilliz.Project{
+				{ProjectId: "proj-1", ProjectName: "Project One", Plan: "Standard"},
+				{ProjectId: "proj-2", ProjectName: "Project Two", Plan: "Enterprise"},
+			})
+		case "/projects/proj-2":
+			writeProviderProjectResponse(t, w, zilliz.Project{
+				ProjectId:   "proj-2",
+				ProjectName: "Project Two",
+				Plan:        "Enterprise",
+				RegionIds:   []string{"aws-us-east-1"},
+			})
+		default:
+			t.Fatalf("path = %s, want /projects or /projects/proj-2", req.URL.Path)
+		}
 	})
 
 	resp := fwdatasource.ReadResponse{State: tfsdk.State{Schema: schema}}
@@ -75,6 +89,7 @@ func TestProjectDataSourceLookupByDeprecatedName(t *testing.T) {
 	if got.Id.ValueString() != "proj-2" || got.Name.ValueString() != "Project Two" || got.Plan.ValueString() != "Enterprise" {
 		t.Fatalf("state = %#v", got)
 	}
+	assertProjectRegionIDs(t, ctx, got.RegionIds, []string{"aws-us-east-1"})
 }
 
 func TestProjectDataSourceNotFound(t *testing.T) {
@@ -147,6 +162,7 @@ func testProjectDataSourceConfig(t *testing.T, ctx context.Context, schema fwdsc
 		CreatedAt:     types.Int64Null(),
 		CreateTime:    types.StringNull(),
 		Plan:          types.StringNull(),
+		RegionIds:     types.SetNull(types.StringType),
 		OrgType:       types.StringNull(),
 	}
 	if id != "" {
