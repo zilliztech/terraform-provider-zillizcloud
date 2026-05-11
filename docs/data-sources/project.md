@@ -24,3 +24,4 @@ description: |-
 
 - `created_at` (Number) Created At
 - `instance_count` (Number) Instance Count
+- `region_ids` (List of String) Region IDs bound to the project

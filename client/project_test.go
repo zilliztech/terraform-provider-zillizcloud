@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 )
@@ -44,6 +45,23 @@ func TestClient_ListProject(t *testing.T) {
 		}
 	})
 
+}
+
+func TestProject_UnmarshalRegionFields(t *testing.T) {
+	var response zillizResponse[[]Project]
+	err := json.Unmarshal([]byte(`{"code":0,"data":[{"projectId":"proj-001","projectName":"test-project","instanceCount":0,"createTimeMilli":1762324757000,"plan":"Enterprise","regionIds":["aws-us-east-1","gcp-us-west1"]}]}`), &response)
+	if err != nil {
+		t.Fatalf("failed to unmarshal project response: %v", err)
+	}
+
+	if len(response.Data) != 1 {
+		t.Fatalf("want 1 project, got %d", len(response.Data))
+	}
+
+	project := response.Data[0]
+	if len(project.RegionIds) != 2 || project.RegionIds[0] != "aws-us-east-1" || project.RegionIds[1] != "gcp-us-west1" {
+		t.Fatalf("unexpected region ids: %v", project.RegionIds)
+	}
 }
 
 func TestClient_CreateProject(t *testing.T) {
