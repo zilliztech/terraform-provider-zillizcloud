@@ -60,3 +60,36 @@ _terralist-upload:
 
 _terralist-verify:
   @bash scripts/terralist/verify.sh
+
+plan dir:
+  terraform -chdir={{dir}} plan
+
+apply dir:
+  terraform -chdir={{dir}} apply -auto-approve
+
+destroy dir:
+  terraform -chdir={{dir}} destroy -auto-approve
+
+
+# Run acceptance tests
+testacc:
+	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
+
+unit-test:
+	go test ./... -v 
+
+install:
+	go install -v ./...
+
+doc:
+	go generate ./...
+
+lint:
+	golangci-lint run
+
+fmt:
+	go fmt ./...
+
+mock-server:
+	cd mock-server && go run main.go
+

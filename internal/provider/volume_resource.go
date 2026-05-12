@@ -249,6 +249,11 @@ func (r *VolumeResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	if described == nil || described.VolumeName == "" {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 	state.applyDescribeVolume(described)
 	if state.Id.IsNull() || state.Id.IsUnknown() || state.Id.ValueString() == "" {
 		state.Id = types.StringValue(volumeName)
@@ -268,7 +273,7 @@ func isVolumeNotFoundError(err error) bool {
 		return true
 	}
 
-	return strings.Contains(err.Error(), "http status code: 404")
+	return strings.Contains(err.Error(), "not exist")
 }
 
 func (r *VolumeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
