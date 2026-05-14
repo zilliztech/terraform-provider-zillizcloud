@@ -9,6 +9,9 @@ terraform {
 provider "zillizcloud" {
 }
 
+data "zillizcloud_regions" "all_regions" {
+}
+
 data "zillizcloud_regions" "aws_region" {
   cloud_id = "aws"
 }
@@ -21,15 +24,18 @@ data "zillizcloud_regions" "azure_region" {
   cloud_id = "azure"
 }
 
-output "aws_ouput" {
+output "all_output" {
+  value = data.zillizcloud_regions.all_regions.items
+}
+
+output "aws_output" {
   value = data.zillizcloud_regions.aws_region.items
 }
 
-
-output "gcp_ouput" {
+output "gcp_output" {
   value = data.zillizcloud_regions.gcp_region.items
 }
 
-output "azure_ouput" {
+output "azure_output" {
   value = data.zillizcloud_regions.azure_region.items
 }

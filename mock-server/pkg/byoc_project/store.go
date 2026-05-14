@@ -50,6 +50,7 @@ var (
 	settingsStore  = NewSafeStore[SettingsResponse]()
 	dataplaneStore = NewSafeStore[DataplaneResponse]()
 	projectStore   = NewSafeStore[Project]()
+	volumeStore    = NewSafeStore[Volume]()
 )
 
 func init() {

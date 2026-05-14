@@ -23,7 +23,6 @@ type byocOpProjectStore struct {
 var _ ByocOpProjectStore = &byocOpProjectStore{}
 
 func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectResourceModel, updateStateFunc func(project *BYOCOpProjectResourceModel) error) (err error) {
-
 	request := zilliz.CreateByocOpProjectRequest{
 		ProjectId:   data.ProjectID.ValueString(),
 		DataPlaneId: data.DataPlaneID.ValueString(),
@@ -115,7 +114,7 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		return fmt.Errorf("failed to create BYOC-I project: %w", err)
 	}
 
-	data.ID = types.StringValue(response.ProjectId)
+	data.ID = types.StringValue(fmt.Sprintf("%s:%s", response.ProjectId, response.DataPlaneId))
 	data.Status = types.Int64Value(0) // Pending status
 
 	if err = updateStateFunc(data); err != nil {
@@ -151,7 +150,7 @@ func (s *byocOpProjectStore) Delete(ctx context.Context, data *BYOCOpProjectReso
 
 		tflog.Info(ctx, fmt.Sprintf("Before delete BYOC-I Project, peek the status: %d", project.Status.ValueInt64()))
 
-		//prompt user delete project from console if project has not been deleted
+		// prompt user delete project from console if project has not been deleted
 		if project.Status.ValueInt64() != int64(BYOCProjectStatusDeleted) {
 			return fmt.Errorf("please initiate the project deletion directly from the console and wait for that process to fully complete. Once the project is confirmed as deleted from the console, you can then attempt to delete it using Terraform")
 		}
@@ -197,20 +196,14 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 		return data, fmt.Errorf("failed to describe BYOC-I project: %w", err)
 	}
 
-	data.ID = types.StringValue(response.ProjectID)
+	// Override Id with "ProjectID:DataPlaneID" to make sure the resource can be uniquely identified,
+	// because the ProjectID is not unique in BYOC-I any more
+	data.ID = types.StringValue(fmt.Sprintf("%s:%s", response.ProjectID, response.DataPlaneID))
 	data.ProjectID = types.StringValue(response.ProjectID)
 	data.DataPlaneID = types.StringValue(response.DataPlaneID)
 	data.Status = types.Int64Value(int64(response.Status))
 	if response.OpConfig != nil {
 		data.ExtConfig = types.StringValue(response.OpConfig.Token)
-	}
-
-	// Convert response to model
-	data = BYOCOpProjectResourceModel{
-		ID:          types.StringValue(response.ProjectID),
-		ProjectID:   types.StringValue(response.ProjectID),
-		DataPlaneID: types.StringValue(response.DataPlaneID),
-		Status:      types.Int64Value(int64(response.Status)),
 	}
 
 	return data, nil

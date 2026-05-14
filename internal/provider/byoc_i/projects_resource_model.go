@@ -109,15 +109,6 @@ type InstancesOpConfig struct {
 	Arch        types.String   `tfsdk:"arch"`
 }
 
-func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel) {
-	data.AWS = input.AWS
-	data.Azure = input.Azure
-	data.Status = input.Status
-	data.DataPlaneID = input.DataPlaneID
-	data.ProjectID = input.ProjectID
-	data.ExtConfig = input.ExtConfig
-}
-
 type BYOCOpProjectSettingsResourceModel struct {
 	ID                 types.String      `tfsdk:"id"`
 	ProjectID          types.String      `tfsdk:"project_id"`

@@ -7,18 +7,28 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
-var _ resource.Resource = &ProjectResource{}
-var _ resource.ResourceWithConfigure = &ProjectResource{}
-var _ resource.ResourceWithImportState = &ProjectResource{}
+var (
+	_ resource.Resource                = &ProjectResource{}
+	_ resource.ResourceWithConfigure   = &ProjectResource{}
+	_ resource.ResourceWithImportState = &ProjectResource{}
+)
+
+const projectResourceMarkdownDescription = "Manages a project in Zilliz Cloud.\n" +
+	"This resource allows you to create and manage projects.\n" +
+	"Typical use case: creating projects with specific plan types and region bindings.\n\n" +
+	"Project region bindings are append-only. The project API can add regions to a project but cannot remove them, so removing values from `region_ids` returns a Terraform error instead of silently ignoring the change."
 
 func NewProjectResource() resource.Resource {
 	return &ProjectResource{}
@@ -32,6 +42,7 @@ type ProjectResourceModel struct {
 	Id          types.String `tfsdk:"id"`
 	ProjectName types.String `tfsdk:"project_name"`
 	Plan        types.String `tfsdk:"plan"`
+	RegionIds   types.Set    `tfsdk:"region_ids"`
 }
 
 func (r *ProjectResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -40,9 +51,7 @@ func (r *ProjectResource) Metadata(ctx context.Context, req resource.MetadataReq
 
 func (r *ProjectResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: `Manages a standard project in Zilliz Cloud.
-This resource allows you to create and manage standard projects.
-Typical use case: creating projects with specific plan types (e.g., Standard).`,
+		MarkdownDescription: projectResourceMarkdownDescription,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -62,7 +71,15 @@ Typical use case: creating projects with specific plan types (e.g., Standard).`,
 				Computed:            true,
 				Optional:            true,
 				Default:             stringdefault.StaticString("Enterprise"),
-				MarkdownDescription: `The plan type for the project (e.g., "Standard", "Enterprise", "Business Critical", "BYOC"). By default, the plan is "Enterprise".`,
+				MarkdownDescription: `The plan type for the project. Valid values are "Standard", "Enterprise", and "BusinessCritical". By default, the plan is "Enterprise".`,
+				Validators: []validator.String{
+					stringvalidator.OneOf("Standard", "Enterprise", "BusinessCritical"),
+				},
+			},
+			"region_ids": schema.SetAttribute{
+				Optional:            true,
+				ElementType:         types.StringType,
+				MarkdownDescription: `Region IDs to bind to the project. Region IDs are append-only because the project API can add regions but cannot remove them.`,
 			},
 		},
 	}
@@ -90,14 +107,21 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	regionIds, regionDiags := stringSetToSlice(ctx, data.RegionIds)
+	resp.Diagnostics.Append(regionDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	projectId, err := r.client.CreateProject(&zilliz.CreateProjectRequest{
 		ProjectName: data.ProjectName.ValueString(),
 		Plan:        data.Plan.ValueString(),
+		Regions:     regionIds,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to create project",
-			fmt.Sprintf("ProjectName: %s, Plan: %s, error: %s", data.ProjectName.ValueString(), data.Plan.ValueString(), err.Error()),
+			fmt.Sprintf("ProjectName: %s, Plan: %s, Region IDs: %v, error: %s", data.ProjectName.ValueString(), data.Plan.ValueString(), regionIds, err.Error()),
 		)
 		return
 	}
@@ -122,6 +146,14 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	state.ProjectName = types.StringValue(project.ProjectName)
 	state.Plan = types.StringValue(project.Plan)
+	if len(project.RegionIds) > 0 {
+		regionIds, regionDiags := types.SetValueFrom(ctx, types.StringType, project.RegionIds)
+		resp.Diagnostics.Append(regionDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.RegionIds = regionIds
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -149,6 +181,45 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 		state.Plan = plan.Plan
 	}
 
+	addedRegions, removedRegions, regionDiags := diffStringSets(ctx, state.RegionIds, plan.RegionIds)
+	resp.Diagnostics.Append(regionDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if len(removedRegions) > 0 {
+		resp.Diagnostics.AddError(
+			"Project region removal is not supported",
+			fmt.Sprintf("Project ID: %s, removed region IDs: %v. The project API only supports appending region IDs; Terraform cannot remove project regions until the API supports removal.", state.Id.ValueString(), removedRegions),
+		)
+		return
+	}
+
+	if len(addedRegions) > 0 {
+		regions, err := r.client.AddProjectRegions(state.Id.ValueString(), addedRegions)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to add project regions",
+				fmt.Sprintf("Project ID: %s, Region IDs: %v, error: %s", state.Id.ValueString(), addedRegions, err.Error()),
+			)
+			return
+		}
+		if len(regions) > 0 {
+			regionIds, regionDiags := types.SetValueFrom(ctx, types.StringType, regions)
+			resp.Diagnostics.Append(regionDiags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			state.RegionIds = regionIds
+		} else {
+			state.RegionIds = plan.RegionIds
+		}
+	} else {
+		state.RegionIds = plan.RegionIds
+	}
+
+	state.ProjectName = plan.ProjectName
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -159,13 +230,13 @@ func (r *ProjectResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	// Note: The API might not support project deletion
-	// For now, we'll just remove it from state
-	// TODO: Implement actual deletion if/when API supports it
-	resp.Diagnostics.AddWarning(
-		"Project deletion not supported by API",
-		"The project has been removed from Terraform state, but it still exists in Zilliz Cloud. You may need to delete it manually through the console.",
-	)
+	projectId := state.Id.ValueString()
+	if err := r.client.DeleteProjectById(projectId); err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to delete project",
+			fmt.Sprintf("Project ID: %s, error: %s", projectId, err.Error()),
+		)
+	}
 }
 
 func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -187,6 +258,55 @@ func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportSt
 	state.Id = types.StringValue(projectId)
 	state.ProjectName = types.StringValue(project.ProjectName)
 	state.Plan = types.StringValue(project.Plan)
+	if len(project.RegionIds) > 0 {
+		regionIds, regionDiags := types.SetValueFrom(ctx, types.StringType, project.RegionIds)
+		resp.Diagnostics.Append(regionDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.RegionIds = regionIds
+	} else {
+		state.RegionIds = types.SetNull(types.StringType)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func stringSetToSlice(ctx context.Context, value types.Set) ([]string, diag.Diagnostics) {
+	var result []string
+	var diags diag.Diagnostics
+	if value.IsNull() || value.IsUnknown() {
+		return result, diags
+	}
+	diags.Append(value.ElementsAs(ctx, &result, false)...)
+	return result, diags
+}
+
+func diffStringSets(ctx context.Context, previous, next types.Set) (added []string, removed []string, diags diag.Diagnostics) {
+	previousValues, previousDiags := stringSetToSlice(ctx, previous)
+	diags.Append(previousDiags...)
+	nextValues, nextDiags := stringSetToSlice(ctx, next)
+	diags.Append(nextDiags...)
+	if diags.HasError() {
+		return nil, nil, diags
+	}
+
+	previousSeen := make(map[string]struct{}, len(previousValues))
+	for _, value := range previousValues {
+		previousSeen[value] = struct{}{}
+	}
+	nextSeen := make(map[string]struct{}, len(nextValues))
+	for _, value := range nextValues {
+		nextSeen[value] = struct{}{}
+		if _, ok := previousSeen[value]; !ok {
+			added = append(added, value)
+		}
+	}
+	for _, value := range previousValues {
+		if _, ok := nextSeen[value]; !ok {
+			removed = append(removed, value)
+		}
+	}
+
+	return added, removed, diags
 }

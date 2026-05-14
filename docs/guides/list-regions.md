@@ -21,6 +21,9 @@ Before you begin, ensure you have the following:
 This code snippet demonstrates how to retrieve region information for specific cloud providers:
 
 ```terraform
+data "zillizcloud_regions" "all_regions" {
+}
+
 data "zillizcloud_regions" "aws_region" {
   cloud_id = "aws"
 }
@@ -44,14 +47,17 @@ output "gcp_output" {
 output "azure_output" {
   value = data.zillizcloud_regions.azure_region.items
 }
+
+output "all_output" {
+  value = data.zillizcloud_regions.all_regions.items
+}
 ```
 
 **Explanation:**
 
-* We define three `zillizcloud_regions` data sources: `aws_region`, `gcp_region`, and `azure_region`.
-* Each data source retrieves regions for a specific cloud provider using the `cloud_id` argument.
-* The `output` blocks define outputs named `aws_output`, `gcp_output`, and `azure_output`. 
-* These outputs reference the `.items` attribute of the corresponding data source, which contains a list of region objects.
+* We define filtered `zillizcloud_regions` data sources for AWS, GCP, and Azure, plus an unfiltered `all_regions` data source.
+* A data source retrieves regions for a specific cloud provider when `cloud_id` is set. Without `cloud_id`, it retrieves all enabled regions.
+* The `output` blocks reference the `.items` attribute of each data source, which contains a list of region objects.
 
 
 ### Executing the Terraform Script
@@ -75,9 +81,15 @@ Outputs:
 aws_output = tolist([
   ...
   {
-    "api_base_url" = "https://api.aws-us-west-2.zillizcloud.com"
+    "api_base_url" = "https://api.cloud.zilliz.com/v2"
     "cloud_id" = "aws"
+    "domain" = "api.cloud.zilliz.com"
     "region_id" = "aws-us-west-2"
+    "supported_cluster_types" = tolist([
+      "free",
+      "serverless",
+      "dedicated",
+    ])
   },
   ...
 ])
@@ -89,7 +101,6 @@ gcp_output = tolist([
 ])
 ```
 
-The script retrieves region details for each cloud provider specified in the `cloud_id` arguments. In this example, the output showcases the `aws-us-east-2` region for the AWS cloud provider.
+The script retrieves region details for each cloud provider specified in the `cloud_id` arguments. In this example, the output showcases the `aws-us-west-2` region for the AWS cloud provider. The `api_base_url` field remains available for compatibility, but it is deprecated; use `domain` for new configurations.
 
-This retrieved region ID (e.g., `aws-us-east-2`) can be used to create Zilliz Cloud clusters within the specified region in subsequent Terraform configurations.
-
+This retrieved region ID (e.g., `aws-us-west-2`) can be used to create Zilliz Cloud clusters within the specified region in subsequent Terraform configurations.

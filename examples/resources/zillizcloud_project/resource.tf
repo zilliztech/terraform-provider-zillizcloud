@@ -9,10 +9,11 @@ terraform {
 provider "zillizcloud" {
 }
 
-# Create a new standard project
+# Create a new project with an Enterprise plan and an initial region binding
 resource "zillizcloud_project" "example" {
   project_name = "project-099"
-  plan         = "Standard"
+  plan         = "Enterprise"
+  region_ids   = ["aws-us-west-2"]
 }
 
 # You can reference the project ID in other resources

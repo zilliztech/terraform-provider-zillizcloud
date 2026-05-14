@@ -1,0 +1,238 @@
+pipeline {
+  agent {
+    kubernetes {
+      inheritFrom 'default'
+      defaultContainer 'go'
+      yaml '''
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: jenkins
+spec:
+  nodeSelector:
+    kubernetes.io/arch: amd64
+  containers:
+  - name: go
+    image: harbor-us-vdc.zilliz.cc/devops/terraform-provider-zillizcloud-go:1.25.10-patch
+    imagePullPolicy: IfNotPresent
+    command: ["cat"]
+    securityContext:
+      runAsUser: 0
+      runAsGroup: 0
+    tty: true
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+    volumeMounts:
+    - name: terralist-gpg
+      mountPath: /etc/terralist-gpg
+      readOnly: true
+  - name: terraform
+    image: hashicorp/terraform:1.14.4
+    imagePullPolicy: IfNotPresent
+    command: ["cat"]
+    tty: true
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "1Gi"
+  volumes:
+  - name: terralist-gpg
+    secret:
+      secretName: terralist-gpg
+'''
+      customWorkspace '/home/jenkins/agent/workspace/terraform-provider-zillizcloud-terralist-publish'
+    }
+  }
+
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  parameters {
+    gitParameter(
+      name: 'BRANCH',
+      type: 'PT_BRANCH',
+      branchFilter: 'origin/(.*)',
+      defaultValue: 'on-demand-cluster',
+      selectedValue: 'TOP',
+      sortMode: 'DESCENDING_SMART',
+      quickFilterEnabled: true,
+      listSize: '10',
+      description: 'Git branch to build and publish from.'
+    )
+    string(
+      name: 'VERSION',
+      defaultValue: '',
+      description: 'Provider version to publish, with or without a leading v. Example: 0.6.37-rc5'
+    )
+    string(
+      name: 'PLATFORMS',
+      defaultValue: 'linux/amd64,darwin/arm64,darwin/amd64',
+      description: 'Comma-separated GOOS/GOARCH targets to build and publish.'
+    )
+    booleanParam(
+      name: 'SKIP_INSTALL_VERIFY',
+      defaultValue: false,
+      description: 'Skip the final terraform init install check.'
+    )
+  }
+
+  environment {
+    TERRALIST_URL = 'https://terralist.zilliz.cc'
+    TERRALIST_NAMESPACE = 'zilliztech'
+    PROVIDER_NAME = 'zillizcloud'
+    KUBE_NAMESPACE = 'terralist'
+    TERRALIST_DEPLOYMENT = 'terralist'
+    PVC_SOURCE_ROOT = '/data/source'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        container('go') {
+          checkout scm
+        }
+      }
+    }
+
+    stage('Validate parameters') {
+      steps {
+        container('go') {
+          script {
+            def publishEnv = withEnv(["VERSION=${params.VERSION}", "PLATFORMS=${params.PLATFORMS}"]) {
+              sh(
+                label: 'Validate publish parameters',
+                script: 'just terralist-validate-parameters',
+                returnStdout: true
+              )
+            }
+
+            publishEnv
+              .split('\n')
+              .findAll { it.trim() }
+              .each { line ->
+                def parts = line.split('=', 2)
+                env[parts[0]] = parts[1]
+              }
+          }
+        }
+      }
+    }
+
+    stage('Check existing version') {
+      steps {
+        container('go') {
+          sh(
+            label: 'Check Terralist versions',
+            script: 'just terralist-check-version'
+          )
+        }
+      }
+    }
+
+    stage('Build provider artifacts') {
+      steps {
+        container('go') {
+          sh(
+            label: 'Build provider zip artifacts',
+            script: 'just terralist-build'
+          )
+        }
+      }
+    }
+
+    stage('Setup GPG key from Secret') {
+      steps {
+        container('go') {
+          sh(
+            label: 'Import fixed GPG key from mounted Secret',
+            script: 'just terralist-setup-gpg-key'
+          )
+        }
+      }
+    }
+
+    stage('Publish provider') {
+      steps {
+        container('go') {
+          sh(
+            label: 'Stage and register provider',
+            script: 'just terralist-publish'
+          )
+        }
+      }
+    }
+
+    stage('Terraform install verify') {
+      when {
+        expression {
+          return !params.SKIP_INSTALL_VERIFY
+        }
+      }
+      steps {
+        container('go') {
+          sh(
+            label: 'Prepare just for terraform container',
+            script: 'cp "$(command -v just)" .terralist-just && chmod +x .terralist-just'
+          )
+        }
+        container('terraform') {
+          sh(
+            label: 'Verify terraform init',
+            script: './.terralist-just terralist-verify-install'
+          )
+        }
+      }
+    }
+
+    stage('Archive artifacts') {
+      steps {
+        archiveArtifacts(
+          artifacts: "dist/terralist/${env.PUBLISH_VERSION}/**",
+          fingerprint: true,
+          allowEmptyArchive: false
+        )
+      }
+    }
+  }
+
+  post {
+    success {
+      container('go') {
+        withCredentials([
+          string(
+            credentialsId: 'feishu-terralist-publish-webhook-url',
+            variable: 'FEISHU_WEBHOOK_URL'
+          )
+        ]) {
+          sh(
+            label: 'Send Feishu publish card',
+            script: 'just terralist-send-feishu-card'
+          )
+        }
+      }
+    }
+    always {
+      container('go') {
+        sh(
+          label: 'Clean temporary GPG home',
+          script: '''
+if [ -f justfile ]; then
+  just terralist-cleanup-gpg-key
+fi
+'''
+        )
+      }
+    }
+  }
+}

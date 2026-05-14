@@ -3,16 +3,19 @@
 page_title: "zillizcloud_project Resource - zillizcloud"
 subcategory: ""
 description: |-
-  Manages a standard project in Zilliz Cloud.
-  This resource allows you to create and manage standard projects.
-  Typical use case: creating projects with specific plan types (e.g., Standard).
+  Manages a project in Zilliz Cloud.
+  This resource allows you to create and manage projects.
+  Typical use case: creating projects with specific plan types and region bindings.
+  Project region bindings are append-only. The project API can add regions to a project but cannot remove them, so removing values from region_ids returns a Terraform error instead of silently ignoring the change.
 ---
 
 # zillizcloud_project (Resource)
 
-Manages a standard project in Zilliz Cloud.
-This resource allows you to create and manage standard projects.
-Typical use case: creating projects with specific plan types (e.g., Standard).
+Manages a project in Zilliz Cloud.
+This resource allows you to create and manage projects.
+Typical use case: creating projects with specific plan types and region bindings.
+
+Project region bindings are append-only. The project API can add regions to a project but cannot remove them, so removing values from `region_ids` returns a Terraform error instead of silently ignoring the change.
 
 ## Example Usage
 
@@ -28,10 +31,11 @@ terraform {
 provider "zillizcloud" {
 }
 
-# Create a new standard project
+# Create a new project with an Enterprise plan and an initial region binding
 resource "zillizcloud_project" "example" {
   project_name = "project-099"
-  plan         = "Standard"
+  plan         = "Enterprise"
+  region_ids   = ["aws-us-west-2"]
 }
 
 # You can reference the project ID in other resources
@@ -49,7 +53,8 @@ output "project_id" {
 
 ### Optional
 
-- `plan` (String) The plan type for the project (e.g., "Standard", "Enterprise", "Business Critical", "BYOC"). By default, the plan is "Enterprise".
+- `plan` (String) The plan type for the project. Valid values are "Standard", "Enterprise", and "BusinessCritical". By default, the plan is "Enterprise".
+- `region_ids` (Set of String) Region IDs to bind to the project. Region IDs are append-only because the project API can add regions but cannot remove them.
 
 ### Read-Only
 

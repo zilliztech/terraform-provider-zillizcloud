@@ -37,3 +37,10 @@ website/vendor
 
 CLAUDE.md
 cliff.toml
+
+# ignore ralp files
+.ralph/
+.agents/planning/
+.agents/scratchpad/
+
+.env.*

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net/http"
 	"testing"
 )
 
@@ -29,29 +30,79 @@ func TestClient_BaseUrlFromCloudRegion(t *testing.T) {
 
 }
 
-func TestClient_ListCloudRegions(t *testing.T) {
-	testCases := []struct {
-		cloudId CloudId
-		notWant int
-	}{
-		{GCP, 0},
-		{AWS, 0},
-		{Azure, 0},
+func TestUnitListCloudRegionsWithoutCloudId(t *testing.T) {
+	c := newMockClient(t, func(req *http.Request) (*http.Response, error) {
+		if req.Method != "GET" {
+			t.Errorf("method=%s", req.Method)
+		}
+		if req.URL.Path != "/v2/regions" {
+			t.Errorf("path=%s", req.URL.Path)
+		}
+		if req.URL.RawQuery != "" {
+			t.Errorf("query=%s", req.URL.RawQuery)
+		}
+		return jsonResponse(t, map[string]any{
+			"code": 0,
+			"data": []map[string]any{
+				{
+					"cloudId":               "aws",
+					"regionId":              "aws-us-west-2",
+					"domain":                "api.cloud.zilliz.com",
+					"supportedClusterTypes": []string{"free", "serverless", "dedicated"},
+				},
+			},
+		}), nil
+	})
+
+	got, err := c.ListCloudRegions("")
+	if err != nil {
+		t.Fatalf("failed to ListCloudRegions: %v", err)
 	}
 
-	for _, tc := range testCases {
-		t.Run("ListCloudRegions via "+string(tc.cloudId), func(t *testing.T) {
-			c, teardown := zillizClient[[]CloudRegion](t)
-			defer teardown()
+	if len(got) != 1 {
+		t.Fatalf("len=%d", len(got))
+	}
+	if got[0].Domain != "api.cloud.zilliz.com" {
+		t.Errorf("domain=%s", got[0].Domain)
+	}
+	if len(got[0].SupportedClusterTypes) != 3 || got[0].SupportedClusterTypes[0] != "free" {
+		t.Errorf("supportedClusterTypes=%v", got[0].SupportedClusterTypes)
+	}
+}
 
-			got, err := c.ListCloudRegions(string(tc.cloudId))
-			if err != nil {
-				t.Fatalf("failed to ListCloudRegions: %v", err)
-			}
+func TestUnitListCloudRegionsWithCloudId(t *testing.T) {
+	c := newMockClient(t, func(req *http.Request) (*http.Response, error) {
+		if req.Method != "GET" {
+			t.Errorf("method=%s", req.Method)
+		}
+		if req.URL.Path != "/v2/regions" {
+			t.Errorf("path=%s", req.URL.Path)
+		}
+		if req.URL.Query().Get("cloudId") != "aws" {
+			t.Errorf("cloudId=%s", req.URL.Query().Get("cloudId"))
+		}
+		return jsonResponse(t, map[string]any{
+			"code": 0,
+			"data": []map[string]any{
+				{
+					"cloudId":               "aws",
+					"regionId":              "aws-us-east-1",
+					"domain":                "api.cloud.zilliz.com",
+					"supportedClusterTypes": []string{"serverless", "dedicated"},
+				},
+			},
+		}), nil
+	})
 
-			if len(got) == tc.notWant {
-				t.Errorf("want > %d, got = %v", tc.notWant, got)
-			}
-		})
+	got, err := c.ListCloudRegions("aws")
+	if err != nil {
+		t.Fatalf("failed to ListCloudRegions: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("len=%d", len(got))
+	}
+	if got[0].CloudId != "aws" || got[0].RegionId != "aws-us-east-1" {
+		t.Errorf("region=%+v", got[0])
 	}
 }

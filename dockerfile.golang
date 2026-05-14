@@ -1,0 +1,36 @@
+FROM golang:1.25.10-bookworm
+
+ARG KUBECTL_VERSION=v1.36.0
+ARG JUST_VERSION=1.40.0
+
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      jq \
+      python3 \
+      zip; \
+    rm -rf /var/lib/apt/lists/*; \
+    arch="$(uname -m)"; \
+    case "$arch" in \
+      x86_64|amd64) kubectl_arch="amd64" ;; \
+      aarch64|arm64) kubectl_arch="arm64" ;; \
+      *) echo "unsupported image architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${kubectl_arch}/kubectl" -o /usr/local/bin/kubectl; \
+    chmod +x /usr/local/bin/kubectl; \
+    case "$arch" in \
+      x86_64|amd64) just_arch="x86_64" ;; \
+      aarch64|arm64) just_arch="aarch64" ;; \
+      *) echo "unsupported image architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${just_arch}-unknown-linux-musl.tar.gz" \
+      | tar -xz -C /usr/local/bin just; \
+    chmod +x /usr/local/bin/just; \
+    go version; \
+    python3 --version; \
+    git --version; \
+    gpg --version; \
+    jq --version; \
+    just --version; \
+    kubectl version --client=true; \
+    zip --version | head -n 1

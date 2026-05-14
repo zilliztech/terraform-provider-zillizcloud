@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -28,9 +29,11 @@ type CloudRegionsDataSource struct {
 }
 
 type CloudRegionItem struct {
-	ApiBaseUrl types.String `tfsdk:"api_base_url"`
-	CloudId    types.String `tfsdk:"cloud_id"`
-	RegionId   types.String `tfsdk:"region_id"`
+	ApiBaseUrl            types.String   `tfsdk:"api_base_url"`
+	CloudId               types.String   `tfsdk:"cloud_id"`
+	RegionId              types.String   `tfsdk:"region_id"`
+	Domain                types.String   `tfsdk:"domain"`
+	SupportedClusterTypes []types.String `tfsdk:"supported_cluster_types"`
 }
 
 // CloudRegionsDataSourceModel describes the data source data model.
@@ -55,8 +58,9 @@ func (d *CloudRegionsDataSource) Schema(ctx context.Context, req datasource.Sche
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"api_base_url": schema.StringAttribute{
-							MarkdownDescription: "Cloud Region API Base URL",
+							MarkdownDescription: "Cloud Region API Base URL. Deprecated: use `domain` instead.",
 							Computed:            true,
+							DeprecationMessage:  "api_base_url is deprecated. Use domain instead.",
 						},
 						"cloud_id": schema.StringAttribute{
 							MarkdownDescription: "Cloud Region Identifier",
@@ -66,12 +70,21 @@ func (d *CloudRegionsDataSource) Schema(ctx context.Context, req datasource.Sche
 							MarkdownDescription: "Cloud Region Id",
 							Computed:            true,
 						},
+						"domain": schema.StringAttribute{
+							MarkdownDescription: "Cloud Region control API domain",
+							Computed:            true,
+						},
+						"supported_cluster_types": schema.ListAttribute{
+							MarkdownDescription: "Supported cluster types in this region",
+							Computed:            true,
+							ElementType:         types.StringType,
+						},
 					},
 				},
 			},
 			"cloud_id": schema.StringAttribute{
 				MarkdownDescription: "Cloud ID",
-				Required:            true,
+				Optional:            true,
 			},
 		},
 	}
@@ -117,10 +130,16 @@ func (d *CloudRegionsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	// Save data into Terraform state
 
 	for _, cr := range cloudRegions {
+		supportedClusterTypes := make([]types.String, 0, len(cr.SupportedClusterTypes))
+		for _, clusterType := range cr.SupportedClusterTypes {
+			supportedClusterTypes = append(supportedClusterTypes, types.StringValue(clusterType))
+		}
 		state.CloudRegions = append(state.CloudRegions, CloudRegionItem{
-			ApiBaseUrl: types.StringValue(cr.ApiBaseUrl),
-			CloudId:    types.StringValue(cr.CloudId),
-			RegionId:   types.StringValue(cr.RegionId)})
+			ApiBaseUrl:            types.StringValue(apiBaseUrlFromCloudRegion(cr)),
+			CloudId:               types.StringValue(cr.CloudId),
+			RegionId:              types.StringValue(cr.RegionId),
+			Domain:                types.StringValue(cr.Domain),
+			SupportedClusterTypes: supportedClusterTypes})
 	}
 
 	diags := resp.State.Set(ctx, &state)
@@ -128,4 +147,23 @@ func (d *CloudRegionsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+}
+
+func apiBaseUrlFromCloudRegion(cr zilliz.CloudRegion) string {
+	if cr.ApiBaseUrl != "" {
+		return cr.ApiBaseUrl
+	}
+
+	domain := strings.TrimSpace(cr.Domain)
+	if domain == "" {
+		return ""
+	}
+	domain = strings.TrimRight(domain, "/")
+	if strings.HasSuffix(domain, "/v2") {
+		return domain
+	}
+	if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
+		return domain + "/v2"
+	}
+	return "https://" + domain + "/v2"
 }
