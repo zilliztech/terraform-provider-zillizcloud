@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -45,6 +44,7 @@ const (
 var _ resource.Resource = &ClusterResource{}
 var _ resource.ResourceWithConfigure = &ClusterResource{}
 var _ resource.ResourceWithImportState = &ClusterResource{}
+var _ resource.ResourceWithModifyPlan = &ClusterResource{}
 
 func NewClusterResource() resource.Resource {
 	return &ClusterResource{}
@@ -206,10 +206,9 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"replica": schema.Int64Attribute{
-				MarkdownDescription: "The number of replicas for the cluster. Defaults to 1.",
+				MarkdownDescription: "The number of replicas for the cluster. Defaults to 1 when replica_settings is not configured.",
 				Optional:            true,
 				Computed:            true,
-				Default:             int64default.StaticInt64(1),
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 					customvalidator.ReplicaCuSizeValidator{},
@@ -364,6 +363,52 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 	}
 }
 
+func (r *ClusterResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var config ClusterResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !config.Replica.IsNull() || config.Replica.IsUnknown() {
+		return
+	}
+
+	var plan ClusterResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if config.ReplicaSettings != nil {
+		if req.State.Raw.IsNull() {
+			return
+		}
+
+		var state ClusterResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if state.Replica.IsNull() || state.Replica.IsUnknown() {
+			return
+		}
+
+		plan.Replica = state.Replica
+		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+		return
+	}
+
+	if plan.Replica.IsNull() || plan.Replica.IsUnknown() {
+		plan.Replica = types.Int64Value(1)
+		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+	}
+}
+
 func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -483,15 +528,17 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		state.Description = newState.Description
 		state.RegionId = newState.RegionId
 		state.Plan = newState.Plan
+		state.Replica = newState.Replica
 	}
 
 	// Apply replica > 1 after cluster is RUNNING (ModifyReplica API requires RUNNING state and sufficient cuSize).
 	// Note: cannot use handleReplicaUpdate here because r.timeout is only set in Update, not Create.
-	if isRunning && !plan.Replica.IsNull() && !plan.Replica.IsUnknown() && plan.Replica.ValueInt64() > 1 {
+	if isRunning && plan.ReplicaSettings == nil && !plan.Replica.IsNull() && !plan.Replica.IsUnknown() && plan.Replica.ValueInt64() > 1 {
 		err := r.store.ModifyReplica(ctx, state.ClusterId.ValueString(), int(plan.Replica.ValueInt64()))
 		if err != nil {
 			resp.Diagnostics.AddWarning("Failed to modify cluster replica", err.Error())
 		} else {
+			state.Replica = plan.Replica
 			// Wait for RUNNING after replica change, using the remaining create context timeout
 			if deadline, ok := ctx.Deadline(); ok {
 				remaining := time.Until(deadline)
@@ -799,7 +846,7 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
-	if plan.isReplicaChanged(state) && plan.isReplicaSettingsDisabled() {
+	if plan.isReplicaChanged(state) && plan.ReplicaSettings == nil {
 		resp.Diagnostics.Append(r.handleReplicaUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
