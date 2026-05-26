@@ -235,7 +235,7 @@ func WithDefaultClient() Option {
 func WithDefaultUserAgent() Option {
 	return func(c *Client) {
 		if c.userAgent == "" {
-			c.userAgent = "zilliztech/terraform-provider-zillizcloud"
+			c.userAgent = "terraform-provider-zillizcloud/dev"
 		}
 	}
 }
@@ -318,7 +318,7 @@ func (c *Client) newRequest(method string, u *url.URL, body interface{}) (*http.
 	if err != nil {
 		return nil, err
 	}
-	// req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

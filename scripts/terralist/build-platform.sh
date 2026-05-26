@@ -12,6 +12,7 @@ terralist_parse_platform "$PUBLISH_PLATFORM"
 
 PACKAGE="${PACKAGE:-.}"
 CGO_ENABLED="${CGO_ENABLED:-0}"
+GO_LDFLAGS="${GO_LDFLAGS:--s -w -X main.version=${PUBLISH_VERSION#v}}"
 terralist_init_paths --create-dist
 
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/terralist-provider-build.XXXXXX")"
@@ -22,11 +23,11 @@ zip_name="$(terralist_zip_name "$GOOS_VALUE" "$GOARCH_VALUE")"
 build_dir="$tmp_dir/${GOOS_VALUE}_${GOARCH_VALUE}"
 mkdir -p "$build_dir"
 
-terralist_log "terralist-build" "go build ${GOOS_VALUE}/${GOARCH_VALUE}"
+terralist_log "terralist-build" "go build ${GOOS_VALUE}/${GOARCH_VALUE} version=${PUBLISH_VERSION#v}"
 (
   cd "$SOURCE_DIR"
   CGO_ENABLED="$CGO_ENABLED" GOOS="$GOOS_VALUE" GOARCH="$GOARCH_VALUE" \
-    go build -buildvcs=false -o "$build_dir/$binary_name" "$PACKAGE"
+    go build -buildvcs=false -ldflags "$GO_LDFLAGS" -o "$build_dir/$binary_name" "$PACKAGE"
 )
 chmod 755 "$build_dir/$binary_name"
 
