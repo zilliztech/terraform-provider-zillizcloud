@@ -64,6 +64,9 @@ _terralist-verify:
 plan dir:
   terraform -chdir={{dir}} plan
 
+refresh dir:
+  terraform -chdir={{dir}} refresh
+
 apply dir:
   terraform -chdir={{dir}} apply -auto-approve
 
@@ -93,3 +96,5 @@ fmt:
 mock-server:
 	cd mock-server && go run main.go
 
+
+prepare: fmt lint doc
