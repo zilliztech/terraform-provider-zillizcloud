@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net/url"
 	"testing"
 )
 
@@ -77,4 +78,48 @@ func TestNewClient(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientNewRequestSetsDefaultUserAgent(t *testing.T) {
+	c, err := NewClient(WithApiKey("gibberish_key"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	req, err := c.newRequest("GET", mustParseURL(t, "https://api.test/v2/projects"), nil)
+	if err != nil {
+		t.Fatalf("newRequest: %v", err)
+	}
+
+	if got, want := req.Header.Get("User-Agent"), "terraform-provider-zillizcloud/dev"; got != want {
+		t.Fatalf("User-Agent = %q, want %q", got, want)
+	}
+}
+
+func TestClientNewRequestSetsCustomUserAgent(t *testing.T) {
+	c, err := NewClient(
+		WithApiKey("gibberish_key"),
+		WithUserAgent("terraform-provider-zillizcloud/0.6.36"),
+	)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	req, err := c.newRequest("GET", mustParseURL(t, "https://api.test/v2/projects"), nil)
+	if err != nil {
+		t.Fatalf("newRequest: %v", err)
+	}
+
+	if got, want := req.Header.Get("User-Agent"), "terraform-provider-zillizcloud/0.6.36"; got != want {
+		t.Fatalf("User-Agent = %q, want %q", got, want)
+	}
+}
+
+func mustParseURL(t *testing.T, raw string) *url.URL {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatalf("url.Parse: %v", err)
+	}
+	return u
 }

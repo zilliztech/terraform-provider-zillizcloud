@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -91,6 +92,7 @@ func (p *ZillizProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		zilliz.WithApiKey(config.apiKey),
 		zilliz.WithCloudRegionId(data.RegionId.ValueString()),
 		zilliz.WithHostAddress(config.hostAddress),
+		zilliz.WithUserAgent(providerUserAgent(p.version)),
 		zilliz.WithRateLimiter(config.qps, config.burst),
 	)
 	if err != nil {
@@ -107,6 +109,13 @@ type clientConfig struct {
 	hostAddress string
 	qps         float64
 	burst       int64
+}
+
+func providerUserAgent(version string) string {
+	if version == "" {
+		version = "dev"
+	}
+	return fmt.Sprintf("terraform-provider-zillizcloud/%s", version)
 }
 
 func (p *ZillizProvider) buildClientConfig(data zillizProviderModel, resp *provider.ConfigureResponse) clientConfig {
