@@ -49,7 +49,7 @@ func (c *ReplicaSettings) Equal(other *ReplicaSettings) bool {
 	return c.DynamicScaling.Equal(other.DynamicScaling) && SchedulesEqual(c.ScheduleScaling, other.ScheduleScaling)
 }
 
-func (c *CuSettings) IsdynamicScalingNull() bool {
+func (c *CuSettings) IsDynamicScalingNull() bool {
 	return c.DynamicScaling == nil || c.DynamicScaling.Min.IsNull() || c.DynamicScaling.Max.IsNull()
 }
 
@@ -57,7 +57,7 @@ func (c *CuSettings) IsSchedulesNull() bool {
 	return c == nil || len(c.ScheduleScaling) == 0
 }
 
-func (c *ReplicaSettings) IsdynamicScalingNull() bool {
+func (c *ReplicaSettings) IsDynamicScalingNull() bool {
 	return c.DynamicScaling == nil || c.DynamicScaling.Min.IsNull() || c.DynamicScaling.Max.IsNull()
 }
 
@@ -146,11 +146,17 @@ func (b *BucketInfo) Equal(other *BucketInfo) bool {
 }
 
 func (c *ClusterResourceModel) isCuSettingsDisabled() bool {
-	return c.CuSettings == nil || c.CuSettings.DynamicScaling == nil || c.CuSettings.ScheduleScaling == nil
+	return c.CuSettings == nil || (c.CuSettings.IsDynamicScalingNull() && c.CuSettings.IsSchedulesNull())
 }
 
 func (c *ClusterResourceModel) isReplicaSettingsDisabled() bool {
-	return c.ReplicaSettings == nil || c.ReplicaSettings.DynamicScaling == nil || c.ReplicaSettings.ScheduleScaling == nil
+	return c.ReplicaSettings == nil || (c.ReplicaSettings.IsDynamicScalingNull() && c.ReplicaSettings.IsSchedulesNull())
+}
+
+func (c *ClusterResourceModel) completeReplicaAfterCreate(plan ClusterResourceModel) {
+	if plan.Replica.IsNull() || plan.Replica.IsUnknown() {
+		c.Replica = types.Int64Value(1)
+	}
 }
 
 func (c *ClusterResourceModel) setUnknown() {
@@ -169,7 +175,6 @@ func (c *ClusterResourceModel) setUnknown() {
 
 // populate the ClusterResourceModel with the input which is the response from the API.
 func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
-
 	c.ClusterId = input.ClusterId
 	c.ClusterName = input.ClusterName
 	c.ProjectId = input.ProjectId
@@ -195,7 +200,6 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 		c.CuType = types.StringValue("Performance-optimized")
 		c.Replica = types.Int64Value(1)
 	}
-
 }
 
 // only for free or serverless plan, set default value
