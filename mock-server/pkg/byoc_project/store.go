@@ -47,10 +47,11 @@ func (s *Store) UpdateStatus(key string, status int) {
 }
 
 var (
-	settingsStore  = NewSafeStore[SettingsResponse]()
-	dataplaneStore = NewSafeStore[DataplaneResponse]()
-	projectStore   = NewSafeStore[Project]()
-	volumeStore    = NewSafeStore[Volume]()
+	settingsStore      = NewSafeStore[SettingsResponse]()
+	dataplaneStore     = NewSafeStore[DataplaneResponse]()
+	projectStore       = NewSafeStore[Project]()
+	volumeStore        = NewSafeStore[Volume]()
+	globalClusterStore = NewSafeStore[GlobalCluster]()
 )
 
 func init() {

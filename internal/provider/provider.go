@@ -19,6 +19,7 @@ import (
 	byoc_op "github.com/zilliztech/terraform-provider-zillizcloud/internal/provider/byoc_i"
 
 	cluster "github.com/zilliztech/terraform-provider-zillizcloud/internal/cluster"
+	global_cluster "github.com/zilliztech/terraform-provider-zillizcloud/internal/global_cluster"
 	on_demand_cluster "github.com/zilliztech/terraform-provider-zillizcloud/internal/on_demand_cluster"
 )
 
@@ -171,6 +172,7 @@ func (p *ZillizProvider) parseBurst(burstValue types.Int64) (int64, error) {
 func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		cluster.NewClusterResource,
+		global_cluster.NewGlobalClusterResource,
 		on_demand_cluster.NewOnDemandClusterResource,
 		cluster.NewClusterLoadBalancerSecurityGroupsResource,
 		byoc.NewBYOCProjectResource,
