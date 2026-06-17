@@ -439,7 +439,12 @@ func TestGlobalClusterResourceUpdateModifiesCU(t *testing.T) {
 			return globalClusterJSONResponse(t, http.StatusOK, map[string]any{"code": 0, "data": map[string]any{"jobId": "job-1"}}), nil
 		case 3:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe %s %s", req.Method, req.URL.Path)
+				t.Fatalf("describe after cu modify %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(8)), nil
+		case 4:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("final describe after update %s %s", req.Method, req.URL.Path)
 			}
 			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(8)), nil
 		default:
@@ -457,6 +462,68 @@ func TestGlobalClusterResourceUpdateModifiesCU(t *testing.T) {
 	resource.Update(ctx, fwresource.UpdateRequest{Plan: plan, State: state}, &resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Update diagnostics: %s", resp.Diagnostics.Errors()[0].Summary())
+	}
+}
+
+func TestGlobalClusterResourceUpdateWaitsForCUSizeToConverge(t *testing.T) {
+	ctx := context.Background()
+	testGlobalClusterSecondaryRunningWait(t, time.Millisecond, time.Second)
+	resource := newTestGlobalClusterResource(t, func(call int, req *http.Request, body []byte) (*http.Response, error) {
+		switch call {
+		case 1:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("describe before update %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(1)), nil
+		case 2:
+			if req.Method != http.MethodPost || req.URL.Path != "/v2/globalClusters/glo-1/modifyCU" {
+				t.Fatalf("modify %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, map[string]any{"code": 0, "data": map[string]any{"jobId": "job-1"}}), nil
+		case 3:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("describe while cu modifying %s %s", req.Method, req.URL.Path)
+			}
+			payload, _, clusters := describeGlobalClusterPayloadParts(1)
+			for _, cluster := range clusters {
+				cluster["status"] = "CU_MODIFYING"
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, payload), nil
+		case 4:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("describe after cu converged %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(2)), nil
+		case 5:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("final describe after update %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(2)), nil
+		default:
+			return nil, fmt.Errorf("unexpected call %d", call)
+		}
+	})
+	schema := testGlobalClusterResourceSchema(t, resource)
+	base := testGlobalClusterBaseModel()
+	base.CUSize = types.Int64Value(1)
+	state := testGlobalClusterState(t, ctx, schema, base)
+	base.CUSize = types.Int64Value(2)
+	plan := testGlobalClusterPlan(t, ctx, schema, base)
+
+	var resp fwresource.UpdateResponse
+	resp.State = tfsdk.State{Schema: schema}
+	resource.Update(ctx, fwresource.UpdateRequest{Plan: plan, State: state}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update diagnostics: %s", resp.Diagnostics.Errors()[0].Summary())
+	}
+
+	var got GlobalClusterResourceModel
+	resp.Diagnostics.Append(resp.State.Get(ctx, &got)...)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("State.Get diagnostics: %s", resp.Diagnostics.Errors()[0].Summary())
+	}
+	if got.CUSize.ValueInt64() != 2 {
+		t.Fatalf("cu_size after update=%d, want 2", got.CUSize.ValueInt64())
 	}
 }
 
@@ -687,6 +754,16 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 			}
 			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
 		case 6:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("describe primary deletable %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+		case 7:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("final describe before primary delete %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+		case 8:
 			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-primary" {
 				t.Fatalf("delete primary %s %s", req.Method, req.URL.Path)
 			}
@@ -700,6 +777,59 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 	})
 	schema := testGlobalClusterResourceSchema(t, resource)
 	state := testGlobalClusterState(t, ctx, schema, testGlobalClusterBaseModel())
+
+	var resp fwresource.DeleteResponse
+	resource.Delete(ctx, fwresource.DeleteRequest{State: state}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Delete diagnostics: %s", resp.Diagnostics.Errors()[0].Summary())
+	}
+}
+
+func TestGlobalClusterResourceDeleteWaitsForPrimaryMemberRunningBeforePrimaryDelete(t *testing.T) {
+	ctx := context.Background()
+	testGlobalClusterSecondaryDeleteWait(t, time.Millisecond, time.Second)
+	resource := newTestGlobalClusterResource(t, func(call int, req *http.Request, body []byte) (*http.Response, error) {
+		switch call {
+		case 1:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("describe %s %s", req.Method, req.URL.Path)
+			}
+			payload := describeGlobalClusterPayloadWithoutSecondaries(4)
+			payload["data"].(map[string]any)["clusters"].([]map[string]any)[0]["status"] = "LOCKED"
+			return globalClusterJSONResponse(t, http.StatusOK, payload), nil
+		case 2:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("describe primary deletable %s %s", req.Method, req.URL.Path)
+			}
+			payload := describeGlobalClusterPayloadWithoutSecondaries(4)
+			payload["data"].(map[string]any)["clusters"].([]map[string]any)[0]["status"] = "LOCKED"
+			return globalClusterJSONResponse(t, http.StatusOK, payload), nil
+		case 3:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("describe primary running %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+		case 4:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("final describe before primary delete %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+		case 5:
+			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-primary" {
+				t.Fatalf("delete primary %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, map[string]any{
+				"code": 0,
+				"data": map[string]any{"globalClusterId": "glo-1", "clusterId": "in01-primary", "prompt": "deleted"},
+			}), nil
+		default:
+			return nil, fmt.Errorf("unexpected call %d", call)
+		}
+	})
+	schema := testGlobalClusterResourceSchema(t, resource)
+	stateModel := testGlobalClusterBaseModel()
+	stateModel.Cluster = stateModel.Cluster[:1]
+	state := testGlobalClusterState(t, ctx, schema, stateModel)
 
 	var resp fwresource.DeleteResponse
 	resource.Delete(ctx, fwresource.DeleteRequest{State: state}, &resp)

@@ -68,6 +68,53 @@ func TestGlobalClusterSecondaryClusterDeletedCondition(t *testing.T) {
 	}
 }
 
+func TestGlobalClusterCUUpdatedCondition(t *testing.T) {
+	cluster := &GlobalCluster{GlobalClusterID: "glo-1", CUSize: 1, Clusters: []GlobalClusterMember{
+		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},
+	}}
+
+	done, lastStatus, err := cluster.isCUUpdated(2)
+	if done || lastStatus != "global_cu_size=1" || err != nil {
+		t.Fatalf("expected old global cu_size to keep waiting, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+	}
+
+	cluster.CUSize = 2
+	cluster.Clusters[0].Status = "CU_MODIFYING"
+	done, lastStatus, err = cluster.isCUUpdated(2)
+	if done || lastStatus != "CU_MODIFYING" || err != nil {
+		t.Fatalf("expected modifying member to keep waiting, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+	}
+
+	cluster.Clusters[0].Status = "RUNNING"
+	done, lastStatus, err = cluster.isCUUpdated(2)
+	if !done || lastStatus != "RUNNING" || err != nil {
+		t.Fatalf("expected global cluster cu update to be ready, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+	}
+}
+
+func TestGlobalClusterPrimaryDeletableCondition(t *testing.T) {
+	cluster := &GlobalCluster{GlobalClusterID: "glo-1", Clusters: []GlobalClusterMember{
+		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},
+	}}
+
+	done, lastStatus, err := cluster.isReadyToDeletePrimary()
+	if !done || lastStatus != "RUNNING" || err != nil {
+		t.Fatalf("expected only running primary to be deletable, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+	}
+
+	cluster.Clusters = append(cluster.Clusters, GlobalClusterMember{ClusterID: "in01-secondary", Role: GlobalClusterMemberRoleSecondary, Status: "DELETING"})
+	done, lastStatus, err = cluster.isReadyToDeletePrimary()
+	if done || lastStatus != "DELETING" || err != nil {
+		t.Fatalf("expected secondary to block primary deletion, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+	}
+
+	cluster.Clusters = []GlobalClusterMember{{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "LOCKED"}}
+	done, lastStatus, err = cluster.isReadyToDeletePrimary()
+	if done || lastStatus != "LOCKED" || err != nil {
+		t.Fatalf("expected locked primary to block primary deletion, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+	}
+}
+
 func TestGlobalClusterSecondaryClusterRunningCondition(t *testing.T) {
 	cluster := &GlobalCluster{Clusters: []GlobalClusterMember{
 		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},

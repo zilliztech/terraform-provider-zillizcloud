@@ -40,6 +40,8 @@ type GlobalClusterResource struct {
 	client                *zilliz.Client
 	store                 GlobalClusterStore
 	sureInstanceNotExists func(globalClusterID string, clusterID string) condition
+	sureGlobalClusterCU   func(globalClusterID string, targetCUSize int64) condition
+	surePrimaryDeletable  func(globalClusterID string) condition
 	sureInstanceIsRunning func(globalClusterID string, member GlobalClusterMemberSpec) condition
 }
 
@@ -52,6 +54,24 @@ func newGlobalClusterResource() *GlobalClusterResource {
 				return false, "", err
 			}
 			return globalCluster.isInstanceNotExists(clusterID)
+		}
+	}
+	r.sureGlobalClusterCU = func(globalClusterID string, targetCUSize int64) condition {
+		return func(ctx context.Context) (bool, string, error) {
+			globalCluster, err := r.store.Describe(ctx, globalClusterID)
+			if err != nil {
+				return false, "", err
+			}
+			return globalCluster.isCUUpdated(targetCUSize)
+		}
+	}
+	r.surePrimaryDeletable = func(globalClusterID string) condition {
+		return func(ctx context.Context) (bool, string, error) {
+			globalCluster, err := r.store.Describe(ctx, globalClusterID)
+			if err != nil {
+				return false, "", err
+			}
+			return globalCluster.isReadyToDeletePrimary()
 		}
 	}
 	r.sureInstanceIsRunning = func(globalClusterID string, member GlobalClusterMemberSpec) condition {
@@ -365,6 +385,24 @@ func (r *GlobalClusterResource) Update(ctx context.Context, req resource.UpdateR
 			)
 			return
 		}
+
+		targetCUSize := plan.CUSize.ValueInt64()
+		if err := waitFor(
+			ctx,
+			globalClusterSecondaryRunningTimeout,
+			globalClusterSecondaryPollInterval,
+			r.sureGlobalClusterCU(state.ID.ValueString(), targetCUSize),
+			func(lastStatus string) error {
+				return fmt.Errorf("global cluster did not reach cu_size %d with RUNNING members; last status %s", targetCUSize, lastStatus)
+			},
+		); err != nil {
+			resp.Diagnostics.AddError(
+				"Timed out waiting for global cluster CU modification",
+				fmt.Sprintf("global_cluster_id=%s cu_size=%d error=%s", state.ID.ValueString(), targetCUSize, err.Error()),
+			)
+			return
+		}
+
 	}
 
 	globalCluster, err = r.store.Describe(ctx, state.ID.ValueString())
@@ -477,6 +515,34 @@ func (r *GlobalClusterResource) Delete(ctx context.Context, req resource.DeleteR
 			)
 			return
 		}
+	}
+
+	if err := waitFor(
+		ctx,
+		globalClusterSecondaryDeleteTimeout,
+		globalClusterSecondaryPollInterval,
+		r.surePrimaryDeletable(state.ID.ValueString()),
+		func(lastStatus string) error {
+			return fmt.Errorf("primary global cluster member is not ready for deletion; last observed status %s", lastStatus)
+		},
+	); err != nil {
+		resp.Diagnostics.AddError(
+			"Timed out waiting for primary global cluster member to become deletable",
+			fmt.Sprintf("global_cluster_id=%s error=%s", state.ID.ValueString(), err.Error()),
+		)
+		return
+	}
+
+	globalCluster, err = r.store.Describe(ctx, state.ID.ValueString())
+	if err != nil {
+		if IsNotFoundError(err) {
+			return
+		}
+		resp.Diagnostics.AddError(
+			"Failed to read global cluster before primary delete",
+			fmt.Sprintf("global_cluster_id=%s error=%s", state.ID.ValueString(), err.Error()),
+		)
+		return
 	}
 
 	var primaryClusterID string

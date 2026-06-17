@@ -76,6 +76,45 @@ func (c *GlobalCluster) isInstanceNotExists(clusterID string) (bool, string, err
 	return false, member.Status, nil
 }
 
+func (c *GlobalCluster) isCUUpdated(targetCUSize int64) (bool, string, error) {
+	if c == nil {
+		return false, "missing", nil
+	}
+	if c.CUSize != targetCUSize {
+		return false, fmt.Sprintf("global_cu_size=%d", c.CUSize), nil
+	}
+	for _, member := range c.Clusters {
+		if member.Status != "RUNNING" {
+			return false, member.Status, nil
+		}
+	}
+	return true, "RUNNING", nil
+}
+
+func (c *GlobalCluster) isReadyToDeletePrimary() (bool, string, error) {
+	if c == nil {
+		return false, "missing", nil
+	}
+
+	primaryCount := 0
+	primaryStatus := "missing"
+	for _, member := range c.Clusters {
+		switch member.Role {
+		case GlobalClusterMemberRolePrimary:
+			primaryCount++
+			primaryStatus = member.Status
+		case GlobalClusterMemberRoleSecondary:
+			return false, member.Status, nil
+		}
+	}
+
+	if primaryCount != 1 {
+		return false, primaryStatus, fmt.Errorf("global cluster %s has %d primary members", c.GlobalClusterID, primaryCount)
+	}
+
+	return primaryStatus == "RUNNING", primaryStatus, nil
+}
+
 func (c *GlobalCluster) isInstanceRunning(clusterID string) (bool, string, error) {
 	member, exists := c.memberByClusterID(clusterID)
 	if !exists {
