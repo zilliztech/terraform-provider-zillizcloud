@@ -11,6 +11,7 @@ type VmNodeGroup struct {
 type CreateByocOpProjectRequest struct {
 	AWSParam   *AWSParam   `json:"awsParam,omitempty"`
 	AzureParam *AzureParam `json:"azureParam,omitempty"`
+	GCPParam   *GCPParam   `json:"gcpParam,omitempty"`
 
 	RegionID string  `json:"regionId"`
 	CloudID  CloudId `json:"cloudId"`

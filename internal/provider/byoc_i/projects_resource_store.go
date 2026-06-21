@@ -102,6 +102,30 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		}
 	}
 
+	if data.GCP != nil {
+		request.CloudID = zilliz.GCP
+		request.RegionID = data.GCP.Region.ValueString()
+
+		var zones []string
+		data.GCP.GKE.Zones.ElementsAs(ctx, &zones, false)
+
+		request.GCPParam = &zilliz.GCPParam{
+			GCPProjectID:      data.GCP.ProjectID.ValueString(),
+			BucketID:          data.GCP.Storage.BucketID.ValueString(),
+			GKENodeSA:         data.GCP.Identity.GKENodeSA.ValueString(),
+			ManagementSA:      data.GCP.Identity.ManagementSA.ValueString(),
+			StorageSA:         data.GCP.Identity.StorageSA.ValueString(),
+			GKEClusterName:    data.GCP.GKE.ClusterName.ValueString(),
+			VPCName:           data.GCP.Network.VPCName.ValueString(),
+			PrimarySubnetName: data.GCP.Network.PrimarySubnetName.ValueString(),
+			PodSubnetName:     data.GCP.Network.PodSubnetName.ValueString(),
+			ServiceSubnetName: data.GCP.Network.ServiceSubnetName.ValueString(),
+			LBSubnetName:      data.GCP.Network.LBSubnetName.ValueString(),
+			PSCEndpointIP:     optionalStringPointer(data.GCP.Network.PSCEndpointIP),
+			Zones:             zones,
+		}
+	}
+
 	// if data.ExtConfig.ValueString() is set, set it to ExtConfig
 	if !data.ExtConfig.IsNull() {
 		request.ExtConfig = data.ExtConfig.ValueStringPointer()
@@ -131,6 +155,13 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 	}
 
 	return nil
+}
+
+func optionalStringPointer(value types.String) *string {
+	if value.IsNull() || value.IsUnknown() || value.ValueString() == "" {
+		return nil
+	}
+	return value.ValueStringPointer()
 }
 
 func (s *byocOpProjectStore) Delete(ctx context.Context, data *BYOCOpProjectResourceModel) (err error) {

@@ -367,6 +367,135 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 					},
 				},
 			},
+			"gcp": schema.SingleNestedAttribute{
+				MarkdownDescription: "GCP configuration for the BYOC project",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"region": schema.StringAttribute{
+						MarkdownDescription: "GCP region",
+						Required:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.RequiresReplace(),
+						},
+					},
+					"project_id": schema.StringAttribute{
+						MarkdownDescription: "Customer GCP project ID",
+						Required:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.RequiresReplace(),
+						},
+					},
+					"network": schema.SingleNestedAttribute{
+						MarkdownDescription: "GCP network configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"vpc_name": schema.StringAttribute{
+								MarkdownDescription: "VPC network name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"primary_subnet_name": schema.StringAttribute{
+								MarkdownDescription: "Primary subnet name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"pod_subnet_name": schema.StringAttribute{
+								MarkdownDescription: "Pod secondary range name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"service_subnet_name": schema.StringAttribute{
+								MarkdownDescription: "Service secondary range name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"lb_subnet_name": schema.StringAttribute{
+								MarkdownDescription: "Regional managed proxy load balancer subnet name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"psc_endpoint_ip": schema.StringAttribute{
+								MarkdownDescription: "Private Service Connect endpoint IP",
+								Optional:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+					"identity": schema.SingleNestedAttribute{
+						MarkdownDescription: "GCP service account configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"gke_node_sa": schema.StringAttribute{
+								MarkdownDescription: "GKE node service account email",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"management_sa": schema.StringAttribute{
+								MarkdownDescription: "Maintenance service account email",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"storage_sa": schema.StringAttribute{
+								MarkdownDescription: "Storage service account email",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+					"gke": schema.SingleNestedAttribute{
+						MarkdownDescription: "GKE cluster configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"cluster_name": schema.StringAttribute{
+								MarkdownDescription: "GKE cluster name",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"zones": schema.SetAttribute{
+								MarkdownDescription: "GKE node locations",
+								Required:            true,
+								ElementType:         types.StringType,
+								PlanModifiers: []planmodifier.Set{
+									setplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+					"storage": schema.SingleNestedAttribute{
+						MarkdownDescription: "GCP storage configuration",
+						Required:            true,
+						Attributes: map[string]schema.Attribute{
+							"bucket_id": schema.StringAttribute{
+								MarkdownDescription: "GCS bucket ID",
+								Required:            true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		Blocks: map[string]schema.Block{
 			"timeouts": timeouts.Block(ctx, timeouts.Opts{
@@ -383,6 +512,7 @@ func (r *BYOCOpProjectResource) ConfigValidators(ctx context.Context) []resource
 		resourcevalidator.ExactlyOneOf(
 			path.MatchRoot("aws"),
 			path.MatchRoot("azure"),
+			path.MatchRoot("gcp"),
 		),
 	}
 }

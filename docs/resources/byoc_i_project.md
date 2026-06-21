@@ -25,6 +25,7 @@ BYOC-I Project resource for managing bring-your-own-cloud operator projects.
 - `aws` (Attributes) AWS configuration for the BYOC project (see [below for nested schema](#nestedatt--aws))
 - `azure` (Attributes) Azure configuration for the BYOC project (see [below for nested schema](#nestedatt--azure))
 - `ext_config` (String) External configuration
+- `gcp` (Attributes) GCP configuration for the BYOC project (see [below for nested schema](#nestedatt--gcp))
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
@@ -160,6 +161,62 @@ Required:
 
 - `container_name` (String) Storage container name
 - `storage_account_name` (String) Storage account name
+
+
+
+<a id="nestedatt--gcp"></a>
+### Nested Schema for `gcp`
+
+Required:
+
+- `gke` (Attributes) GKE cluster configuration (see [below for nested schema](#nestedatt--gcp--gke))
+- `identity` (Attributes) GCP service account configuration (see [below for nested schema](#nestedatt--gcp--identity))
+- `network` (Attributes) GCP network configuration (see [below for nested schema](#nestedatt--gcp--network))
+- `project_id` (String) Customer GCP project ID
+- `region` (String) GCP region
+- `storage` (Attributes) GCP storage configuration (see [below for nested schema](#nestedatt--gcp--storage))
+
+<a id="nestedatt--gcp--gke"></a>
+### Nested Schema for `gcp.gke`
+
+Required:
+
+- `cluster_name` (String) GKE cluster name
+- `zones` (Set of String) GKE node locations
+
+
+<a id="nestedatt--gcp--identity"></a>
+### Nested Schema for `gcp.identity`
+
+Required:
+
+- `gke_node_sa` (String) GKE node service account email
+- `management_sa` (String) Maintenance service account email
+- `storage_sa` (String) Storage service account email
+
+
+<a id="nestedatt--gcp--network"></a>
+### Nested Schema for `gcp.network`
+
+Required:
+
+- `lb_subnet_name` (String) Regional managed proxy load balancer subnet name
+- `pod_subnet_name` (String) Pod secondary range name
+- `primary_subnet_name` (String) Primary subnet name
+- `service_subnet_name` (String) Service secondary range name
+- `vpc_name` (String) VPC network name
+
+Optional:
+
+- `psc_endpoint_ip` (String) Private Service Connect endpoint IP
+
+
+<a id="nestedatt--gcp--storage"></a>
+### Nested Schema for `gcp.storage`
+
+Required:
+
+- `bucket_id` (String) GCS bucket ID
 
 
 
