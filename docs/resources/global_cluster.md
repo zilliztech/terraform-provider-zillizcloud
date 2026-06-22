@@ -22,15 +22,13 @@ terraform {
 }
 
 provider "zillizcloud" {
-  host_address = "http://127.0.0.1:8080/v2"
-  api_key      = "1234567890"
 }
 
 resource "zillizcloud_global_cluster" "example" {
   global_cluster_name = "example-global-cluster"
   project_id          = "proj-ebc5ac7f430702aec8c57b"
   cu_type             = "Performance-optimized"
-  cu_size             = 8
+  cu_size             = 1
 
   cluster = [
     {
@@ -40,11 +38,7 @@ resource "zillizcloud_global_cluster" "example" {
     {
       cluster_name = "example-secondary-eu"
       region_id    = "aws-eu-west-1"
-    },
-    {
-      cluster_name = "example-secondary-ap"
-      region_id    = "aws-ap-southeast-1"
-    },
+    }
   ]
 }
 ```

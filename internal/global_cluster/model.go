@@ -36,6 +36,10 @@ type GlobalClusterMember struct {
 	Status      string
 }
 
+func (m GlobalClusterMember) isRunning() bool {
+	return m.Status == "RUNNING"
+}
+
 type GlobalClusterMemberSpec struct {
 	ClusterName string
 	RegionID    string
@@ -68,6 +72,18 @@ func (c *GlobalCluster) memberByClusterID(clusterID string) (GlobalClusterMember
 	return GlobalClusterMember{}, false
 }
 
+func (c *GlobalCluster) primaryMember() (GlobalClusterMember, bool) {
+	if c == nil {
+		return GlobalClusterMember{}, false
+	}
+	for _, member := range c.Clusters {
+		if member.Role == GlobalClusterMemberRolePrimary {
+			return member, true
+		}
+	}
+	return GlobalClusterMember{}, false
+}
+
 func (c *GlobalCluster) isInstanceNotExists(clusterID string) (bool, string, error) {
 	member, exists := c.memberByClusterID(clusterID)
 	if !exists {
@@ -84,27 +100,28 @@ func (c *GlobalCluster) isCUUpdated(targetCUSize int64) (bool, string, error) {
 		return false, fmt.Sprintf("global_cu_size=%d", c.CUSize), nil
 	}
 	for _, member := range c.Clusters {
-		if member.Status != "RUNNING" {
+		if !member.isRunning() {
 			return false, member.Status, nil
 		}
 	}
 	return true, "RUNNING", nil
 }
 
-func (c *GlobalCluster) isReadyToDeletePrimary() (bool, string, error) {
+func (c *GlobalCluster) isPrimaryMemberRunning() (bool, string, error) {
 	if c == nil {
 		return false, "missing", nil
 	}
 
-	primaryCount := 0
+	primary, hasPrimary := c.primaryMember()
 	primaryStatus := "missing"
+	if hasPrimary {
+		primaryStatus = primary.Status
+	}
+
+	primaryCount := 0
 	for _, member := range c.Clusters {
-		switch member.Role {
-		case GlobalClusterMemberRolePrimary:
+		if member.Role == GlobalClusterMemberRolePrimary {
 			primaryCount++
-			primaryStatus = member.Status
-		case GlobalClusterMemberRoleSecondary:
-			return false, member.Status, nil
 		}
 	}
 
@@ -112,18 +129,7 @@ func (c *GlobalCluster) isReadyToDeletePrimary() (bool, string, error) {
 		return false, primaryStatus, fmt.Errorf("global cluster %s has %d primary members", c.GlobalClusterID, primaryCount)
 	}
 
-	return primaryStatus == "RUNNING", primaryStatus, nil
-}
-
-func (c *GlobalCluster) isInstanceRunning(clusterID string) (bool, string, error) {
-	member, exists := c.memberByClusterID(clusterID)
-	if !exists {
-		return false, "missing", nil
-	}
-	if member.Role != GlobalClusterMemberRoleSecondary {
-		return false, "", fmt.Errorf("cluster %s appears in global cluster members with role %s, not %s", clusterID, member.Role, GlobalClusterMemberRoleSecondary)
-	}
-	return member.Status == "RUNNING", member.Status, nil
+	return primary.isRunning(), primaryStatus, nil
 }
 
 func (c *GlobalCluster) isSecondaryMemberRunning(spec GlobalClusterMemberSpec) (bool, string, error) {
@@ -137,7 +143,7 @@ func (c *GlobalCluster) isSecondaryMemberRunning(spec GlobalClusterMemberSpec) (
 		if member.Role != GlobalClusterMemberRoleSecondary {
 			return false, "", fmt.Errorf("cluster %s in region %s appears in global cluster members with role %s, not %s", spec.ClusterName, spec.RegionID, member.Role, GlobalClusterMemberRoleSecondary)
 		}
-		return member.Status == "RUNNING", member.Status, nil
+		return member.isRunning(), member.Status, nil
 	}
 	return false, "missing", nil
 }

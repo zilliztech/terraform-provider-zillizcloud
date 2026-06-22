@@ -51,6 +51,35 @@ func TestGlobalClusterFromAPINil(t *testing.T) {
 	}
 }
 
+func TestGlobalClusterMemberRunningState(t *testing.T) {
+	if !(GlobalClusterMember{Status: "RUNNING"}).isRunning() {
+		t.Fatalf("expected RUNNING member to be running")
+	}
+
+	if (GlobalClusterMember{Status: "CREATING"}).isRunning() {
+		t.Fatalf("expected CREATING member not to be running")
+	}
+}
+
+func TestGlobalClusterPrimaryMember(t *testing.T) {
+	cluster := &GlobalCluster{Clusters: []GlobalClusterMember{
+		{ClusterID: "in01-secondary", Role: GlobalClusterMemberRoleSecondary, Status: "RUNNING"},
+		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},
+	}}
+
+	member, exists := cluster.primaryMember()
+	if !exists || member.ClusterID != "in01-primary" {
+		t.Fatalf("expected primary member, got exists=%v member=%+v", exists, member)
+	}
+
+	member, exists = (&GlobalCluster{Clusters: []GlobalClusterMember{
+		{ClusterID: "in01-secondary", Role: GlobalClusterMemberRoleSecondary, Status: "RUNNING"},
+	}}).primaryMember()
+	if exists || member.ClusterID != "" {
+		t.Fatalf("expected no primary member, got exists=%v member=%+v", exists, member)
+	}
+}
+
 func TestGlobalClusterSecondaryClusterDeletedCondition(t *testing.T) {
 	cluster := &GlobalCluster{Clusters: []GlobalClusterMember{
 		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},
@@ -92,54 +121,37 @@ func TestGlobalClusterCUUpdatedCondition(t *testing.T) {
 	}
 }
 
-func TestGlobalClusterPrimaryDeletableCondition(t *testing.T) {
+func TestGlobalClusterPrimaryMemberRunningCondition(t *testing.T) {
 	cluster := &GlobalCluster{GlobalClusterID: "glo-1", Clusters: []GlobalClusterMember{
-		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},
+		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "CREATING"},
 	}}
 
-	done, lastStatus, err := cluster.isReadyToDeletePrimary()
-	if !done || lastStatus != "RUNNING" || err != nil {
-		t.Fatalf("expected only running primary to be deletable, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
-	}
-
-	cluster.Clusters = append(cluster.Clusters, GlobalClusterMember{ClusterID: "in01-secondary", Role: GlobalClusterMemberRoleSecondary, Status: "DELETING"})
-	done, lastStatus, err = cluster.isReadyToDeletePrimary()
-	if done || lastStatus != "DELETING" || err != nil {
-		t.Fatalf("expected secondary to block primary deletion, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
-	}
-
-	cluster.Clusters = []GlobalClusterMember{{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "LOCKED"}}
-	done, lastStatus, err = cluster.isReadyToDeletePrimary()
-	if done || lastStatus != "LOCKED" || err != nil {
-		t.Fatalf("expected locked primary to block primary deletion, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
-	}
-}
-
-func TestGlobalClusterSecondaryClusterRunningCondition(t *testing.T) {
-	cluster := &GlobalCluster{Clusters: []GlobalClusterMember{
-		{ClusterID: "in01-primary", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},
-		{ClusterID: "in01-secondary", Role: GlobalClusterMemberRoleSecondary, Status: "CREATING"},
-		{ClusterID: "in01-secondary-running", Role: GlobalClusterMemberRoleSecondary, Status: "RUNNING"},
-	}}
-
-	done, lastStatus, err := cluster.isInstanceRunning("in01-secondary")
+	done, lastStatus, err := cluster.isPrimaryMemberRunning()
 	if done || lastStatus != "CREATING" || err != nil {
-		t.Fatalf("expected creating secondary to keep waiting, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+		t.Fatalf("expected creating primary to keep waiting, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
 	}
 
-	done, lastStatus, err = cluster.isInstanceRunning("in01-secondary-running")
+	cluster.Clusters[0].Status = "RUNNING"
+	done, lastStatus, err = cluster.isPrimaryMemberRunning()
 	if !done || lastStatus != "RUNNING" || err != nil {
-		t.Fatalf("expected running secondary to be done, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+		t.Fatalf("expected running primary to be done, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
 	}
 
-	done, lastStatus, err = cluster.isInstanceRunning("in01-missing")
-	if done || lastStatus != "missing" || err != nil {
-		t.Fatalf("expected missing secondary to keep waiting, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
+	cluster.Clusters = []GlobalClusterMember{
+		{ClusterID: "in01-secondary", Role: GlobalClusterMemberRoleSecondary, Status: "RUNNING"},
+	}
+	done, lastStatus, err = cluster.isPrimaryMemberRunning()
+	if done || lastStatus != "missing" || err == nil {
+		t.Fatalf("expected missing primary error, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
 	}
 
-	_, _, err = cluster.isInstanceRunning("in01-primary")
-	if err == nil {
-		t.Fatalf("expected primary member to be rejected")
+	cluster.Clusters = []GlobalClusterMember{
+		{ClusterID: "in01-primary-a", Role: GlobalClusterMemberRolePrimary, Status: "RUNNING"},
+		{ClusterID: "in01-primary-b", Role: GlobalClusterMemberRolePrimary, Status: "CREATING"},
+	}
+	done, lastStatus, err = cluster.isPrimaryMemberRunning()
+	if done || lastStatus != "RUNNING" || err == nil {
+		t.Fatalf("expected duplicate primary error, got done=%v lastStatus=%s err=%v", done, lastStatus, err)
 	}
 }
 

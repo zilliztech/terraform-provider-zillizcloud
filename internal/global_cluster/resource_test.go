@@ -232,10 +232,25 @@ func describeGlobalClusterPayloadWithoutSecondaryEU(cuSize int) map[string]any {
 	return payload
 }
 
-func describeGlobalClusterPayloadWithoutSecondaries(cuSize int) map[string]any {
-	payload, data, clusters := describeGlobalClusterPayloadParts(cuSize)
+func describeGlobalClusterPayloadWithoutSecondaries() map[string]any {
+	payload, data, clusters := describeGlobalClusterPayloadParts(4)
 	data["clusters"] = clusters[:1]
 	data["regionIds"] = []string{"aws-us-west-2"}
+	return payload
+}
+
+func describeGlobalClusterPayloadWithLockedPrimary(t *testing.T) map[string]any {
+	t.Helper()
+	payload := describeGlobalClusterPayloadWithoutSecondaries()
+	data, ok := payload["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("payload data type = %T, want map[string]any", payload["data"])
+	}
+	clusters, ok := data["clusters"].([]map[string]any)
+	if !ok {
+		t.Fatalf("payload clusters type = %T, want []map[string]any", data["clusters"])
+	}
+	clusters[0]["status"] = "LOCKED"
 	return payload
 }
 
@@ -656,45 +671,6 @@ func TestGlobalClusterResourceUpdateRemovesSecondaryCluster(t *testing.T) {
 	}
 }
 
-func TestGlobalClusterResourceWaitForSecondaryClusterRunning(t *testing.T) {
-	ctx := context.Background()
-	testGlobalClusterSecondaryRunningWait(t, time.Millisecond, time.Second)
-	resource := newTestGlobalClusterResource(t, func(call int, req *http.Request, body []byte) (*http.Response, error) {
-		switch call {
-		case 1:
-			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe while secondary is creating %s %s", req.Method, req.URL.Path)
-			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithSecondaryAPCreating(4)), nil
-		case 2:
-			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe after secondary running %s %s", req.Method, req.URL.Path)
-			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(4)), nil
-		default:
-			return nil, fmt.Errorf("unexpected call %d", call)
-		}
-	})
-
-	if err := waitFor(
-		ctx,
-		globalClusterSecondaryRunningTimeout,
-		globalClusterSecondaryPollInterval,
-		func(ctx context.Context) (bool, string, error) {
-			globalCluster, err := resource.store.Describe(ctx, "glo-1")
-			if err != nil {
-				return false, "", err
-			}
-			return globalCluster.isInstanceRunning("in01-secondary-ap")
-		},
-		func(lastStatus string) error {
-			return fmt.Errorf("secondary cluster %s did not reach RUNNING status; last status %s", "in01-secondary-ap", lastStatus)
-		},
-	); err != nil {
-		t.Fatalf("waitFor secondary cluster running err: %v", err)
-	}
-}
-
 func TestGlobalClusterResourceUpdateRejectsSecondaryModification(t *testing.T) {
 	ctx := context.Background()
 	resource := newTestGlobalClusterResource(t, func(call int, req *http.Request, body []byte) (*http.Response, error) {
@@ -752,17 +728,17 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("describe after second secondary deleted %s %s", req.Method, req.URL.Path)
 			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 6:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("describe primary deletable %s %s", req.Method, req.URL.Path)
 			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 7:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("final describe before primary delete %s %s", req.Method, req.URL.Path)
 			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 8:
 			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-primary" {
 				t.Fatalf("delete primary %s %s", req.Method, req.URL.Path)
@@ -794,26 +770,24 @@ func TestGlobalClusterResourceDeleteWaitsForPrimaryMemberRunningBeforePrimaryDel
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("describe %s %s", req.Method, req.URL.Path)
 			}
-			payload := describeGlobalClusterPayloadWithoutSecondaries(4)
-			payload["data"].(map[string]any)["clusters"].([]map[string]any)[0]["status"] = "LOCKED"
+			payload := describeGlobalClusterPayloadWithLockedPrimary(t)
 			return globalClusterJSONResponse(t, http.StatusOK, payload), nil
 		case 2:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("describe primary deletable %s %s", req.Method, req.URL.Path)
 			}
-			payload := describeGlobalClusterPayloadWithoutSecondaries(4)
-			payload["data"].(map[string]any)["clusters"].([]map[string]any)[0]["status"] = "LOCKED"
+			payload := describeGlobalClusterPayloadWithLockedPrimary(t)
 			return globalClusterJSONResponse(t, http.StatusOK, payload), nil
 		case 3:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("describe primary running %s %s", req.Method, req.URL.Path)
 			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 4:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("final describe before primary delete %s %s", req.Method, req.URL.Path)
 			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries(4)), nil
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 5:
 			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-primary" {
 				t.Fatalf("delete primary %s %s", req.Method, req.URL.Path)

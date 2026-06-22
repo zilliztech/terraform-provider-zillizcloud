@@ -41,8 +41,8 @@ type GlobalClusterResource struct {
 	store                 GlobalClusterStore
 	sureInstanceNotExists func(globalClusterID string, clusterID string) condition
 	sureGlobalClusterCU   func(globalClusterID string, targetCUSize int64) condition
-	surePrimaryDeletable  func(globalClusterID string) condition
 	sureInstanceIsRunning func(globalClusterID string, member GlobalClusterMemberSpec) condition
+	surePrimaryRunning    func(globalClusterID string) condition
 }
 
 func newGlobalClusterResource() *GlobalClusterResource {
@@ -65,15 +65,6 @@ func newGlobalClusterResource() *GlobalClusterResource {
 			return globalCluster.isCUUpdated(targetCUSize)
 		}
 	}
-	r.surePrimaryDeletable = func(globalClusterID string) condition {
-		return func(ctx context.Context) (bool, string, error) {
-			globalCluster, err := r.store.Describe(ctx, globalClusterID)
-			if err != nil {
-				return false, "", err
-			}
-			return globalCluster.isReadyToDeletePrimary()
-		}
-	}
 	r.sureInstanceIsRunning = func(globalClusterID string, member GlobalClusterMemberSpec) condition {
 		return func(ctx context.Context) (bool, string, error) {
 			globalCluster, err := r.store.Describe(ctx, globalClusterID)
@@ -83,6 +74,16 @@ func newGlobalClusterResource() *GlobalClusterResource {
 			return globalCluster.isSecondaryMemberRunning(member)
 		}
 	}
+	r.surePrimaryRunning = func(globalClusterID string) condition {
+		return func(ctx context.Context) (bool, string, error) {
+			globalCluster, err := r.store.Describe(ctx, globalClusterID)
+			if err != nil {
+				return false, "", err
+			}
+			return globalCluster.isPrimaryMemberRunning()
+		}
+	}
+
 	return r
 }
 
@@ -490,21 +491,12 @@ func (r *GlobalClusterResource) Delete(ctx context.Context, req resource.DeleteR
 		if member.Role != GlobalClusterMemberRoleSecondary {
 			continue
 		}
-		if err := r.store.DeleteCluster(ctx, state.ID.ValueString(), member.ClusterID); err != nil {
-			if IsNotFoundError(err) {
-				continue
-			}
-			resp.Diagnostics.AddError(
-				"Failed to delete secondary global cluster member",
-				fmt.Sprintf("global_cluster_id=%s cluster_id=%s error=%s", state.ID.ValueString(), member.ClusterID, err.Error()),
-			)
-			return
-		}
+
 		if err := waitFor(
 			ctx,
 			globalClusterSecondaryDeleteTimeout,
 			globalClusterSecondaryPollInterval,
-			r.sureInstanceNotExists(state.ID.ValueString(), member.ClusterID),
+			r.surePrimaryRunning(state.ID.ValueString()),
 			func(lastStatus string) error {
 				return fmt.Errorf("secondary cluster %s still appears in global cluster members with status %s", member.ClusterID, lastStatus)
 			},
@@ -515,19 +507,29 @@ func (r *GlobalClusterResource) Delete(ctx context.Context, req resource.DeleteR
 			)
 			return
 		}
+		if err := r.store.DeleteCluster(ctx, state.ID.ValueString(), member.ClusterID); err != nil {
+			if IsNotFoundError(err) {
+				continue
+			}
+			resp.Diagnostics.AddError(
+				"Failed to delete secondary global cluster member",
+				fmt.Sprintf("global_cluster_id=%s cluster_id=%s error=%s", state.ID.ValueString(), member.ClusterID, err.Error()),
+			)
+			return
+		}
 	}
 
 	if err := waitFor(
 		ctx,
 		globalClusterSecondaryDeleteTimeout,
 		globalClusterSecondaryPollInterval,
-		r.surePrimaryDeletable(state.ID.ValueString()),
+		r.surePrimaryRunning(state.ID.ValueString()),
 		func(lastStatus string) error {
-			return fmt.Errorf("primary global cluster member is not ready for deletion; last observed status %s", lastStatus)
+			return fmt.Errorf("primary global cluster member did not become RUNNING after secondary member deletion; last observed primary status %s", lastStatus)
 		},
 	); err != nil {
 		resp.Diagnostics.AddError(
-			"Timed out waiting for primary global cluster member to become deletable",
+			"Timed out waiting for primary global cluster member to become running before deletion",
 			fmt.Sprintf("global_cluster_id=%s error=%s", state.ID.ValueString(), err.Error()),
 		)
 		return
