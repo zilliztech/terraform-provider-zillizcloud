@@ -222,8 +222,14 @@ func TestCreateClusterParamsAutoscalingJSON(t *testing.T) {
 	if got["replica"] != float64(2) {
 		t.Fatalf("replica = %v, want 2", got["replica"])
 	}
-	autoscaling := got["autoscaling"].(map[string]any)
-	cu := autoscaling["cu"].(map[string]any)
+	autoscaling, ok := got["autoscaling"].(map[string]any)
+	if !ok {
+		t.Fatalf("autoscaling = %T, want map[string]any", got["autoscaling"])
+	}
+	cu, ok := autoscaling["cu"].(map[string]any)
+	if !ok {
+		t.Fatalf("autoscaling.cu = %T, want map[string]any", autoscaling["cu"])
+	}
 	if cu["min"] != float64(4) || cu["max"] != float64(8) {
 		t.Fatalf("autoscaling.cu = %v, want min=4 max=8", cu)
 	}
