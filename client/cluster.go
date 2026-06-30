@@ -79,23 +79,11 @@ type ScheduleConfig struct {
 
 // modify cluster cu size
 type ModifyClusterAutoscalingParams struct {
-	Autoscaling struct {
-		CU struct {
-			Min       *int              `json:"min,omitempty"`
-			Max       *int              `json:"max,omitempty"`
-			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
-		} `json:"cu"`
-	} `json:"autoscaling"`
+	Autoscaling AutoscalingConfig `json:"autoscaling"`
 }
 
 type ModifyReplicaSettings struct {
-	Autoscaling struct {
-		Replica struct {
-			Min       *int              `json:"min,omitempty"`
-			Max       *int              `json:"max,omitempty"`
-			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
-		} `json:"replica"`
-	} `json:"autoscaling"`
+	Autoscaling AutoscalingConfig `json:"autoscaling"`
 }
 
 func (c *Client) ModifyReplicaSettings(clusterId string, params *ModifyReplicaSettings) (*string, error) {
@@ -110,18 +98,7 @@ func (c *Client) ModifyReplicaSettings(clusterId string, params *ModifyReplicaSe
 // ModifyAutoscalingCombinedParams sends both cu and replica autoscaling in a single request
 // to avoid the later call overwriting the earlier one.
 type ModifyAutoscalingCombinedParams struct {
-	Autoscaling struct {
-		CU struct {
-			Min       *int              `json:"min,omitempty"`
-			Max       *int              `json:"max,omitempty"`
-			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
-		} `json:"cu"`
-		Replica struct {
-			Min       *int              `json:"min,omitempty"`
-			Max       *int              `json:"max,omitempty"`
-			Schedules *[]ScheduleConfig `json:"schedules,omitempty"`
-		} `json:"replica"`
-	} `json:"autoscaling"`
+	Autoscaling AutoscalingConfig `json:"autoscaling"`
 }
 
 func (c *Client) ModifyAutoscalingCombined(clusterId string, params *ModifyAutoscalingCombinedParams) (*string, error) {
@@ -227,23 +204,18 @@ type Cluster struct {
 	Labels             map[string]string `json:"labels,omitempty"`
 	Replica            int64             `json:"replica,omitempty"`
 	AwsCseKeyArn       string            `json:"keyIdentifier,omitempty"`
-	Autoscaling        struct {
-		CU struct {
-			Min       *int             `json:"min,omitempty"`
-			Max       *int             `json:"max,omitempty"`
-			Schedules []ScheduleConfig `json:"schedules,omitempty"`
-		} `json:"cu"`
-		Replica struct {
-			Min       *int             `json:"min,omitempty"`
-			Max       *int             `json:"max,omitempty"`
-			Schedules []ScheduleConfig `json:"schedules,omitempty"`
-		} `json:"replica"`
-	} `json:"autoscaling"`
+	Autoscaling        AutoscalingConfig `json:"autoscaling"`
 }
 
-type Autoscaling struct {
-	Min int `json:"min"`
-	Max int `json:"max"`
+type AutoscalingPolicy struct {
+	Min       *int             `json:"min,omitempty"`
+	Max       *int             `json:"max,omitempty"`
+	Schedules []ScheduleConfig `json:"schedules,omitempty"`
+}
+
+type AutoscalingConfig struct {
+	CU      *AutoscalingPolicy `json:"cu,omitempty"`
+	Replica *AutoscalingPolicy `json:"replica,omitempty"`
 }
 
 func (c *Client) ListClusters() (Clusters, error) {
@@ -280,15 +252,17 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 }
 
 type CreateClusterParams struct {
-	Plan         *string           `json:"plan,omitempty"`
-	ClusterName  string            `json:"clusterName"`
-	CUSize       int               `json:"cuSize"`
-	CUType       string            `json:"cuType"`
-	ProjectId    string            `json:"projectId"`
-	RegionId     string            `json:"regionId"`
-	Labels       map[string]string `json:"labels,omitempty"`
-	BucketInfo   *BucketInfo       `json:"bucketInfo,omitempty"`
-	AwsCseKeyArn *string           `json:"keyIdentifier,omitempty"`
+	Plan         *string            `json:"plan,omitempty"`
+	ClusterName  string             `json:"clusterName"`
+	CUSize       *int               `json:"cuSize,omitempty"`
+	CUType       string             `json:"cuType"`
+	ProjectId    string             `json:"projectId"`
+	RegionId     string             `json:"regionId"`
+	Replica      *int               `json:"replica,omitempty"`
+	Autoscaling  *AutoscalingConfig `json:"autoscaling,omitempty"`
+	Labels       map[string]string  `json:"labels,omitempty"`
+	BucketInfo   *BucketInfo        `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn *string            `json:"keyIdentifier,omitempty"`
 }
 type BucketInfo struct {
 	BucketName string  `json:"bucketName"`

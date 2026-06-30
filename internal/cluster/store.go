@@ -40,14 +40,14 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 
 	// Parse CU autoscaling
 	var cuDynamic *DynamicScaling
-	if cluster.Autoscaling.CU.Min != nil && cluster.Autoscaling.CU.Max != nil {
+	if cluster.Autoscaling.CU != nil && cluster.Autoscaling.CU.Min != nil && cluster.Autoscaling.CU.Max != nil {
 		cuDynamic = &DynamicScaling{
 			Min: types.Int64Value(int64(*cluster.Autoscaling.CU.Min)),
 			Max: types.Int64Value(int64(*cluster.Autoscaling.CU.Max)),
 		}
 	}
 	var cuSchedules []ScheduleScaling
-	if len(cluster.Autoscaling.CU.Schedules) > 0 {
+	if cluster.Autoscaling.CU != nil && len(cluster.Autoscaling.CU.Schedules) > 0 {
 		cuSchedules = make([]ScheduleScaling, len(cluster.Autoscaling.CU.Schedules))
 		for i, s := range cluster.Autoscaling.CU.Schedules {
 			cuSchedules[i] = ScheduleScaling{
@@ -67,14 +67,14 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 
 	// Parse Replica autoscaling
 	var replicaDynamic *DynamicScaling
-	if cluster.Autoscaling.Replica.Min != nil && cluster.Autoscaling.Replica.Max != nil {
+	if cluster.Autoscaling.Replica != nil && cluster.Autoscaling.Replica.Min != nil && cluster.Autoscaling.Replica.Max != nil {
 		replicaDynamic = &DynamicScaling{
 			Min: types.Int64Value(int64(*cluster.Autoscaling.Replica.Min)),
 			Max: types.Int64Value(int64(*cluster.Autoscaling.Replica.Max)),
 		}
 	}
 	var replicaSchedules []ScheduleScaling
-	if len(cluster.Autoscaling.Replica.Schedules) > 0 {
+	if cluster.Autoscaling.Replica != nil && len(cluster.Autoscaling.Replica.Schedules) > 0 {
 		replicaSchedules = make([]ScheduleScaling, len(cluster.Autoscaling.Replica.Schedules))
 		for i, s := range cluster.Autoscaling.Replica.Schedules {
 			replicaSchedules[i] = ScheduleScaling{
@@ -135,6 +135,7 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 
 func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceModel) (ret *ClusterResourceModel, err error) {
 	var response *zilliz.CreateClusterResponse
+	ptrInt := func(v int64) *int { i := int(v); return &i }
 
 	regionId := cluster.RegionId.ValueString()
 	if cluster.RegionId.IsNull() || cluster.RegionId.ValueString() == "" {
@@ -182,8 +183,7 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			awsCseKeyArn = conv.StringPtr(cluster.AwsCseKeyArn.ValueString())
 		}
 
-		// dedicated:
-		response, err = c.client.CreateDedicatedCluster(zilliz.CreateClusterParams{
+		params := zilliz.CreateClusterParams{
 			RegionId: regionId,
 			Plan: func() *string {
 				if cluster.Plan.IsNull() || cluster.Plan.IsUnknown() {
@@ -191,19 +191,33 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 				}
 				return conv.StringPtr(cluster.Plan.ValueString())
 			}(),
-			ClusterName: cluster.ClusterName.ValueString(),
-			CUSize: func() int {
-				if cluster.CuSize.IsNull() || cluster.CuSize.IsUnknown() {
-					return 1
-				}
-				return int(cluster.CuSize.ValueInt64())
-			}(),
+			ClusterName:  cluster.ClusterName.ValueString(),
 			CUType:       cluster.CuType.ValueString(),
 			ProjectId:    cluster.ProjectId.ValueString(),
 			Labels:       labels,
 			BucketInfo:   bucketInfo,
 			AwsCseKeyArn: awsCseKeyArn,
-		})
+		}
+		if cluster.CuSettings != nil && !cluster.CuSettings.IsDynamicScalingNull() {
+			params.Autoscaling = &zilliz.AutoscalingConfig{
+				CU: &zilliz.AutoscalingPolicy{
+					Min: ptrInt(cluster.CuSettings.DynamicScaling.Min.ValueInt64()),
+					Max: ptrInt(cluster.CuSettings.DynamicScaling.Max.ValueInt64()),
+				},
+			}
+		} else {
+			if cluster.CuSize.IsNull() || cluster.CuSize.IsUnknown() {
+				params.CUSize = ptrInt(1)
+			} else {
+				params.CUSize = ptrInt(cluster.CuSize.ValueInt64())
+			}
+		}
+		if !cluster.Replica.IsNull() && !cluster.Replica.IsUnknown() {
+			params.Replica = ptrInt(cluster.Replica.ValueInt64())
+		}
+
+		// dedicated:
+		response, err = c.client.CreateDedicatedCluster(params)
 	}
 
 	if err != nil {

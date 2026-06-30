@@ -51,8 +51,7 @@ resource "zillizcloud_cluster" "test" {
 }
 
 // TestAccReplicaOnCreate verifies that replica > 1 can be set during creation.
-// The provider creates the cluster, waits for RUNNING, then calls ModifyReplica.
-// Requires cu_size >= 12 for multi-replica.
+// Requires Enterprise+ plan and enough CU for multi-replica.
 func TestAccReplicaOnCreate(t *testing.T) {
 	t.Parallel()
 	resource.Test(t, resource.TestCase{
