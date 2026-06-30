@@ -104,6 +104,10 @@ func (r *BYOCOpProjectSettingsData) Schema(ctx context.Context, req datasource.S
 						MarkdownDescription: "Agent image URL",
 						Computed:            true,
 					},
+					"tunnel_client_image_url": schema.StringAttribute{
+						MarkdownDescription: "Tunnel client image URL",
+						Computed:            true,
+					},
 				},
 			},
 			"node_quotas": schema.SingleNestedAttribute{
@@ -208,11 +212,13 @@ func (s *byocOpProjectSettingsDataStore) Describe(ctx context.Context, projectID
 		data.PrivateLinkEnabled = types.BoolValue(response.PrivateLinkEnabled == 1)
 
 		OpConfig, diag := types.ObjectValue(map[string]attr.Type{
-			"token":           types.StringType,
-			"agent_image_url": types.StringType,
+			"token":                   types.StringType,
+			"agent_image_url":         types.StringType,
+			"tunnel_client_image_url": types.StringType,
 		}, map[string]attr.Value{
-			"token":           types.StringValue(response.OpConfig.Token),
-			"agent_image_url": types.StringValue(response.OpConfig.AgentImageUrl),
+			"token":                   types.StringValue(response.OpConfig.Token),
+			"agent_image_url":         types.StringValue(response.OpConfig.AgentImageUrl),
+			"tunnel_client_image_url": types.StringValue(response.OpConfig.TunnelClientImageUrl),
 		})
 		if diag.HasError() {
 			return data, fmt.Errorf("failed to abstract OpConfig from response")

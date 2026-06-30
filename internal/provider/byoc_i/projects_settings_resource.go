@@ -155,6 +155,13 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 							stringplanmodifier.UseStateForUnknown(),
 						},
 					},
+					"tunnel_client_image_url": schema.StringAttribute{
+						MarkdownDescription: "Tunnel client image URL",
+						Computed:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
 				},
 			},
 			"node_quotas": schema.SingleNestedAttribute{

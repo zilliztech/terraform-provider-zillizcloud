@@ -160,6 +160,7 @@ Read-Only:
 
 - `agent_image_url` (String) Agent image URL
 - `token` (String) Operation token
+- `tunnel_client_image_url` (String) Tunnel client image URL
 
 
 <a id="nestedatt--tiered_node_quota"></a>
