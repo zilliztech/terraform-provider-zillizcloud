@@ -44,6 +44,17 @@ func main() {
 			clusters.PUT("/:clusterId/securityGroups", byoc_project.UpsertSecurityGroups)
 			clusters.DELETE("/:clusterId/drop", byoc_project.DropCluster)
 		}
+		globalClusters := v2.Group("/globalClusters")
+		{
+			globalClusters.GET("", byoc_project.ListGlobalClusters)
+			globalClusters.POST("/create", byoc_project.CreateGlobalCluster)
+			globalClusters.GET("/:globalClusterId", byoc_project.DescribeGlobalCluster)
+			globalClusters.POST("/:globalClusterId/modifyCU", byoc_project.ModifyGlobalClusterCU)
+			globalClusters.POST("/:globalClusterId/removeGlobalEndpoint", byoc_project.RemoveGlobalEndpoint)
+			globalClusters.POST("/:globalClusterId/secondaryClusters", byoc_project.AddSecondaryClusters)
+			globalClusters.DELETE("/:globalClusterId/clusters/:clusterId", byoc_project.DeleteCluster)
+			globalClusters.DELETE("/:globalClusterId/secondaryClusters/:clusterId", byoc_project.DeleteSecondaryCluster)
+		}
 		volumes := v2.Group("/volumes")
 		{
 			volumes.GET("", byoc_project.ListVolumes)
