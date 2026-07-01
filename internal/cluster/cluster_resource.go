@@ -413,6 +413,88 @@ func convertTerraformMapToStringMap(terraformMap types.Map) map[string]string {
 	return labels
 }
 
+func shouldConfigureAutoscalingAfterCreate(plan ClusterResourceModel) bool {
+	if plan.CuSettings != nil && !plan.CuSettings.IsSchedulesNull() {
+		return true
+	}
+	if plan.ReplicaSettings == nil {
+		return false
+	}
+	return !plan.ReplicaSettings.IsDynamicScalingNull() || !plan.ReplicaSettings.IsSchedulesNull()
+}
+
+func validateAutoscalingSettings(plan ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+	validateDynamicScaling := func(name string, settings *DynamicScaling) bool {
+		if settings == nil {
+			return true
+		}
+		minKnown := !settings.Min.IsNull() && !settings.Min.IsUnknown()
+		maxKnown := !settings.Max.IsNull() && !settings.Max.IsUnknown()
+		if minKnown != maxKnown {
+			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf("%s: dynamic_scaling requires both min and max.", name))
+			return false
+		}
+		if minKnown && settings.Min.ValueInt64() > settings.Max.ValueInt64() {
+			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf(
+				"%s: min (%d) must be <= max (%d)",
+				name, settings.Min.ValueInt64(), settings.Max.ValueInt64()))
+			return false
+		}
+		return true
+	}
+
+	if plan.CuSettings != nil && !plan.CuSettings.IsDynamicScalingNull() && !plan.CuSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "cu_settings: cannot set both dynamic_scaling and schedule_scaling at the same time")
+		return diags
+	}
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsDynamicScalingNull() && !plan.ReplicaSettings.IsSchedulesNull() {
+		diags.AddError("Invalid configuration", "replica_settings: cannot set both dynamic_scaling and schedule_scaling at the same time")
+		return diags
+	}
+
+	if plan.CuSettings != nil && !validateDynamicScaling("cu_settings", plan.CuSettings.DynamicScaling) {
+		return diags
+	}
+	if plan.ReplicaSettings != nil && !validateDynamicScaling("replica_settings", plan.ReplicaSettings.DynamicScaling) {
+		return diags
+	}
+
+	return diags
+}
+
+func validateReplicaPlan(plan ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if plan.Plan.IsNull() || plan.Plan.IsUnknown() {
+		return diags
+	}
+
+	planValue := plan.Plan.ValueString()
+	if planValue == EnterprisePlan || planValue == BusinessCriticalPlan {
+		return diags
+	}
+
+	if !plan.Replica.IsNull() && !plan.Replica.IsUnknown() && plan.Replica.ValueInt64() > 1 {
+		diags.AddError("Invalid replica configuration", "replica greater than 1 requires Enterprise or BusinessCritical plan.")
+		return diags
+	}
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsDynamicScalingNull() &&
+		plan.ReplicaSettings.DynamicScaling.Max.ValueInt64() > 1 {
+		diags.AddError("Invalid replica autoscaling configuration", "replica_settings with max greater than 1 requires Enterprise or BusinessCritical plan.")
+		return diags
+	}
+	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsSchedulesNull() {
+		for _, schedule := range plan.ReplicaSettings.ScheduleScaling {
+			if !schedule.Target.IsNull() && !schedule.Target.IsUnknown() && schedule.Target.ValueInt64() > 1 {
+				diags.AddError("Invalid replica autoscaling configuration", "replica_settings schedule target greater than 1 requires Enterprise or BusinessCritical plan.")
+				return diags
+			}
+		}
+	}
+
+	return diags
+}
+
 func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "Create Cluster...")
 	tfPlan := ClusterResourceModel{}
@@ -428,6 +510,11 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	diags = req.Plan.Get(ctx, &tfPlan)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
+		return
+	}
+	resp.Diagnostics.Append(validateAutoscalingSettings(tfPlan)...)
+	resp.Diagnostics.Append(validateReplicaPlan(tfPlan)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -460,8 +547,8 @@ func (r *ClusterResource) Create(ctx context.Context, req resource.CreateRequest
 	tfState.completeReplicaAfterCreate(tfPlan)
 	tfState.Plan = types.StringValue("unknown")
 
-	// Apply cu_settings and/or replica_settings immediately after creation (API does not require RUNNING state).
-	if tfPlan.CuSettings != nil || tfPlan.ReplicaSettings != nil {
+	// Apply settings not supported by the create API, such as schedules or replica autoscaling.
+	if shouldConfigureAutoscalingAfterCreate(tfPlan) {
 		asDiags := r.handleAutoscalingUpdate(ctx, tfPlan, tfState)
 		for _, d := range asDiags.Errors() {
 			resp.Diagnostics.AddWarning(d.Summary(), d.Detail())
@@ -489,24 +576,6 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		state.Plan = newState.Plan
 		if plan.Replica.IsNull() || plan.Replica.IsUnknown() {
 			state.Replica = newState.Replica
-		}
-	}
-
-	// Apply replica > 1 after cluster is RUNNING (ModifyReplica API requires RUNNING state and sufficient cuSize).
-	// Note: cannot use handleReplicaUpdate here because r.timeout is only set in Update, not Create.
-	if isRunning && !plan.Replica.IsNull() && !plan.Replica.IsUnknown() && plan.Replica.ValueInt64() > 1 {
-		err := r.store.ModifyReplica(ctx, state.ClusterId.ValueString(), int(plan.Replica.ValueInt64()))
-		if err != nil {
-			resp.Diagnostics.AddWarning("Failed to modify cluster replica", err.Error())
-		} else {
-			state.Replica = plan.Replica
-			// Wait for RUNNING after replica change, using the remaining create context timeout
-			if deadline, ok := ctx.Deadline(); ok {
-				remaining := time.Until(deadline)
-				if waitErr := r.waitForStatus(ctx, remaining, state.ClusterId.ValueString(), "RUNNING"); waitErr != nil && !util.IsNetworkGiveUpError(waitErr) {
-					resp.Diagnostics.AddWarning("Cluster replica modified but not yet RUNNING", waitErr.Error())
-				}
-			}
 		}
 	}
 
@@ -702,39 +771,20 @@ func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, 
 // handleAutoscalingUpdate sends a single API call with the complete autoscaling state
 // (cu + replica) to avoid partial overwrites — the API replaces the entire autoscaling object.
 func (r *ClusterResource) handleAutoscalingUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
-	var diags diag.Diagnostics
 	ptrInt := func(v int64) *int { i := int(v); return &i }
 
-	// Validate: dynamic_scaling and schedule_scaling are mutually exclusive within each settings block
-	if plan.CuSettings != nil && !plan.CuSettings.IsDynamicScalingNull() && !plan.CuSettings.IsSchedulesNull() {
-		diags.AddError("Invalid configuration", "cu_settings: cannot set both dynamic_scaling and schedule_scaling at the same time")
+	diags := validateAutoscalingSettings(plan)
+	if diags.HasError() {
 		return diags
-	}
-	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsDynamicScalingNull() && !plan.ReplicaSettings.IsSchedulesNull() {
-		diags.AddError("Invalid configuration", "replica_settings: cannot set both dynamic_scaling and schedule_scaling at the same time")
-		return diags
-	}
-
-	// Validate min <= max
-	if plan.CuSettings != nil && !plan.CuSettings.IsDynamicScalingNull() {
-		if plan.CuSettings.DynamicScaling.Min.ValueInt64() > plan.CuSettings.DynamicScaling.Max.ValueInt64() {
-			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf(
-				"cu_settings: min (%d) must be <= max (%d)",
-				plan.CuSettings.DynamicScaling.Min.ValueInt64(), plan.CuSettings.DynamicScaling.Max.ValueInt64()))
-			return diags
-		}
-	}
-	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsDynamicScalingNull() {
-		if plan.ReplicaSettings.DynamicScaling.Min.ValueInt64() > plan.ReplicaSettings.DynamicScaling.Max.ValueInt64() {
-			diags.AddError("Invalid autoscaling configuration", fmt.Sprintf(
-				"replica_settings: min (%d) must be <= max (%d)",
-				plan.ReplicaSettings.DynamicScaling.Min.ValueInt64(), plan.ReplicaSettings.DynamicScaling.Max.ValueInt64()))
-			return diags
-		}
 	}
 
 	// Build the combined payload
-	params := &zilliz.ModifyAutoscalingCombinedParams{}
+	params := &zilliz.ModifyAutoscalingCombinedParams{
+		Autoscaling: zilliz.AutoscalingConfig{
+			CU:      &zilliz.AutoscalingPolicy{},
+			Replica: &zilliz.AutoscalingPolicy{},
+		},
+	}
 
 	if plan.CuSettings != nil && !plan.CuSettings.IsDynamicScalingNull() {
 		params.Autoscaling.CU.Min = ptrInt(plan.CuSettings.DynamicScaling.Min.ValueInt64())
@@ -745,7 +795,7 @@ func (r *ClusterResource) handleAutoscalingUpdate(ctx context.Context, plan, sta
 		for i, s := range plan.CuSettings.ScheduleScaling {
 			schedules[i] = zilliz.ScheduleConfig{Timezone: s.Timezone.ValueString(), Cron: s.Cron.ValueString(), Target: int(s.Target.ValueInt64())}
 		}
-		params.Autoscaling.CU.Schedules = &schedules
+		params.Autoscaling.CU.Schedules = schedules
 	}
 
 	if plan.ReplicaSettings != nil && !plan.ReplicaSettings.IsDynamicScalingNull() {
@@ -757,7 +807,7 @@ func (r *ClusterResource) handleAutoscalingUpdate(ctx context.Context, plan, sta
 		for i, s := range plan.ReplicaSettings.ScheduleScaling {
 			schedules[i] = zilliz.ScheduleConfig{Timezone: s.Timezone.ValueString(), Cron: s.Cron.ValueString(), Target: int(s.Target.ValueInt64())}
 		}
-		params.Autoscaling.Replica.Schedules = &schedules
+		params.Autoscaling.Replica.Schedules = schedules
 	}
 
 	err := r.store.ModifyAutoscaling(ctx, state.ClusterId.ValueString(), params)
@@ -775,6 +825,11 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, defaultClusterUpdateTimeout)
 	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(validateAutoscalingSettings(plan)...)
+	resp.Diagnostics.Append(validateReplicaPlan(plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
