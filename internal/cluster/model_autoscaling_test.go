@@ -167,3 +167,86 @@ func TestCompleteReplicaAfterCreateKeepsConfiguredReplica(t *testing.T) {
 		t.Fatalf("replica = %d, want 2", got)
 	}
 }
+
+func TestShouldConfigureAutoscalingAfterCreate(t *testing.T) {
+	tests := []struct {
+		name string
+		plan ClusterResourceModel
+		want bool
+	}{
+		{
+			name: "cu dynamic only is handled by create",
+			plan: ClusterResourceModel{
+				CuSettings: &CuSettings{DynamicScaling: &DynamicScaling{
+					Min: types.Int64Value(2),
+					Max: types.Int64Value(4),
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "cu schedule needs post create update",
+			plan: ClusterResourceModel{
+				CuSettings: &CuSettings{ScheduleScaling: []ScheduleScaling{
+					{Timezone: types.StringValue("UTC"), Cron: types.StringValue("0 0 * * *"), Target: types.Int64Value(2)},
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "replica dynamic needs post create update",
+			plan: ClusterResourceModel{
+				ReplicaSettings: &ReplicaSettings{DynamicScaling: &DynamicScaling{
+					Min: types.Int64Value(1),
+					Max: types.Int64Value(2),
+				}},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldConfigureAutoscalingAfterCreate(tt.plan); got != tt.want {
+				t.Fatalf("shouldConfigureAutoscalingAfterCreate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateReplicaPlanRequiresEnterpriseForMultiReplica(t *testing.T) {
+	plan := ClusterResourceModel{
+		Plan:    types.StringValue(StandardPlan),
+		Replica: types.Int64Value(2),
+	}
+
+	if diags := validateReplicaPlan(plan); !diags.HasError() {
+		t.Fatal("expected Standard plan with replica > 1 to be rejected")
+	}
+}
+
+func TestValidateReplicaPlanAllowsBusinessCriticalForMultiReplica(t *testing.T) {
+	plan := ClusterResourceModel{
+		Plan:    types.StringValue(BusinessCriticalPlan),
+		Replica: types.Int64Value(2),
+	}
+
+	if diags := validateReplicaPlan(plan); diags.HasError() {
+		t.Fatalf("expected BusinessCritical plan with replica > 1 to be allowed: %v", diags)
+	}
+}
+
+func TestValidateAutoscalingSettingsRequiresDynamicMinAndMax(t *testing.T) {
+	plan := ClusterResourceModel{
+		CuSettings: &CuSettings{
+			DynamicScaling: &DynamicScaling{
+				Min: types.Int64Value(2),
+				Max: types.Int64Null(),
+			},
+		},
+	}
+
+	if diags := validateAutoscalingSettings(plan); !diags.HasError() {
+		t.Fatal("expected incomplete dynamic_scaling to be rejected")
+	}
+}

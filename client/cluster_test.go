@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -54,11 +55,12 @@ func TestClient_Cluster(t *testing.T) {
 	}
 
 	projectID = getProject()
+	cuSize := 1
 	params := CreateClusterParams{
 		ProjectId:   projectID,
 		Plan:        conv.StringPtr("Standard"),
 		ClusterName: "a-standard-type-cluster",
-		CUSize:      1,
+		CUSize:      &cuSize,
 		CUType:      "Performance-optimized",
 		RegionId:    "gcp-us-west1",
 	}
@@ -156,6 +158,84 @@ func TestClient_Cluster(t *testing.T) {
 			t.Fatalf("want = %s, got = %v", clusterId, got)
 		}
 	})
+}
+
+func TestCreateClusterParamsFixedCUJSON(t *testing.T) {
+	cuSize := 4
+	params := CreateClusterParams{
+		ProjectId:   "proj",
+		Plan:        conv.StringPtr("Enterprise"),
+		ClusterName: "fixed-cu",
+		CUSize:      &cuSize,
+		CUType:      "Performance-optimized",
+		RegionId:    "aws-us-west-2",
+	}
+
+	payload, err := json.Marshal(params)
+	if err != nil {
+		t.Fatalf("marshal params: %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(payload, &got); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if got["cuSize"] != float64(4) {
+		t.Fatalf("cuSize = %v, want 4", got["cuSize"])
+	}
+	if _, ok := got["autoscaling"]; ok {
+		t.Fatalf("autoscaling should be omitted for fixed CU payload: %s", string(payload))
+	}
+}
+
+func TestCreateClusterParamsAutoscalingJSON(t *testing.T) {
+	minCU := 4
+	maxCU := 8
+	replica := 2
+	params := CreateClusterParams{
+		ProjectId:   "proj",
+		Plan:        conv.StringPtr("Enterprise"),
+		ClusterName: "dynamic-cu",
+		CUType:      "Performance-optimized",
+		RegionId:    "aws-us-west-2",
+		Replica:     &replica,
+		Autoscaling: &AutoscalingConfig{
+			CU: &AutoscalingPolicy{
+				Min: &minCU,
+				Max: &maxCU,
+			},
+		},
+	}
+
+	payload, err := json.Marshal(params)
+	if err != nil {
+		t.Fatalf("marshal params: %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(payload, &got); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if _, ok := got["cuSize"]; ok {
+		t.Fatalf("cuSize should be omitted for autoscaling payload: %s", string(payload))
+	}
+	if got["replica"] != float64(2) {
+		t.Fatalf("replica = %v, want 2", got["replica"])
+	}
+	autoscaling, ok := got["autoscaling"].(map[string]any)
+	if !ok {
+		t.Fatalf("autoscaling = %T, want map[string]any", got["autoscaling"])
+	}
+	cu, ok := autoscaling["cu"].(map[string]any)
+	if !ok {
+		t.Fatalf("autoscaling.cu = %T, want map[string]any", autoscaling["cu"])
+	}
+	if cu["min"] != float64(4) || cu["max"] != float64(8) {
+		t.Fatalf("autoscaling.cu = %v, want min=4 max=8", cu)
+	}
+	if _, ok := autoscaling["replica"]; ok {
+		t.Fatalf("autoscaling.replica should be omitted for create payload: %s", string(payload))
+	}
 }
 
 func TestClient_ServerlessCluster(t *testing.T) {
