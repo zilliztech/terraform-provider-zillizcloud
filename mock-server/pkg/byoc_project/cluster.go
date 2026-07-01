@@ -30,6 +30,16 @@ func CreateDedicatedCluster(c *gin.Context) {
 		clusterId = request.ClusterId
 	}
 	connectAddress := fmt.Sprintf("https://%s.%s.vectordb-uat3.zillizcloud.com:19540", clusterId, request.RegionId)
+	cuSize := 1
+	if request.CuSize != nil {
+		cuSize = *request.CuSize
+	} else if request.Autoscaling.CU.Min != nil {
+		cuSize = *request.Autoscaling.CU.Min
+	}
+	replica := 1
+	if request.Replica != nil {
+		replica = *request.Replica
+	}
 
 	cluster := &DedicatedClusterResponse{
 		ClusterId:   clusterId,
@@ -53,7 +63,7 @@ func CreateDedicatedCluster(c *gin.Context) {
 		ConnectAddress:     connectAddress,
 		PrivateLinkAddress: "",
 		CreateTime:         time.Now().Format(time.RFC3339),
-		CuSize:             request.CuSize,
+		CuSize:             cuSize,
 		StorageSize:        0,
 		SnapshotNumber:     0,
 		CreateProgress:     100,
@@ -68,9 +78,8 @@ func CreateDedicatedCluster(c *gin.Context) {
 			}
 			return ""
 		}(),
-	}
-	if cluster.Plan == "Standard" || cluster.Plan == "Enterprise" {
-		cluster.Replica = 1
+		Replica:     replica,
+		Autoscaling: request.Autoscaling,
 	}
 	cluster.Status = "CREATING"
 	clusterStore.Set(clusterId, cluster)
