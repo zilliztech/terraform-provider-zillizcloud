@@ -143,6 +143,15 @@ func requireJSONPresent(t *testing.T, raw []byte, path string) {
 	}
 }
 
+func requireJSONMissing(t *testing.T, raw []byte, path string) {
+	t.Helper()
+
+	got := valueAtJSONPath(t, raw, path)
+	if got != nil {
+		t.Fatalf("%s=%v (%T), want missing", path, got, got)
+	}
+}
+
 func valueAtJSONPath(t *testing.T, raw []byte, path string) any {
 	t.Helper()
 

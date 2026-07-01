@@ -443,6 +443,12 @@ type DedicatedClusterResponse struct {
 	Autoscaling        Autoscaling        `json:"autoscaling"`
 	BucketInfo         *ClusterBucketInfo `json:"bucketInfo,omitempty"`
 	AwsCseKeyArn       string             `json:"keyIdentifier,omitempty"`
+	GlobalClusterMeta  *GlobalClusterMeta `json:"globalClusterMeta"`
+}
+
+type GlobalClusterMeta struct {
+	GlobalClusterId string `json:"globalClusterId"`
+	Role            string `json:"role"`
 }
 
 type Autoscaling struct {
@@ -492,6 +498,59 @@ type ModifyReplicaRequest struct {
 type ModifyClusterRequest struct {
 	CuSize      *int         `json:"cuSize,omitempty"`
 	Autoscaling *Autoscaling `json:"autoscaling,omitempty"`
+}
+
+type GlobalClusterMemberRequest struct {
+	ClusterName string `json:"clusterName"`
+	RegionId    string `json:"regionId"`
+}
+
+type CreateGlobalClusterRequest struct {
+	GlobalClusterName string                       `json:"globalClusterName"`
+	ProjectId         string                       `json:"projectId"`
+	CuType            string                       `json:"cuType"`
+	CuSize            int                          `json:"cuSize"`
+	PrimaryCluster    GlobalClusterMemberRequest   `json:"primaryCluster"`
+	SecondaryClusters []GlobalClusterMemberRequest `json:"secondaryClusters"`
+}
+
+type AddSecondaryClustersRequest struct {
+	SecondaryClusters []GlobalClusterMemberRequest `json:"secondaryClusters"`
+}
+
+type GlobalCluster struct {
+	GlobalClusterId   string                `json:"globalClusterId"`
+	GlobalClusterName string                `json:"globalClusterName"`
+	ProjectId         string                `json:"projectId"`
+	RegionIds         []string              `json:"regionIds"`
+	CuType            string                `json:"cuType"`
+	CuSize            int                   `json:"cuSize"`
+	Statuses          []string              `json:"statuses"`
+	ConnectAddress    string                `json:"connectAddress"`
+	CreatedBy         string                `json:"createdBy,omitempty"`
+	CreateTime        string                `json:"createTime"`
+	Clusters          []GlobalClusterMember `json:"clusters,omitempty"`
+	Autoscaling       *Autoscaling          `json:"autoscaling,omitempty"`
+}
+
+type GlobalClusterResponse struct {
+	GlobalClusterId   string                `json:"globalClusterId"`
+	GlobalClusterName string                `json:"globalClusterName"`
+	ProjectId         string                `json:"projectId"`
+	RegionIds         []string              `json:"regionIds"`
+	CuType            string                `json:"cuType"`
+	CuSize            int                   `json:"cuSize"`
+	ConnectAddress    string                `json:"connectAddress"`
+	CreateTime        string                `json:"createTime"`
+	Clusters          []GlobalClusterMember `json:"clusters,omitempty"`
+}
+
+type GlobalClusterMember struct {
+	ClusterId   string `json:"clusterId"`
+	ClusterName string `json:"clusterName"`
+	RegionId    string `json:"regionId"`
+	Role        string `json:"role"`
+	Status      string `json:"status"`
 }
 
 type UpdateLabelsRequest struct {
