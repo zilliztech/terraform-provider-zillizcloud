@@ -118,6 +118,7 @@ func (s *byocOpProjectSettingsStore) Describe(ctx context.Context, projectID str
 		data.ProjectID = types.StringValue(response.ProjectID)
 		data.CloudProvider = types.StringValue(response.CloudID)
 		data.Region = types.StringValue(response.RegionID)
+		data.AgentBootstrapRequired = types.BoolValue(isBYOCOpProjectAgentBootstrapRequiredStatus(response.Status))
 
 	}
 	{

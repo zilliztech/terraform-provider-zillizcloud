@@ -185,8 +185,8 @@ func (r *BYOCOpProjectAgentResource) Create(ctx context.Context, req resource.Cr
 
 		tflog.Info(ctx, fmt.Sprintf("Describe BYOC-I project agent response: %+v", response))
 
-		// wait until the agent is connected
-		if response.Status != int(BYOCProjectStatusConnected) {
+		// wait until the agent is connected or the dataplane has already advanced past agent connection
+		if !isBYOCOpProjectAgentReadyStatus(response.Status) {
 			return nil, &util.Err{Halt: false, Err: fmt.Errorf("agent is in status: %s", BYOCProjectStatus(response.Status))}
 		}
 
@@ -202,6 +202,16 @@ func (r *BYOCOpProjectAgentResource) Create(ctx context.Context, req resource.Cr
 	}
 
 	tflog.Info(ctx, "Created BYOC-I Project Agent")
+}
+
+func isBYOCOpProjectAgentReadyStatus(status int) bool {
+	switch BYOCProjectStatus(status) {
+	// BYOCProjectStatusPending is status 0, named CREATING in cloud-service.
+	case BYOCProjectStatusConnected, BYOCProjectStatusPending, BYOCProjectStatusRunning:
+		return true
+	default:
+		return false
+	}
 }
 
 func (r *BYOCOpProjectAgentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

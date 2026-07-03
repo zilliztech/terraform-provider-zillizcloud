@@ -269,3 +269,112 @@ resource "zillizcloud_byoc_i_project" "test" {
 }
 `
 }
+
+func TestAccByocOpProjectResource_GCP(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccByocOpProjectConfig_GCP(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "project_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project_settings.test", "data_plane_id"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "cloud_provider", "gcp"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "region", "gcp-us-west1"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project_settings.test", "project_name", "byoc-zilliz-gcp-test"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "status", "0"),
+
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project.test", "project_id"),
+					resource.TestCheckResourceAttrSet("zillizcloud_byoc_i_project.test", "data_plane_id"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "gcp.region", "gcp-us-west1"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "gcp.project_id", "customer-gcp-project"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "gcp.network.vpc_name", "zilliz-byoc-vpc"),
+					resource.TestCheckResourceAttr("zillizcloud_byoc_i_project.test", "gcp.gke.cluster_name", "zilliz-byoc-gke"),
+				),
+			},
+		},
+	})
+}
+
+func testAccByocOpProjectConfig_GCP() string {
+	return `
+resource "zillizcloud_byoc_i_project_settings" "test" {
+    cloud_provider = "gcp"
+    region = "gcp-us-west1"
+    project_name = "byoc-zilliz-gcp-test"
+
+    instances = {
+        core = {
+            vm    = "n2-standard-8"
+            count = 3
+        }
+
+        fundamental = {
+            vm        = "n2-standard-8"
+            min_count = 1
+            max_count = 1
+        }
+
+        search = {
+            vm        = "n2-standard-16"
+            min_count = 1
+            max_count = 1
+        }
+
+        index = {
+            vm        = "n2-standard-8"
+            min_count = 2
+            max_count = 2
+        }
+
+        auto_scaling = true
+        arch         = "X86"
+    }
+}
+
+resource "zillizcloud_byoc_i_project_agent" "test" {
+    project_id = zillizcloud_byoc_i_project_settings.test.project_id
+    data_plane_id = zillizcloud_byoc_i_project_settings.test.data_plane_id
+}
+
+resource "zillizcloud_byoc_i_project" "test" {
+    lifecycle {
+        ignore_changes = [data_plane_id, project_id, gcp, ext_config]
+    }
+
+    data_plane_id = zillizcloud_byoc_i_project_settings.test.data_plane_id
+    project_id = zillizcloud_byoc_i_project_settings.test.project_id
+
+    gcp = {
+        region     = "gcp-us-west1"
+        project_id = "customer-gcp-project"
+
+        network = {
+            vpc_name            = "zilliz-byoc-vpc"
+            primary_subnet_name = "zilliz-byoc-primary"
+            pod_subnet_name     = "zilliz-byoc-pods"
+            service_subnet_name = "zilliz-byoc-services"
+            lb_subnet_name      = "zilliz-byoc-lb"
+            psc_endpoint_ip     = "10.10.0.10"
+        }
+
+        identity = {
+            gke_node_sa  = "zilliz-byoc-node@customer-gcp-project.iam.gserviceaccount.com"
+            management_sa = "zilliz-byoc-maintenance@customer-gcp-project.iam.gserviceaccount.com"
+            storage_sa    = "zilliz-byoc-storage@customer-gcp-project.iam.gserviceaccount.com"
+        }
+
+        gke = {
+            cluster_name = "zilliz-byoc-gke"
+            zones        = ["us-west1-a", "us-west1-b", "us-west1-c"]
+        }
+
+        storage = {
+            bucket_id = "zilliz-byoc-gcp-bucket"
+        }
+    }
+
+    depends_on = [zillizcloud_byoc_i_project_settings.test, zillizcloud_byoc_i_project_agent.test]
+}
+`
+}

@@ -203,6 +203,7 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		cluster.NewClustersDataSource,
 		cluster.NewClusterDataSource,
 		byoc.NewExternalIdDataSource,
+		byoc.NewGCPServiceAccountDataSource,
 		byoc_op.NewBYOCOpProjectSettingsData,
 		NewUsersDataSource,
 		NewRolesDataSource,

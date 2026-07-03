@@ -22,6 +22,7 @@ BYOC-I Project Settings resource for managing project configurations.
 
 ### Read-Only
 
+- `agent_bootstrap_required` (Boolean) Whether the BYOC-I agent bootstrap VM should be created.
 - `cloud_provider` (String) Cloud provider
 - `id` (String) Settings identifier
 - `node_quotas` (Attributes) (see [below for nested schema](#nestedatt--node_quotas))

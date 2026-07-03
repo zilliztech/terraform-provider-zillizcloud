@@ -21,7 +21,7 @@ type CreateBYOCProjectRequest struct {
 	IndexMax       int64 `json:"indexMax"`
 
 	AutoScaling bool   `json:"autoScaling"`
-	Arch        string `json:"arch"` //X86, ARM
+	Arch        string `json:"arch"` // X86, ARM
 
 	DeployType int `json:"deployType"`
 }
@@ -62,6 +62,22 @@ type AzureParam struct {
 	StorageIdentities   []AzureIdentityParam `json:"storageIdentities"`
 	KubeletIdentity     AzureIdentityParam   `json:"kubeletIdentity"`
 	MaintenanceIdentity AzureIdentityParam   `json:"maintenanceIdentity"`
+}
+
+type GCPParam struct {
+	GCPProjectID      string   `json:"gcpProjectId"`
+	BucketID          string   `json:"bucketId"`
+	GKENodeSA         string   `json:"gkeNodeSa"`
+	ManagementSA      string   `json:"managementSa"`
+	StorageSA         string   `json:"storageSa"`
+	GKEClusterName    string   `json:"gkeClusterName"`
+	VPCName           string   `json:"vpcName"`
+	PrimarySubnetName string   `json:"primarySubnetName"`
+	PodSubnetName     string   `json:"podSubnetName"`
+	ServiceSubnetName string   `json:"serviceSubnetName"`
+	LBSubnetName      string   `json:"lbSubnetName"`
+	PSCEndpointIP     *string  `json:"pscEndpointIp,omitempty"`
+	Zones             []string `json:"zones,omitempty"`
 }
 
 func (c *Client) CreateBYOCProject(params *CreateBYOCProjectRequest) (*CreateBYOCProjectResponse, error) {
@@ -145,6 +161,15 @@ func (c *Client) GetExternalId() (string, error) {
 		return "", err
 	}
 	return response.Data.ExternalId, err
+}
+
+func (c *Client) GetGoogleServiceAccount() (string, error) {
+	var response zillizResponse[GetExternalIdResponse]
+	err := c.do("GET", "byoc/describe", nil, &response)
+	if err != nil {
+		return "", err
+	}
+	return response.Data.ServiceAccount, err
 }
 
 type GetExternalIdResponse struct {

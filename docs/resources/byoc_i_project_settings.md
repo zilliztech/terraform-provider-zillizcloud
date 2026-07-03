@@ -28,6 +28,7 @@ BYOC-I Project Settings resource for managing project configurations.
 
 ### Read-Only
 
+- `agent_bootstrap_required` (Boolean) Whether the BYOC-I agent bootstrap VM should be created.
 - `data_plane_id` (String) The ID of the data plane
 - `id` (String) Settings identifier
 - `node_quotas` (Attributes) (see [below for nested schema](#nestedatt--node_quotas))

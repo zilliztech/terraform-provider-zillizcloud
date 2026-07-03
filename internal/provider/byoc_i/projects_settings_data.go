@@ -90,6 +90,10 @@ func (r *BYOCOpProjectSettingsData) Schema(ctx context.Context, req datasource.S
 				MarkdownDescription: "Private link enabled",
 				Computed:            true,
 			},
+			"agent_bootstrap_required": schema.BoolAttribute{
+				MarkdownDescription: "Whether the BYOC-I agent bootstrap VM should be created.",
+				Computed:            true,
+			},
 			"op_config": schema.SingleNestedAttribute{
 				MarkdownDescription: "Operation configuration settings",
 				Computed:            true,
@@ -194,6 +198,7 @@ func (s *byocOpProjectSettingsDataStore) Describe(ctx context.Context, projectID
 		data.ProjectName = types.StringValue(response.ProjectName)
 		data.CloudProvider = types.StringValue(response.CloudID)
 		data.Region = types.StringValue(response.RegionID)
+		data.AgentBootstrapRequired = types.BoolValue(isBYOCOpProjectAgentBootstrapRequiredStatus(response.Status))
 	}
 
 	{
