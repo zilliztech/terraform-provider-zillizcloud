@@ -136,6 +136,13 @@ func (r *BYOCOpProjectSettingsResource) Schema(ctx context.Context, req resource
 					boolplanmodifier.RequiresReplace(),
 				},
 			},
+			"agent_bootstrap_required": schema.BoolAttribute{
+				MarkdownDescription: "Whether the BYOC-I agent bootstrap VM should be created.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"instances": zschema.Instances,
 			"op_config": schema.SingleNestedAttribute{
 				MarkdownDescription: "Operation configuration settings",
@@ -228,6 +235,7 @@ func (r *BYOCOpProjectSettingsResource) Create(ctx context.Context, req resource
 	data.OpConfig = model.OpConfig
 	data.NodeQuotas = model.NodeQuotas
 	data.TieredNodeQuota = model.TieredNodeQuota
+	data.AgentBootstrapRequired = model.AgentBootstrapRequired
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -253,6 +261,7 @@ func (r *BYOCOpProjectSettingsResource) Read(ctx context.Context, req resource.R
 	data.OpConfig = model.OpConfig
 	data.NodeQuotas = model.NodeQuotas
 	data.TieredNodeQuota = model.TieredNodeQuota
+	data.AgentBootstrapRequired = model.AgentBootstrapRequired
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
