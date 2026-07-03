@@ -21,7 +21,7 @@ type CreateBYOCProjectRequest struct {
 	IndexMax       int64 `json:"indexMax"`
 
 	AutoScaling bool   `json:"autoScaling"`
-	Arch        string `json:"arch"` //X86, ARM
+	Arch        string `json:"arch"` // X86, ARM
 
 	DeployType int `json:"deployType"`
 }
@@ -161,6 +161,15 @@ func (c *Client) GetExternalId() (string, error) {
 		return "", err
 	}
 	return response.Data.ExternalId, err
+}
+
+func (c *Client) GetGoogleServiceAccount() (string, error) {
+	var response zillizResponse[GetExternalIdResponse]
+	err := c.do("GET", "byoc/describe", nil, &response)
+	if err != nil {
+		return "", err
+	}
+	return response.Data.ServiceAccount, err
 }
 
 type GetExternalIdResponse struct {
