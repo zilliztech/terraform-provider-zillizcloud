@@ -297,8 +297,9 @@ type SettingsResponse struct {
 	NodeQuotas  []NodeQuota `json:"nodeQuotas"`
 	OpenPl      int         `json:"openPl"`
 	OpConfig    struct {
-		Token         string `json:"tunnelToken"`
-		AgentImageUrl string `json:"agentImageUrl"`
+		Token                string `json:"tunnelToken"`
+		AgentImageUrl        string `json:"agentImageUrl"`
+		TunnelClientImageUrl string `json:"tunnelClientImageUrl"`
 	} `json:"opConfig"`
 }
 
@@ -382,10 +383,11 @@ func WithNodeQuota(Name string, min int, instanceTypes []string) NodeQuota {
 	}
 }
 
-func WithOpConfig(token string, agentImageUrl string) Option {
+func WithOpConfig(token string, agentImageUrl string, tunnelClientImageUrl string) Option {
 	return func(s *SettingsResponse) {
 		s.OpConfig.Token = token
 		s.OpConfig.AgentImageUrl = agentImageUrl
+		s.OpConfig.TunnelClientImageUrl = tunnelClientImageUrl
 	}
 }
 
