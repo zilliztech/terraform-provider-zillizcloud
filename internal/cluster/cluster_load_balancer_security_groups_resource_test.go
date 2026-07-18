@@ -15,7 +15,7 @@ func TestAccClusterLoadBalancerSecurityGroupsResource(t *testing.T) {
 			{
 				Config: provider.ProviderConfig + `
 data "zillizcloud_project" "default" {
-  id = "proj-test123456789"
+  id = "proj-ebc5ac7f430702aec8c57b"
 }
 
 resource "zillizcloud_cluster" "test" {
@@ -52,7 +52,7 @@ resource "zillizcloud_cluster_load_balancer_security_groups" "test" {
 			{
 				Config: provider.ProviderConfig + `
 data "zillizcloud_project" "default" {
-  id = "proj-test123456789"
+  id = "proj-ebc5ac7f430702aec8c57b"
 }
 
 resource "zillizcloud_cluster" "test" {
@@ -83,7 +83,7 @@ resource "zillizcloud_cluster_load_balancer_security_groups" "test" {
 			{
 				Config: provider.ProviderConfig + `
 data "zillizcloud_project" "default" {
-  id = "proj-test123456789"
+  id = "proj-ebc5ac7f430702aec8c57b"
 }
 
 resource "zillizcloud_cluster" "test" {
