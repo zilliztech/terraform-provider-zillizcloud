@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -27,9 +29,10 @@ var (
 )
 
 var (
-	_ resource.Resource                = &GlobalClusterResource{}
-	_ resource.ResourceWithConfigure   = &GlobalClusterResource{}
-	_ resource.ResourceWithImportState = &GlobalClusterResource{}
+	_ resource.Resource                     = &GlobalClusterResource{}
+	_ resource.ResourceWithConfigure        = &GlobalClusterResource{}
+	_ resource.ResourceWithConfigValidators = &GlobalClusterResource{}
+	_ resource.ResourceWithImportState      = &GlobalClusterResource{}
 )
 
 func NewGlobalClusterResource() resource.Resource {
@@ -91,6 +94,15 @@ func (r *GlobalClusterResource) Metadata(ctx context.Context, req resource.Metad
 	resp.TypeName = req.ProviderTypeName + "_global_cluster"
 }
 
+func (r *GlobalClusterResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.ExactlyOneOf(
+			path.MatchRoot("cu_size"),
+			path.MatchRoot("cu_settings"),
+		),
+	}
+}
+
 func (r *GlobalClusterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Zilliz Cloud Global Cluster. The first cluster entry is created as the primary cluster, and every subsequent entry is created as a secondary cluster.",
@@ -129,8 +141,9 @@ func (r *GlobalClusterResource) Schema(ctx context.Context, req resource.SchemaR
 				},
 			},
 			"cu_size": schema.Int64Attribute{
-				MarkdownDescription: "CU size shared by primary and secondary clusters.",
-				Required:            true,
+				MarkdownDescription: "Fixed CU size shared by primary and secondary clusters. Cannot be set with cu_settings.",
+				Optional:            true,
+				Computed:            true,
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
@@ -138,6 +151,14 @@ func (r *GlobalClusterResource) Schema(ctx context.Context, req resource.SchemaR
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
+			"cu_settings": globalClusterScalingNestedAttribute(
+				"Dynamic CU autoscaling shared by all member clusters. Cannot be set with cu_size. Changing this configuration replaces the global cluster.",
+				"CU",
+			),
+			"replica_settings": globalClusterScalingNestedAttribute(
+				"Dynamic replica autoscaling policy synchronized to every member cluster. Changing this configuration replaces the global cluster.",
+				"replica",
+			),
 			"cluster": globalClusterMembersNestedAttribute(),
 			"connect_address": schema.StringAttribute{
 				MarkdownDescription: "Global endpoint address.",
@@ -184,6 +205,38 @@ func (r *GlobalClusterResource) Schema(ctx context.Context, req resource.SchemaR
 	}
 }
 
+func globalClusterScalingNestedAttribute(description string, target string) schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		MarkdownDescription: description,
+		Optional:            true,
+		PlanModifiers: []planmodifier.Object{
+			objectplanmodifier.RequiresReplace(),
+		},
+		Attributes: map[string]schema.Attribute{
+			"dynamic_scaling": schema.SingleNestedAttribute{
+				MarkdownDescription: fmt.Sprintf("Dynamic scaling bounds for %s.", target),
+				Required:            true,
+				Attributes: map[string]schema.Attribute{
+					"min": schema.Int64Attribute{
+						MarkdownDescription: fmt.Sprintf("Minimum %s value.", target),
+						Required:            true,
+						Validators: []validator.Int64{
+							int64validator.AtLeast(1),
+						},
+					},
+					"max": schema.Int64Attribute{
+						MarkdownDescription: fmt.Sprintf("Maximum %s value. Must be greater than or equal to min.", target),
+						Required:            true,
+						Validators: []validator.Int64{
+							int64validator.AtLeast(1),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func globalClusterMembersNestedAttribute() schema.ListNestedAttribute {
 	return schema.ListNestedAttribute{
 		MarkdownDescription: "Ordered member cluster parameters. The first item is the primary cluster; all remaining items are secondary clusters. Updates may add or remove secondary clusters, but existing members cannot be modified in place.",
@@ -201,6 +254,18 @@ func globalClusterMembersNestedAttribute() schema.ListNestedAttribute {
 				"region_id": schema.StringAttribute{
 					MarkdownDescription: "Member cluster region ID.",
 					Required:            true,
+				},
+				"replica": schema.Int64Attribute{
+					MarkdownDescription: "Initial fixed replica count for this member. Values greater than 1 require an Enterprise or Business Critical project. Changing this value replaces the global cluster.",
+					Optional:            true,
+					Computed:            true,
+					PlanModifiers: []planmodifier.Int64{
+						int64planmodifier.UseStateForUnknown(),
+						int64planmodifier.RequiresReplace(),
+					},
+					Validators: []validator.Int64{
+						int64validator.AtLeast(1),
+					},
 				},
 				"role": schema.StringAttribute{
 					MarkdownDescription: "Member role. Values are PRIMARY and SECONDARY.",
@@ -237,12 +302,17 @@ func (r *GlobalClusterResource) Create(ctx context.Context, req resource.CreateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if err := validateGlobalClusterAutoscaling(data); err != nil {
+		resp.Diagnostics.AddError("Invalid global cluster autoscaling configuration", err.Error())
+		return
+	}
 
 	created, err := r.store.Create(ctx, CreateGlobalClusterCommand{
 		GlobalClusterName: data.GlobalClusterName.ValueString(),
 		ProjectID:         data.ProjectID.ValueString(),
 		CUType:            data.CUType.ValueString(),
 		CUSize:            data.CUSize.ValueInt64(),
+		Autoscaling:       data.autoscaling(),
 		Members:           data.memberSpecs(),
 	})
 	if err != nil {
@@ -273,6 +343,30 @@ func (r *GlobalClusterResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func validateGlobalClusterAutoscaling(data GlobalClusterResourceModel) error {
+	settings := []struct {
+		name  string
+		value *GlobalClusterScalingModel
+	}{
+		{name: "cu_settings", value: data.CUSettings},
+		{name: "replica_settings", value: data.ReplicaSettings},
+	}
+	for _, setting := range settings {
+		if setting.value == nil || setting.value.DynamicScaling == nil {
+			continue
+		}
+		minimum := setting.value.DynamicScaling.Min
+		maximum := setting.value.DynamicScaling.Max
+		if minimum.IsNull() || minimum.IsUnknown() || maximum.IsNull() || maximum.IsUnknown() {
+			continue
+		}
+		if minimum.ValueInt64() > maximum.ValueInt64() {
+			return fmt.Errorf("%s min (%d) must be less than or equal to max (%d)", setting.name, minimum.ValueInt64(), maximum.ValueInt64())
+		}
+	}
+	return nil
 }
 
 func (r *GlobalClusterResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {

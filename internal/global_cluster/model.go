@@ -23,9 +23,20 @@ type GlobalCluster struct {
 	RegionIDs         []string
 	CUType            string
 	CUSize            int64
+	Autoscaling       GlobalClusterAutoscaling
 	ConnectAddress    string
 	CreateTime        string
 	Clusters          []GlobalClusterMember
+}
+
+type GlobalClusterAutoscaling struct {
+	CU      *GlobalClusterAutoscalingPolicy
+	Replica *GlobalClusterAutoscalingPolicy
+}
+
+type GlobalClusterAutoscalingPolicy struct {
+	Min *int64
+	Max *int64
 }
 
 type GlobalClusterMember struct {
@@ -34,6 +45,7 @@ type GlobalClusterMember struct {
 	RegionID    string
 	Role        GlobalClusterMemberRole
 	Status      string
+	Replica     int64
 }
 
 func (m GlobalClusterMember) isRunning() bool {
@@ -43,6 +55,7 @@ func (m GlobalClusterMember) isRunning() bool {
 type GlobalClusterMemberSpec struct {
 	ClusterName string
 	RegionID    string
+	Replica     *int64
 }
 
 type CreateGlobalClusterCommand struct {
@@ -50,6 +63,7 @@ type CreateGlobalClusterCommand struct {
 	ProjectID         string
 	CUType            string
 	CUSize            int64
+	Autoscaling       GlobalClusterAutoscaling
 	Members           []GlobalClusterMemberSpec
 }
 
@@ -161,6 +175,7 @@ func GlobalClusterFromAPI(api *zilliz.GlobalCluster) *GlobalCluster {
 			RegionID:    member.RegionId,
 			Role:        GlobalClusterMemberRole(member.Role),
 			Status:      member.Status,
+			Replica:     member.Replica,
 		})
 	}
 
@@ -171,10 +186,32 @@ func GlobalClusterFromAPI(api *zilliz.GlobalCluster) *GlobalCluster {
 		RegionIDs:         append([]string(nil), api.RegionIds...),
 		CUType:            api.CuType,
 		CUSize:            api.CuSize,
-		ConnectAddress:    api.ConnectAddress,
-		CreateTime:        api.CreateTime,
-		Clusters:          clusters,
+		Autoscaling: GlobalClusterAutoscaling{
+			CU:      globalClusterAutoscalingPolicyFromAPI(api.Autoscaling.CU),
+			Replica: globalClusterAutoscalingPolicyFromAPI(api.Autoscaling.Replica),
+		},
+		ConnectAddress: api.ConnectAddress,
+		CreateTime:     api.CreateTime,
+		Clusters:       clusters,
 	}
+}
+
+func globalClusterAutoscalingPolicyFromAPI(policy *zilliz.AutoscalingPolicy) *GlobalClusterAutoscalingPolicy {
+	if policy == nil {
+		return nil
+	}
+	return &GlobalClusterAutoscalingPolicy{
+		Min: int64Pointer(policy.Min),
+		Max: int64Pointer(policy.Max),
+	}
+}
+
+func int64Pointer(value *int) *int64 {
+	if value == nil {
+		return nil
+	}
+	converted := int64(*value)
+	return &converted
 }
 
 func IsNotFoundError(err error) bool {

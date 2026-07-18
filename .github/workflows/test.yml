@@ -80,6 +80,10 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+      - uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+        with:
+          terraform_version: '1.8.5'
+          terraform_wrapper: false
       - run: go mod download
       - name: Wait for mock server to be ready
         run: |
@@ -90,6 +94,7 @@ jobs:
           ZILLIZCLOUD_API_KEY: "xxxxxxxxxxx"
           ZILLIZCLOUD_QPS: "1000"
           ZILLIZCLOUD_BURST: "1000"
+          ZILLIZCLOUD_PROJECT_ID: "proj-ebc5ac7f430702aec8c57b"
           TF_ACC: "1"
         run: go test -v ./internal/cluster   
         timeout-minutes: 10

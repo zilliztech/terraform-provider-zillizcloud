@@ -28,16 +28,31 @@ resource "zillizcloud_global_cluster" "example" {
   global_cluster_name = "example-global-cluster"
   project_id          = "proj-ebc5ac7f430702aec8c57b"
   cu_type             = "Performance-optimized"
-  cu_size             = 1
+
+  cu_settings = {
+    dynamic_scaling = {
+      min = 4
+      max = 8
+    }
+  }
+
+  replica_settings = {
+    dynamic_scaling = {
+      min = 1
+      max = 3
+    }
+  }
 
   cluster = [
     {
       cluster_name = "example-primary"
       region_id    = "aws-us-west-2"
+      replica      = 2
     },
     {
       cluster_name = "example-secondary-eu"
       region_id    = "aws-eu-west-1"
+      replica      = 1
     }
   ]
 }
@@ -49,13 +64,15 @@ resource "zillizcloud_global_cluster" "example" {
 ### Required
 
 - `cluster` (Attributes List) Ordered member cluster parameters. The first item is the primary cluster; all remaining items are secondary clusters. Updates may add or remove secondary clusters, but existing members cannot be modified in place. (see [below for nested schema](#nestedatt--cluster))
-- `cu_size` (Number) CU size shared by primary and secondary clusters.
 - `global_cluster_name` (String) Global cluster display name.
 - `project_id` (String) Project ID where the global cluster is created.
 
 ### Optional
 
+- `cu_settings` (Attributes) Dynamic CU autoscaling shared by all member clusters. Cannot be set with cu_size. Changing this configuration replaces the global cluster. (see [below for nested schema](#nestedatt--cu_settings))
+- `cu_size` (Number) Fixed CU size shared by primary and secondary clusters. Cannot be set with cu_settings.
 - `cu_type` (String) CU type shared by primary and secondary clusters.
+- `replica_settings` (Attributes) Dynamic replica autoscaling policy synchronized to every member cluster. Changing this configuration replaces the global cluster. (see [below for nested schema](#nestedatt--replica_settings))
 
 ### Read-Only
 
@@ -75,8 +92,45 @@ Required:
 - `cluster_name` (String) Member cluster name.
 - `region_id` (String) Member cluster region ID.
 
+Optional:
+
+- `replica` (Number) Initial fixed replica count for this member. Values greater than 1 require an Enterprise or Business Critical project. Changing this value replaces the global cluster.
+
 Read-Only:
 
 - `cluster_id` (String) Member cluster identifier assigned by the Global Cluster API.
 - `role` (String) Member role. Values are PRIMARY and SECONDARY.
 - `status` (String) Current member cluster status.
+
+
+<a id="nestedatt--cu_settings"></a>
+### Nested Schema for `cu_settings`
+
+Required:
+
+- `dynamic_scaling` (Attributes) Dynamic scaling bounds for CU. (see [below for nested schema](#nestedatt--cu_settings--dynamic_scaling))
+
+<a id="nestedatt--cu_settings--dynamic_scaling"></a>
+### Nested Schema for `cu_settings.dynamic_scaling`
+
+Required:
+
+- `max` (Number) Maximum CU value. Must be greater than or equal to min.
+- `min` (Number) Minimum CU value.
+
+
+
+<a id="nestedatt--replica_settings"></a>
+### Nested Schema for `replica_settings`
+
+Required:
+
+- `dynamic_scaling` (Attributes) Dynamic scaling bounds for replica. (see [below for nested schema](#nestedatt--replica_settings--dynamic_scaling))
+
+<a id="nestedatt--replica_settings--dynamic_scaling"></a>
+### Nested Schema for `replica_settings.dynamic_scaling`
+
+Required:
+
+- `max` (Number) Maximum replica value. Must be greater than or equal to min.
+- `min` (Number) Minimum replica value.
