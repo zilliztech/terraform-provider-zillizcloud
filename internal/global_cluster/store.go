@@ -29,6 +29,7 @@ func (s *globalClusterStore) Create(ctx context.Context, command CreateGlobalClu
 		ProjectId:         command.ProjectID,
 		CuType:            command.CUType,
 		CuSize:            int(command.CUSize),
+		Autoscaling:       autoscalingParam(command.Autoscaling),
 		PrimaryCluster:    primary,
 		SecondaryClusters: secondaries,
 	})
@@ -70,7 +71,23 @@ func memberParamsForCreate(members []GlobalClusterMemberSpec) (zilliz.GlobalClus
 	if len(members) == 0 {
 		return zilliz.GlobalClusterMemberParams{}, nil
 	}
-	return memberParam(members[0]), memberParams(members[1:])
+	return createMemberParam(members[0]), createMemberParams(members[1:])
+}
+
+func createMemberParams(members []GlobalClusterMemberSpec) []zilliz.GlobalClusterMemberParams {
+	result := make([]zilliz.GlobalClusterMemberParams, 0, len(members))
+	for _, member := range members {
+		result = append(result, createMemberParam(member))
+	}
+	return result
+}
+
+func createMemberParam(member GlobalClusterMemberSpec) zilliz.GlobalClusterMemberParams {
+	return zilliz.GlobalClusterMemberParams{
+		ClusterName: member.ClusterName,
+		RegionId:    member.RegionID,
+		Replica:     intPointer(member.Replica),
+	}
 }
 
 func memberParams(members []GlobalClusterMemberSpec) []zilliz.GlobalClusterMemberParams {
@@ -83,4 +100,32 @@ func memberParams(members []GlobalClusterMemberSpec) []zilliz.GlobalClusterMembe
 
 func memberParam(member GlobalClusterMemberSpec) zilliz.GlobalClusterMemberParams {
 	return zilliz.GlobalClusterMemberParams{ClusterName: member.ClusterName, RegionId: member.RegionID}
+}
+
+func autoscalingParam(autoscaling GlobalClusterAutoscaling) *zilliz.AutoscalingConfig {
+	if autoscaling.CU == nil && autoscaling.Replica == nil {
+		return nil
+	}
+	return &zilliz.AutoscalingConfig{
+		CU:      autoscalingPolicyParam(autoscaling.CU),
+		Replica: autoscalingPolicyParam(autoscaling.Replica),
+	}
+}
+
+func autoscalingPolicyParam(policy *GlobalClusterAutoscalingPolicy) *zilliz.AutoscalingPolicy {
+	if policy == nil {
+		return nil
+	}
+	return &zilliz.AutoscalingPolicy{
+		Min: intPointer(policy.Min),
+		Max: intPointer(policy.Max),
+	}
+}
+
+func intPointer(value *int64) *int {
+	if value == nil {
+		return nil
+	}
+	converted := int(*value)
+	return &converted
 }

@@ -5,13 +5,15 @@ import "fmt"
 type GlobalClusterMemberParams struct {
 	ClusterName string `json:"clusterName"`
 	RegionId    string `json:"regionId"`
+	Replica     *int   `json:"replica,omitempty"`
 }
 
 type CreateGlobalClusterParams struct {
 	GlobalClusterName string                      `json:"globalClusterName"`
 	ProjectId         string                      `json:"projectId"`
 	CuType            string                      `json:"cuType"`
-	CuSize            int                         `json:"cuSize"`
+	CuSize            int                         `json:"cuSize,omitempty"`
+	Autoscaling       *AutoscalingConfig          `json:"autoscaling,omitempty"`
 	PrimaryCluster    GlobalClusterMemberParams   `json:"primaryCluster"`
 	SecondaryClusters []GlobalClusterMemberParams `json:"secondaryClusters"`
 }
@@ -30,6 +32,7 @@ type GlobalCluster struct {
 	RegionIds         []string              `json:"regionIds"`
 	CuType            string                `json:"cuType"`
 	CuSize            int64                 `json:"cuSize"`
+	Autoscaling       AutoscalingConfig     `json:"autoscaling"`
 	ConnectAddress    string                `json:"connectAddress"`
 	CreateTime        string                `json:"createTime"`
 	Clusters          []GlobalClusterMember `json:"clusters"`
@@ -41,6 +44,7 @@ type GlobalClusterMember struct {
 	RegionId    string `json:"regionId"`
 	Role        string `json:"role"`
 	Status      string `json:"status"`
+	Replica     int64  `json:"replica,omitempty"`
 }
 
 type ModifyGlobalClusterCUParams struct {

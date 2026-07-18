@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -113,6 +114,18 @@ func TestGlobalClusterResourceSchemaDoesNotPreserveRegionIDsDuringPlanning(t *te
 	}
 }
 
+func TestGlobalClusterResourceRequiresExactlyOneCUConfiguration(t *testing.T) {
+	ctx := context.Background()
+	validators := newGlobalClusterResource().ConfigValidators(ctx)
+	if len(validators) != 1 {
+		t.Fatalf("ConfigValidators length = %d, want 1", len(validators))
+	}
+	description := validators[0].Description(ctx)
+	if !strings.Contains(description, "cu_size") || !strings.Contains(description, "cu_settings") {
+		t.Fatalf("unexpected validator description: %q", description)
+	}
+}
+
 func testGlobalClusterPlan(t *testing.T, ctx context.Context, schema rschema.Schema, model GlobalClusterResourceModel) tfsdk.Plan {
 	t.Helper()
 	plan := tfsdk.Plan{Schema: schema}
@@ -148,6 +161,19 @@ func globalClusterJSONResponse(t *testing.T, statusCode int, body any) *http.Res
 
 func describeGlobalClusterPayload(cuSize int) map[string]any {
 	payload, _, _ := describeGlobalClusterPayloadParts(cuSize)
+	return payload
+}
+
+func describeGlobalClusterAutoscalingPayload() map[string]any {
+	payload, data, clusters := describeGlobalClusterPayloadParts(0)
+	delete(data, "cuSize")
+	data["autoscaling"] = map[string]any{
+		"cu":      map[string]any{"min": 4, "max": 8},
+		"replica": map[string]any{"min": 1, "max": 3},
+	}
+	clusters[0]["replica"] = 2
+	clusters[1]["replica"] = 1
+	clusters[2]["replica"] = 2
 	return payload
 }
 
@@ -400,6 +426,92 @@ func TestGlobalClusterResourceCreateCreatesAndHydratesState(t *testing.T) {
 	}
 	if state.CreateJobID.ValueString() != "job-create-1" {
 		t.Fatalf("unexpected create job id=%s", state.CreateJobID.ValueString())
+	}
+}
+
+func TestGlobalClusterResourceCreateWithAutoscalingAndMemberReplicas(t *testing.T) {
+	ctx := context.Background()
+	testGlobalClusterPostCreateDescribeDelay(t, 0)
+	resource := newTestGlobalClusterResource(t, func(call int, req *http.Request, body []byte) (*http.Response, error) {
+		switch call {
+		case 1:
+			var createReq zilliz.CreateGlobalClusterParams
+			if err := json.Unmarshal(body, &createReq); err != nil {
+				t.Fatalf("Unmarshal create request: %v", err)
+			}
+			if req.Method != http.MethodPost || req.URL.Path != "/v2/globalClusters/create" || createReq.CuSize != 0 {
+				t.Fatalf("unexpected create request %s %s %+v", req.Method, req.URL.Path, createReq)
+			}
+			if createReq.Autoscaling == nil || createReq.Autoscaling.CU == nil || createReq.Autoscaling.Replica == nil || *createReq.Autoscaling.CU.Max != 8 || *createReq.Autoscaling.Replica.Max != 3 {
+				t.Fatalf("unexpected autoscaling request: %+v", createReq.Autoscaling)
+			}
+			if createReq.PrimaryCluster.Replica == nil || *createReq.PrimaryCluster.Replica != 2 || createReq.SecondaryClusters[0].Replica == nil || *createReq.SecondaryClusters[0].Replica != 1 {
+				t.Fatalf("unexpected member replica request: primary=%+v secondaries=%+v", createReq.PrimaryCluster, createReq.SecondaryClusters)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, map[string]any{"code": 0, "data": map[string]any{
+				"globalClusterId": "glo-1", "username": "db_admin", "password": "password", "jobId": "job-create-1",
+			}}), nil
+		case 2:
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterAutoscalingPayload()), nil
+		default:
+			return nil, fmt.Errorf("unexpected call %d", call)
+		}
+	})
+	schema := testGlobalClusterResourceSchema(t, resource)
+	plan := testGlobalClusterPlan(t, ctx, schema, GlobalClusterResourceModel{
+		ID:                types.StringUnknown(),
+		GlobalClusterName: types.StringValue("global-a"),
+		ProjectID:         types.StringValue("proj-1"),
+		CUType:            types.StringValue("Performance-optimized"),
+		CUSize:            types.Int64Null(),
+		CUSettings: &GlobalClusterScalingModel{DynamicScaling: &GlobalClusterDynamicScalingModel{
+			Min: types.Int64Value(4), Max: types.Int64Value(8),
+		}},
+		ReplicaSettings: &GlobalClusterScalingModel{DynamicScaling: &GlobalClusterDynamicScalingModel{
+			Min: types.Int64Value(1), Max: types.Int64Value(3),
+		}},
+		Cluster: []GlobalClusterMemberModel{
+			{ClusterID: types.StringUnknown(), ClusterName: types.StringValue("primary-a"), RegionID: types.StringValue("aws-us-west-2"), Replica: types.Int64Value(2), Role: types.StringUnknown(), Status: types.StringUnknown()},
+			{ClusterID: types.StringUnknown(), ClusterName: types.StringValue("secondary-eu"), RegionID: types.StringValue("aws-eu-west-1"), Replica: types.Int64Value(1), Role: types.StringUnknown(), Status: types.StringUnknown()},
+			{ClusterID: types.StringUnknown(), ClusterName: types.StringValue("secondary-ap"), RegionID: types.StringValue("aws-ap-southeast-1"), Replica: types.Int64Value(2), Role: types.StringUnknown(), Status: types.StringUnknown()},
+		},
+		ConnectAddress: types.StringUnknown(),
+		CreateTime:     types.StringUnknown(),
+		RegionIDs:      types.ListUnknown(types.StringType),
+		Username:       types.StringUnknown(),
+		Password:       types.StringUnknown(),
+		CreateJobID:    types.StringUnknown(),
+	})
+
+	var resp fwresource.CreateResponse
+	resp.State = tfsdk.State{Schema: schema}
+	resource.Create(ctx, fwresource.CreateRequest{Plan: plan}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Create diagnostics: %s: %s", resp.Diagnostics.Errors()[0].Summary(), resp.Diagnostics.Errors()[0].Detail())
+	}
+	var state GlobalClusterResourceModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("State.Get diagnostics: %s", diags.Errors()[0].Summary())
+	}
+	if !state.CUSize.IsNull() || state.CUSettings == nil || state.CUSettings.DynamicScaling.Max.ValueInt64() != 8 {
+		t.Fatalf("unexpected CU autoscaling state: cu_size=%s settings=%+v", state.CUSize.String(), state.CUSettings)
+	}
+	if state.ReplicaSettings == nil || state.ReplicaSettings.DynamicScaling.Max.ValueInt64() != 3 {
+		t.Fatalf("unexpected replica autoscaling state: %+v", state.ReplicaSettings)
+	}
+	if state.Cluster[0].Replica.ValueInt64() != 2 || state.Cluster[1].Replica.ValueInt64() != 1 || state.Cluster[2].Replica.ValueInt64() != 2 {
+		t.Fatalf("unexpected member replica state: %+v", state.Cluster)
+	}
+}
+
+func TestValidateGlobalClusterAutoscalingRejectsInvertedRange(t *testing.T) {
+	err := validateGlobalClusterAutoscaling(GlobalClusterResourceModel{
+		CUSettings: &GlobalClusterScalingModel{DynamicScaling: &GlobalClusterDynamicScalingModel{
+			Min: types.Int64Value(8), Max: types.Int64Value(4),
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected invalid CU autoscaling range")
 	}
 }
 
@@ -704,6 +816,11 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 			}
 			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(4)), nil
 		case 2:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("check primary before first secondary delete %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(4)), nil
+		case 3:
 			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-secondary" {
 				t.Fatalf("delete first secondary %s %s", req.Method, req.URL.Path)
 			}
@@ -711,12 +828,12 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 				"code": 0,
 				"data": map[string]any{"globalClusterId": "glo-1", "clusterId": "in01-secondary", "prompt": "deleted"},
 			}), nil
-		case 3:
+		case 4:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe after first secondary deleted %s %s", req.Method, req.URL.Path)
+				t.Fatalf("check primary before second secondary delete %s %s", req.Method, req.URL.Path)
 			}
 			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaryEU(4)), nil
-		case 4:
+		case 5:
 			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-secondary-ap" {
 				t.Fatalf("delete second secondary %s %s", req.Method, req.URL.Path)
 			}
@@ -724,14 +841,9 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 				"code": 0,
 				"data": map[string]any{"globalClusterId": "glo-1", "clusterId": "in01-secondary-ap", "prompt": "deleted"},
 			}), nil
-		case 5:
-			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe after second secondary deleted %s %s", req.Method, req.URL.Path)
-			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 6:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe primary deletable %s %s", req.Method, req.URL.Path)
+				t.Fatalf("describe after second secondary deleted %s %s", req.Method, req.URL.Path)
 			}
 			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 7:
