@@ -558,13 +558,13 @@ func (r *ApiKeyResource) UpgradeState(ctx context.Context) map[int64]resource.St
 					ClusterIds types.List   `tfsdk:"cluster_ids"`
 				}
 				type oldModel struct {
-					Id            types.String      `tfsdk:"id"`
-					Name          types.String      `tfsdk:"name"`
-					Role          types.String      `tfsdk:"role"`
-					KeyValue      types.String      `tfsdk:"key_value"`
-					CreatorName   types.String      `tfsdk:"creator_name"`
-					CreatedBy     types.String      `tfsdk:"created_by"`
-					CreateTime    types.String      `tfsdk:"create_time"`
+					Id            types.String       `tfsdk:"id"`
+					Name          types.String       `tfsdk:"name"`
+					Role          types.String       `tfsdk:"role"`
+					KeyValue      types.String       `tfsdk:"key_value"`
+					CreatorName   types.String       `tfsdk:"creator_name"`
+					CreatedBy     types.String       `tfsdk:"created_by"`
+					CreateTime    types.String       `tfsdk:"create_time"`
 					ProjectAccess []oldProjectAccess `tfsdk:"project_access"`
 				}
 
