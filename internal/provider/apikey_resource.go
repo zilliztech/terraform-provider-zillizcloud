@@ -452,6 +452,12 @@ func (r *ApiKeyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
+	// FC5: nil slice serializes as "projects": null which may differ from
+	// "projects": [] on the API side. Always send an explicit empty array.
+	if updateReq.Projects == nil {
+		updateReq.Projects = []zilliz.ApiKeyProjectAccess{}
+	}
+
 	updated, err := r.client.UpdateApiKey(state.Id.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update API key", err.Error())
@@ -728,4 +734,3 @@ func extractVolumeIds(pa *ApiKeyProjectAccessModel) []string {
 
 // Verify interfaces are satisfied at compile time.
 var _ validator.String = apiKeyRoleValidator{}
-var _ resource.ResourceWithUpgradeState = &ApiKeyResource{}

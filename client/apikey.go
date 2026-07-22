@@ -117,7 +117,7 @@ func (c *Client) ListApiKeys() ([]ApiKeyResponse, error) {
 			return nil, wrapApiKeyPermissionError(err)
 		}
 		all = append(all, resp.Data.ApiKeys...)
-		if len(resp.Data.ApiKeys) == 0 || len(all) >= resp.Data.Count {
+		if len(resp.Data.ApiKeys) == 0 || len(resp.Data.ApiKeys) < 100 || len(all) >= resp.Data.Count {
 			break
 		}
 	}
