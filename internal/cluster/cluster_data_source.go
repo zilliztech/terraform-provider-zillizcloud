@@ -26,16 +26,17 @@ type ClusterDataSource struct {
 
 // ClusterDataSourceModel describes the cluster data model.
 type ClusterDataSourceModel struct {
-	ClusterId          types.String `tfsdk:"id"`
-	ClusterName        types.String `tfsdk:"cluster_name"`
-	Description        types.String `tfsdk:"description"`
-	RegionId           types.String `tfsdk:"region_id"`
-	ClusterType        types.String `tfsdk:"cluster_type"`
-	CuSize             types.Int64  `tfsdk:"cu_size"`
-	Status             types.String `tfsdk:"status"`
-	ConnectAddress     types.String `tfsdk:"connect_address"`
-	PrivateLinkAddress types.String `tfsdk:"private_link_address"`
-	CreateTime         types.String `tfsdk:"create_time"`
+	ClusterId             types.String `tfsdk:"id"`
+	ClusterName           types.String `tfsdk:"cluster_name"`
+	Description           types.String `tfsdk:"description"`
+	RegionId              types.String `tfsdk:"region_id"`
+	ClusterType           types.String `tfsdk:"cluster_type"`
+	CuSize                types.Int64  `tfsdk:"cu_size"`
+	Status                types.String `tfsdk:"status"`
+	ConnectAddress        types.String `tfsdk:"connect_address"`
+	PrivateLinkAddress    types.String `tfsdk:"private_link_address"`
+	ConnectAddressEnabled types.Bool   `tfsdk:"connect_address_enabled"`
+	CreateTime            types.String `tfsdk:"create_time"`
 }
 
 func (d *ClusterDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -82,6 +83,10 @@ func (d *ClusterDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			},
 			"private_link_address": schema.StringAttribute{
 				MarkdownDescription: "The private endpoint of the cluster. You can set up a private link to allow your VPS in the same cloud region to access your cluster.",
+				Computed:            true,
+			},
+			"connect_address_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether the cluster's connect address is enabled.",
 				Computed:            true,
 			},
 			"create_time": schema.StringAttribute{
@@ -139,6 +144,9 @@ func (d *ClusterDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	state.Status = types.StringValue(c.Status)
 	state.ConnectAddress = types.StringValue(c.ConnectAddress)
 	state.PrivateLinkAddress = types.StringValue(c.PrivateLinkAddress)
+	// Same fallback as the resource: APIs that omit the field predate the
+	// disable capability, so their connect address is enabled by definition.
+	state.ConnectAddressEnabled = types.BoolValue(c.ConnectAddressEnabled == nil || *c.ConnectAddressEnabled)
 	state.CreateTime = types.StringValue(c.CreateTime)
 
 	diags := resp.State.Set(ctx, &state)

@@ -272,11 +272,51 @@ func GetCluster(c *gin.Context) {
 		return
 	}
 
+	if cluster.ConnectAddressEnabled == nil {
+		enabled := true
+		cluster.ConnectAddressEnabled = &enabled
+	}
+
 	log.Printf("[GetCluster] clusterId: %s", clusterId)
 
 	c.JSON(http.StatusOK, Response[*DedicatedClusterResponse]{
 		Code: 0,
 		Data: cluster,
+	})
+}
+
+func EnableConnectAddress(c *gin.Context) {
+	setConnectAddressEnabled(c, true)
+}
+
+func DisableConnectAddress(c *gin.Context) {
+	setConnectAddressEnabled(c, false)
+}
+
+func setConnectAddressEnabled(c *gin.Context, enabled bool) {
+	clusterId := c.Param("clusterId")
+
+	if clusterId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "clusterId is required"})
+		return
+	}
+
+	cluster := clusterStore.Get(clusterId)
+	if cluster == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "cluster not found"})
+		return
+	}
+
+	log.Printf("[SetConnectAddressEnabled] clusterId: %s, enabled: %v", clusterId, enabled)
+
+	cluster.ConnectAddressEnabled = &enabled
+	clusterStore.Set(clusterId, cluster)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": gin.H{
+			"clusterId": clusterId,
+		},
 	})
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -186,6 +187,12 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+			},
+			"connect_address_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether the cluster's connect address is enabled. Defaults to `true`. Only dedicated (non-BYOC) clusters support disabling the connect address; when disabled, the cluster is only reachable via its private link address. Disabling requires an active private link (Enterprise plan or higher); note that private link setup is asynchronous, so a newly registered `zillizcloud_private_endpoint` may take a few minutes before the connect address can be disabled.",
+				Optional:            true,
+				Computed:            true,
+				Default:             booldefault.StaticBool(true),
 			},
 			"create_time": schema.StringAttribute{
 				MarkdownDescription: "The time at which the cluster has been created.",
@@ -594,6 +601,22 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		state.SecurityGroups = plan.SecurityGroups
 	}
 
+	// The create API cannot disable the connect address, so apply it here on a
+	// best-effort basis. Disabling requires an existing private link, which a
+	// fresh cluster usually does not have yet; surface the API error as a warning.
+	// On failure the state keeps the plan's false even though the address is
+	// still enabled: the framework requires the post-apply state to match known
+	// plan values, so the truth can only be restored by the next refresh, which
+	// surfaces it as drift that the update path then rejects with a hard error.
+	if !plan.ConnectAddressEnabled.IsNull() && !plan.ConnectAddressEnabled.ValueBool() {
+		if err := r.store.DisableConnectAddress(ctx, state.ClusterId.ValueString()); err != nil {
+			resp.Diagnostics.AddWarning("Failed to disable cluster connect address",
+				err.Error()+" If this cluster type does not support disabling the connect address (Free/Serverless/BYOC), remove connect_address_enabled from the configuration — keeping it makes every subsequent terraform apply fail, because the configuration keeps requesting a state this cluster cannot have. Otherwise set up a private link first, then run terraform apply again.")
+		} else {
+			state.ConnectAddressEnabled = types.BoolValue(false)
+		}
+	}
+
 	diags = resp.State.Set(ctx, state)
 	if diags.HasError() {
 		errorToWarning(resp, diags)
@@ -628,6 +651,8 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.Status = cluster.Status
 	state.ConnectAddress = cluster.ConnectAddress
 	state.PrivateLinkAddress = cluster.PrivateLinkAddress
+	// store.Get never returns null for this field (null API value falls back to true)
+	state.ConnectAddressEnabled = cluster.ConnectAddressEnabled
 	state.CreateTime = cluster.CreateTime
 	state.Plan = cluster.Plan
 	state.Replica = cluster.Replica
@@ -768,6 +793,53 @@ func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, 
 	return nil
 }
 
+func (r *ClusterResource) handleConnectAddressUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	clusterId := state.ClusterId.ValueString()
+
+	// The schema default (StaticBool(true)) keeps the plan value known; bail out
+	// defensively rather than panic on ValueBool() if that ever changes.
+	if plan.ConnectAddressEnabled.IsNull() || plan.ConnectAddressEnabled.IsUnknown() {
+		return diags
+	}
+
+	// Fail fast with actionable guidance instead of surfacing the raw API error:
+	// the API rejects disabling the connect address when no private link exists.
+	// A live Get is deliberate: private link attachment is asynchronous and may
+	// have completed after the plan-phase refresh, so state.PrivateLinkAddress
+	// can be stale at apply time.
+	if !plan.ConnectAddressEnabled.ValueBool() {
+		cluster, err := r.store.Get(ctx, clusterId)
+		if err != nil {
+			diags.AddError("Failed to get cluster", err.Error())
+			return diags
+		}
+		if cluster.PrivateLinkAddress.ValueString() == "" {
+			diags.AddError("Cannot disable connect address",
+				"Only dedicated (non-BYOC) clusters with an active private link support disabling the connect address, and this cluster has no private link address yet. Private link requires the Enterprise plan or higher. If you have just registered a zillizcloud_private_endpoint, private link setup is asynchronous on the Zilliz Cloud side — wait a few minutes and run terraform apply again. Otherwise configure zillizcloud_private_endpoint (and its whitelist) first, and make sure it is applied before this change (e.g. with depends_on).")
+			return diags
+		}
+	}
+
+	var err error
+	if plan.ConnectAddressEnabled.ValueBool() {
+		err = r.store.EnableConnectAddress(ctx, clusterId)
+	} else {
+		err = r.store.DisableConnectAddress(ctx, clusterId)
+	}
+	if err != nil {
+		diags.AddError("Failed to update cluster connect address", err.Error())
+		return diags
+	}
+
+	err = r.waitForStatus(ctx, r.timeout(), clusterId, "RUNNING")
+	if err != nil && !util.IsNetworkGiveUpError(err) {
+		diags.AddError("Failed to wait for cluster to enter RUNNING state", err.Error())
+	}
+	return diags
+}
+
 // handleAutoscalingUpdate sends a single API call with the complete autoscaling state
 // (cu + replica) to avoid partial overwrites — the API replaces the entire autoscaling object.
 func (r *ClusterResource) handleAutoscalingUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
@@ -894,6 +966,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if plan.isCuSettingsChanged(state) || plan.isReplicaSettingsChanged(state) {
 		resp.Diagnostics.Append(r.handleAutoscalingUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	if plan.isConnectAddressEnabledChanged(state) {
+		resp.Diagnostics.Append(r.handleConnectAddressUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}

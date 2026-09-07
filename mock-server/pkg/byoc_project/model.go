@@ -444,6 +444,8 @@ type DedicatedClusterResponse struct {
 	BucketInfo         *ClusterBucketInfo `json:"bucketInfo,omitempty"`
 	AwsCseKeyArn       string             `json:"keyIdentifier,omitempty"`
 	GlobalClusterMeta  *GlobalClusterMeta `json:"globalClusterMeta"`
+	// nil means the deployment predates public endpoint reporting; treated as enabled
+	ConnectAddressEnabled *bool `json:"connectAddressEnabled,omitempty"`
 }
 
 type GlobalClusterMeta struct {

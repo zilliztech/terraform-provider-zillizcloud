@@ -61,6 +61,24 @@ func (c *Client) ResumeCluster(clusterId string) (*string, error) {
 	return &response.Data.ClusterId, err
 }
 
+func (c *Client) EnableConnectAddress(clusterId string) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/enableConnectAddress", nil, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
+func (c *Client) DisableConnectAddress(clusterId string) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("POST", "clusters/"+clusterId+"/disableConnectAddress", nil, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
 func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*string, error) {
 	var response zillizResponse[ClusterResponse]
 	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
@@ -188,23 +206,25 @@ type Clusters struct {
 }
 
 type Cluster struct {
-	ClusterId          string            `json:"clusterId"`
-	ClusterName        string            `json:"clusterName"`
-	Description        string            `json:"description"`
-	RegionId           string            `json:"regionId"`
-	ClusterType        string            `json:"clusterType"`
-	CuType             string            `json:"cuType"`
-	Plan               string            `json:"plan"`
-	CuSize             int64             `json:"cuSize"`
-	Status             string            `json:"status"`
-	ConnectAddress     string            `json:"connectAddress"`
-	PrivateLinkAddress string            `json:"privateLinkAddress"`
-	CreateTime         string            `json:"createTime"`
-	ProjectId          string            `json:"projectId"`
-	Labels             map[string]string `json:"labels,omitempty"`
-	Replica            int64             `json:"replica,omitempty"`
-	AwsCseKeyArn       string            `json:"keyIdentifier,omitempty"`
-	Autoscaling        AutoscalingConfig `json:"autoscaling"`
+	ClusterId          string `json:"clusterId"`
+	ClusterName        string `json:"clusterName"`
+	Description        string `json:"description"`
+	RegionId           string `json:"regionId"`
+	ClusterType        string `json:"clusterType"`
+	CuType             string `json:"cuType"`
+	Plan               string `json:"plan"`
+	CuSize             int64  `json:"cuSize"`
+	Status             string `json:"status"`
+	ConnectAddress     string `json:"connectAddress"`
+	PrivateLinkAddress string `json:"privateLinkAddress"`
+	// nil when the API does not report the connect address state (older deployments)
+	ConnectAddressEnabled *bool             `json:"connectAddressEnabled,omitempty"`
+	CreateTime            string            `json:"createTime"`
+	ProjectId             string            `json:"projectId"`
+	Labels                map[string]string `json:"labels,omitempty"`
+	Replica               int64             `json:"replica,omitempty"`
+	AwsCseKeyArn          string            `json:"keyIdentifier,omitempty"`
+	Autoscaling           AutoscalingConfig `json:"autoscaling"`
 }
 
 type AutoscalingPolicy struct {

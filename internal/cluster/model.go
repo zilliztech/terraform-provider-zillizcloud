@@ -104,30 +104,33 @@ func SchedulesEqual(a, b []ScheduleScaling) bool {
 }
 
 type ClusterResourceModel struct {
-	ClusterId          types.String     `tfsdk:"id"`
-	Plan               types.String     `tfsdk:"plan"`
-	ClusterName        types.String     `tfsdk:"cluster_name"`
-	CuSize             types.Int64      `tfsdk:"cu_size"`
-	CuType             types.String     `tfsdk:"cu_type"`
-	ProjectId          types.String     `tfsdk:"project_id"`
-	Username           types.String     `tfsdk:"username"`
-	Password           types.String     `tfsdk:"password"`
-	Prompt             types.String     `tfsdk:"prompt"`
-	Description        types.String     `tfsdk:"description"`
-	RegionId           types.String     `tfsdk:"region_id"`
-	Status             types.String     `tfsdk:"status"`
-	DesiredStatus      types.String     `tfsdk:"desired_status"`
-	ConnectAddress     types.String     `tfsdk:"connect_address"`
-	PrivateLinkAddress types.String     `tfsdk:"private_link_address"`
-	CreateTime         types.String     `tfsdk:"create_time"`
-	Labels             types.Map        `tfsdk:"labels"`
-	SecurityGroups     types.Set        `tfsdk:"load_balancer_security_groups"`
-	Replica            types.Int64      `tfsdk:"replica"`
-	CuSettings         *CuSettings      `tfsdk:"cu_settings"`
-	ReplicaSettings    *ReplicaSettings `tfsdk:"replica_settings"`
-	BucketInfo         *BucketInfo      `tfsdk:"bucket_info"`
-	AwsCseKeyArn       types.String     `tfsdk:"aws_cse_key_arn"`
-	Timeouts           timeouts.Value   `tfsdk:"timeouts"`
+	ClusterId          types.String `tfsdk:"id"`
+	Plan               types.String `tfsdk:"plan"`
+	ClusterName        types.String `tfsdk:"cluster_name"`
+	CuSize             types.Int64  `tfsdk:"cu_size"`
+	CuType             types.String `tfsdk:"cu_type"`
+	ProjectId          types.String `tfsdk:"project_id"`
+	Username           types.String `tfsdk:"username"`
+	Password           types.String `tfsdk:"password"`
+	Prompt             types.String `tfsdk:"prompt"`
+	Description        types.String `tfsdk:"description"`
+	RegionId           types.String `tfsdk:"region_id"`
+	Status             types.String `tfsdk:"status"`
+	DesiredStatus      types.String `tfsdk:"desired_status"`
+	ConnectAddress     types.String `tfsdk:"connect_address"`
+	PrivateLinkAddress types.String `tfsdk:"private_link_address"`
+	// whether the cluster's connect address is enabled; never null in state
+	// (store.Get falls back to true when the API omits the field)
+	ConnectAddressEnabled types.Bool       `tfsdk:"connect_address_enabled"`
+	CreateTime            types.String     `tfsdk:"create_time"`
+	Labels                types.Map        `tfsdk:"labels"`
+	SecurityGroups        types.Set        `tfsdk:"load_balancer_security_groups"`
+	Replica               types.Int64      `tfsdk:"replica"`
+	CuSettings            *CuSettings      `tfsdk:"cu_settings"`
+	ReplicaSettings       *ReplicaSettings `tfsdk:"replica_settings"`
+	BucketInfo            *BucketInfo      `tfsdk:"bucket_info"`
+	AwsCseKeyArn          types.String     `tfsdk:"aws_cse_key_arn"`
+	Timeouts              timeouts.Value   `tfsdk:"timeouts"`
 }
 
 type BucketInfo struct {
@@ -186,6 +189,8 @@ func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	c.DesiredStatus = input.Status
 	c.ConnectAddress = input.ConnectAddress
 	c.PrivateLinkAddress = input.PrivateLinkAddress
+	// store.Get never returns null for this field (null API value falls back to true)
+	c.ConnectAddressEnabled = input.ConnectAddressEnabled
 	c.CreateTime = input.CreateTime
 	c.Plan = input.Plan
 	c.Replica = input.Replica
@@ -232,6 +237,10 @@ func (c *ClusterResourceModel) isClusterNameChanged(other ClusterResourceModel) 
 
 func (plan *ClusterResourceModel) isSecurityGroupsChanged(state ClusterResourceModel) bool {
 	return !plan.SecurityGroups.Equal(state.SecurityGroups)
+}
+
+func (plan *ClusterResourceModel) isConnectAddressEnabledChanged(state ClusterResourceModel) bool {
+	return !plan.ConnectAddressEnabled.Equal(state.ConnectAddressEnabled)
 }
 
 func (c *ClusterResourceModel) isBucketInfoChanged(other ClusterResourceModel) bool {

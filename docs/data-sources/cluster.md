@@ -47,6 +47,7 @@ output "output" {
 - `cluster_name` (String) The name of the cluster.
 - `cluster_type` (String) The type of CU associated with the cluster. Possible values are Performance-optimized and Capacity-optimized.
 - `connect_address` (String) The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.
+- `connect_address_enabled` (Boolean) Whether the cluster's connect address is enabled.
 - `create_time` (String) The time at which the cluster has been created.
 - `cu_size` (Number) The size of the CU associated with the cluster.
 - `description` (String) An optional description about the cluster.

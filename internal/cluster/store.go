@@ -19,6 +19,8 @@ type ClusterStore interface {
 	ModifyReplica(ctx context.Context, clusterId string, replica int) error
 	SuspendCluster(ctx context.Context, clusterId string) error
 	ResumeCluster(ctx context.Context, clusterId string) error
+	EnableConnectAddress(ctx context.Context, clusterId string) error
+	DisableConnectAddress(ctx context.Context, clusterId string) error
 	UpdateLabels(ctx context.Context, clusterId string, labels map[string]string) error
 	ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error
 	UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error
@@ -121,6 +123,12 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		),
 		ConnectAddress:     types.StringValue(cluster.ConnectAddress),
 		PrivateLinkAddress: types.StringValue(cluster.PrivateLinkAddress),
+		// The API omits the field when the connect address toggle does not apply
+		// (BYOC) or is not reported (older deployments). State must never be null:
+		// the schema default (true) would otherwise produce a perpetual diff. true
+		// is the safe fallback — pre-feature deployments always had the address
+		// enabled, and for BYOC the internal address is indeed always enabled.
+		ConnectAddressEnabled: types.BoolValue(cluster.ConnectAddressEnabled == nil || *cluster.ConnectAddressEnabled),
 		Replica: types.Int64Value(func() int64 {
 			if cluster.Replica == 0 {
 				return 1
@@ -259,6 +267,16 @@ func (c *ClusterStoreImpl) SuspendCluster(ctx context.Context, clusterId string)
 
 func (c *ClusterStoreImpl) ResumeCluster(ctx context.Context, clusterId string) error {
 	_, err := c.client.ResumeCluster(clusterId)
+	return err
+}
+
+func (c *ClusterStoreImpl) EnableConnectAddress(ctx context.Context, clusterId string) error {
+	_, err := c.client.EnableConnectAddress(clusterId)
+	return err
+}
+
+func (c *ClusterStoreImpl) DisableConnectAddress(ctx context.Context, clusterId string) error {
+	_, err := c.client.DisableConnectAddress(clusterId)
 	return err
 }
 
