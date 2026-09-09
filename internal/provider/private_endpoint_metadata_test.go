@@ -22,6 +22,11 @@ func TestPrivateEndpointTerraformTypeNames(t *testing.T) {
 			want:    "zillizcloud_private_endpoint_services",
 		},
 		{
+			name:    "BYOC VPC endpoint service",
+			factory: NewByocVpcEndpointServiceDataSource,
+			want:    "zillizcloud_byoc_vpc_endpoint_service",
+		},
+		{
 			name:    "endpoints",
 			factory: NewEndpointsDataSource,
 			want:    "zillizcloud_private_endpoints",
