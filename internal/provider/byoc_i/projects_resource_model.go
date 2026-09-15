@@ -169,8 +169,9 @@ type BYOCOpProjectSettingsResourceModel struct {
 }
 
 type OpConfig struct {
-	Token         types.String `tfsdk:"token"`
-	AgentImageUrl types.String `tfsdk:"agent_image_url"`
+	Token                types.String `tfsdk:"token"`
+	AgentImageUrl        types.String `tfsdk:"agent_image_url"`
+	TunnelClientImageUrl types.String `tfsdk:"tunnel_client_image_url"`
 }
 
 type NodeQuotas struct {

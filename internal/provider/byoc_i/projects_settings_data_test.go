@@ -52,6 +52,7 @@ data "zillizcloud_byoc_i_project_settings" "test" {
 					// Check op_config
 					resource.TestCheckResourceAttrSet("data.zillizcloud_byoc_i_project_settings.test", "op_config.token"),
 					resource.TestCheckResourceAttrSet("data.zillizcloud_byoc_i_project_settings.test", "op_config.agent_image_url"),
+					resource.TestCheckResourceAttrSet("data.zillizcloud_byoc_i_project_settings.test", "op_config.tunnel_client_image_url"),
 					resource.TestCheckResourceAttr("data.zillizcloud_byoc_i_project_settings.test", "private_link_enabled", "true"),
 				),
 			},

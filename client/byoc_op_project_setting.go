@@ -59,9 +59,10 @@ type GetByocOpProjectSettingsResponse struct {
 }
 
 type OpConfig struct {
-	Token         string `json:"tunnelToken"`
-	AgentImageUrl string `json:"agentImageUrl"`
-	ExtConfig     string `json:"extConfig"`
+	Token                string `json:"tunnelToken"`
+	AgentImageUrl        string `json:"agentImageUrl"`
+	TunnelClientImageUrl string `json:"tunnelClientImageUrl"`
+	ExtConfig            string `json:"extConfig"`
 }
 
 type NodeQuota struct {

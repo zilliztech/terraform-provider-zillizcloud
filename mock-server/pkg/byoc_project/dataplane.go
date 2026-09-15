@@ -263,7 +263,7 @@ func CreateSettings(c *gin.Context) {
 			WithNodeQuota("fundamental", int(request.FundamentalMin), []string{request.FundamentalVm}),
 			WithNodeQuota("core", int(request.CoreMin), []string{request.CoreVm}),
 		}),
-		WithOpConfig("sk-op-token", "sk-op-agent-image-url"),
+		WithOpConfig("sk-op-token", "sk-op-agent-image-url", "sk-op-tunnel-client-image-url"),
 	)
 
 	// could query by dataPlaneId or projectId later on
