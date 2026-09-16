@@ -81,6 +81,13 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
       - run: go mod download
+      - name: Install Terraform for mock tests
+        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+        with:
+          terraform_version: '1.13.5'
+          terraform_wrapper: false
+      - name: Select Terraform for acceptance test harness
+        run: echo "TF_ACC_TERRAFORM_PATH=$(command -v terraform)" >> "$GITHUB_ENV"
       - name: Wait for mock server to be ready
         run: |
           timeout 30s bash -c 'until curl -f http://localhost:8080/v2/byoc/describe; do sleep 1; done'
