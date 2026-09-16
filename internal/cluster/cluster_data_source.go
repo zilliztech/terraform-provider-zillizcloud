@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
+	"github.com/zilliztech/terraform-provider-zillizcloud/internal/util/conv"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -26,16 +27,17 @@ type ClusterDataSource struct {
 
 // ClusterDataSourceModel describes the cluster data model.
 type ClusterDataSourceModel struct {
-	ClusterId          types.String `tfsdk:"id"`
-	ClusterName        types.String `tfsdk:"cluster_name"`
-	Description        types.String `tfsdk:"description"`
-	RegionId           types.String `tfsdk:"region_id"`
-	ClusterType        types.String `tfsdk:"cluster_type"`
-	CuSize             types.Int64  `tfsdk:"cu_size"`
-	Status             types.String `tfsdk:"status"`
-	ConnectAddress     types.String `tfsdk:"connect_address"`
-	PrivateLinkAddress types.String `tfsdk:"private_link_address"`
-	CreateTime         types.String `tfsdk:"create_time"`
+	ClusterId            types.String `tfsdk:"id"`
+	ClusterName          types.String `tfsdk:"cluster_name"`
+	Description          types.String `tfsdk:"description"`
+	RegionId             types.String `tfsdk:"region_id"`
+	ClusterType          types.String `tfsdk:"cluster_type"`
+	CuSize               types.Int64  `tfsdk:"cu_size"`
+	Status               types.String `tfsdk:"status"`
+	ConnectAddress       types.String `tfsdk:"connect_address"`
+	PrivateLinkAddress   types.String `tfsdk:"private_link_address"`
+	PublicAddressEnabled types.Bool   `tfsdk:"public_address_enabled"`
+	CreateTime           types.String `tfsdk:"create_time"`
 }
 
 func (d *ClusterDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -77,11 +79,15 @@ func (d *ClusterDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				Computed:            true,
 			},
 			"connect_address": schema.StringAttribute{
-				MarkdownDescription: "The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.",
+				MarkdownDescription: "The endpoint used to connect to the cluster. For Free, Serverless and Dedicated clusters this is the public endpoint reachable from the internet; for BYOC clusters this is the internal address within your VPC.",
 				Computed:            true,
 			},
 			"private_link_address": schema.StringAttribute{
 				MarkdownDescription: "The private endpoint of the cluster. You can set up a private link to allow your VPS in the same cloud region to access your cluster.",
+				Computed:            true,
+			},
+			"public_address_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether the cluster's public address is enabled. Not applicable to BYOC clusters (they have no public address), for which the value is null.",
 				Computed:            true,
 			},
 			"create_time": schema.StringAttribute{
@@ -139,6 +145,9 @@ func (d *ClusterDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	state.Status = types.StringValue(c.Status)
 	state.ConnectAddress = types.StringValue(c.ConnectAddress)
 	state.PrivateLinkAddress = types.StringValue(c.PrivateLinkAddress)
+	// Pass the API value through, preserving null (field omitted → not applicable,
+	// e.g. BYOC) instead of collapsing it to a zero value — same as the resource.
+	state.PublicAddressEnabled = conv.BoolFromPtr(c.PublicAddressEnabled)
 	state.CreateTime = types.StringValue(c.CreateTime)
 
 	diags := resp.State.Set(ctx, &state)

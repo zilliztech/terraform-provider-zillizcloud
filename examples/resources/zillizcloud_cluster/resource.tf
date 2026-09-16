@@ -80,3 +80,19 @@ resource "zillizcloud_cluster" "full_autoscaling_cluster" {
     }
   }
 }
+
+# Create a dedicated cluster and disable its public address.
+# NOTE: disabling the public address requires a private link (Enterprise plan or
+# higher). Private link setup is asynchronous: after registering a
+# zillizcloud_private_endpoint, wait until the cluster's private_link_address is
+# populated before setting public_address_enabled = false, otherwise the apply
+# will fail with a clear error and you can simply re-apply a few minutes later.
+resource "zillizcloud_cluster" "private_only_cluster" {
+  cluster_name           = "Cluster-06"
+  region_id              = "aws-us-east-2"
+  plan                   = "Enterprise"
+  cu_size                = 1
+  cu_type                = "Performance-optimized"
+  project_id             = data.zillizcloud_project.default.id
+  public_address_enabled = false
+}

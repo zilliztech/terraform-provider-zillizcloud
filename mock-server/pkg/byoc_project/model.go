@@ -444,6 +444,8 @@ type DedicatedClusterResponse struct {
 	BucketInfo         *ClusterBucketInfo `json:"bucketInfo,omitempty"`
 	AwsCseKeyArn       string             `json:"keyIdentifier,omitempty"`
 	GlobalClusterMeta  *GlobalClusterMeta `json:"globalClusterMeta"`
+	// nil means the toggle does not apply (BYOC) or the deployment predates it
+	PublicAddressEnabled *bool `json:"publicAddressEnabled,omitempty"`
 }
 
 type GlobalClusterMeta struct {

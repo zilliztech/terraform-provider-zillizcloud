@@ -19,6 +19,7 @@ type ClusterStore interface {
 	ModifyReplica(ctx context.Context, clusterId string, replica int) error
 	SuspendCluster(ctx context.Context, clusterId string) error
 	ResumeCluster(ctx context.Context, clusterId string) error
+	UpdatePublicAddressEnabled(ctx context.Context, clusterId string, enabled bool) error
 	UpdateLabels(ctx context.Context, clusterId string, labels map[string]string) error
 	ModifyClusterProperties(ctx context.Context, clusterId string, clusterName string) error
 	UpsertSecurityGroups(ctx context.Context, clusterId string, securityGroupIds []string) error
@@ -121,6 +122,12 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 		),
 		ConnectAddress:     types.StringValue(cluster.ConnectAddress),
 		PrivateLinkAddress: types.StringValue(cluster.PrivateLinkAddress),
+		// The API omits the field when the toggle does not apply (BYOC has no
+		// public address) or the deployment predates it. Pass null through as-is:
+		// null is Terraform's documented "not applicable" and lets an unconfigured
+		// plan adopt the state value with no diff, while any explicitly configured
+		// value is rejected against a null state as a misconfiguration.
+		PublicAddressEnabled: conv.BoolFromPtr(cluster.PublicAddressEnabled),
 		Replica: types.Int64Value(func() int64 {
 			if cluster.Replica == 0 {
 				return 1
@@ -259,6 +266,11 @@ func (c *ClusterStoreImpl) SuspendCluster(ctx context.Context, clusterId string)
 
 func (c *ClusterStoreImpl) ResumeCluster(ctx context.Context, clusterId string) error {
 	_, err := c.client.ResumeCluster(clusterId)
+	return err
+}
+
+func (c *ClusterStoreImpl) UpdatePublicAddressEnabled(ctx context.Context, clusterId string, enabled bool) error {
+	_, err := c.client.UpdatePublicAddressEnabled(clusterId, enabled)
 	return err
 }
 

@@ -42,6 +42,7 @@ func main() {
 			clusters.PUT("/:clusterId/labels", byoc_project.UpdateLabels)
 			clusters.GET("/:clusterId/securityGroups", byoc_project.GetSecurityGroups)
 			clusters.PUT("/:clusterId/securityGroups", byoc_project.UpsertSecurityGroups)
+			clusters.PATCH("/:clusterId", byoc_project.UpdatePublicAddressEnabled)
 			clusters.DELETE("/:clusterId/drop", byoc_project.DropCluster)
 		}
 		globalClusters := v2.Group("/globalClusters")

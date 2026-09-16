@@ -280,6 +280,44 @@ func GetCluster(c *gin.Context) {
 	})
 }
 
+// UpdatePublicAddressEnabled handles PATCH /clusters/:clusterId — merge-patch semantics:
+// only publicAddressEnabled (when present) is applied.
+func UpdatePublicAddressEnabled(c *gin.Context) {
+	clusterId := c.Param("clusterId")
+
+	if clusterId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "clusterId is required"})
+		return
+	}
+
+	cluster := clusterStore.Get(clusterId)
+	if cluster == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "cluster not found"})
+		return
+	}
+
+	var body struct {
+		PublicAddressEnabled *bool `json:"publicAddressEnabled"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if body.PublicAddressEnabled != nil {
+		log.Printf("[UpdatePublicAddressEnabled] clusterId: %s, enabled: %v", clusterId, *body.PublicAddressEnabled)
+		cluster.PublicAddressEnabled = body.PublicAddressEnabled
+		clusterStore.Set(clusterId, cluster)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": gin.H{
+			"clusterId": clusterId,
+		},
+	})
+}
+
 func ResumeCluster(c *gin.Context) {
 	clusterId := c.Param("clusterId")
 

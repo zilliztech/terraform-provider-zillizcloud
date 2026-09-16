@@ -46,10 +46,11 @@ output "output" {
 
 - `cluster_name` (String) The name of the cluster.
 - `cluster_type` (String) The type of CU associated with the cluster. Possible values are Performance-optimized and Capacity-optimized.
-- `connect_address` (String) The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.
+- `connect_address` (String) The endpoint used to connect to the cluster. For Free, Serverless and Dedicated clusters this is the public endpoint reachable from the internet; for BYOC clusters this is the internal address within your VPC.
 - `create_time` (String) The time at which the cluster has been created.
 - `cu_size` (Number) The size of the CU associated with the cluster.
 - `description` (String) An optional description about the cluster.
 - `private_link_address` (String) The private endpoint of the cluster. You can set up a private link to allow your VPS in the same cloud region to access your cluster.
+- `public_address_enabled` (Boolean) Whether the cluster's public address is enabled. Not applicable to BYOC clusters (they have no public address), for which the value is null.
 - `region_id` (String) The ID of the region where the cluster exists.
 - `status` (String) The current status of the cluster. Possible values are INITIALIZING, RUNNING, SUSPENDING, and RESUMING.

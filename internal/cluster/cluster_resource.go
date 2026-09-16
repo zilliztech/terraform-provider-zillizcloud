@@ -174,7 +174,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"connect_address": schema.StringAttribute{
-				MarkdownDescription: "The public endpoint of the cluster. You can connect to the cluster using this endpoint from the public network.",
+				MarkdownDescription: "The endpoint used to connect to the cluster. For Free, Serverless and Dedicated clusters this is the public endpoint reachable from the internet; for BYOC clusters this is the internal address within your VPC.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -186,6 +186,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+			},
+			"public_address_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether the cluster's public address is enabled. When omitted, the provider tracks the current value without managing it — new clusters default to enabled on the API side, and out-of-band changes (e.g. from the console) are preserved. Set it explicitly to manage the value declaratively. Only dedicated (non-BYOC) clusters have a public address; when disabled, the cluster is only reachable via its private link address. Disabling requires an active private link (Enterprise plan or higher); note that private link setup is asynchronous, so a newly registered `zillizcloud_private_endpoint` may take a few minutes before the public address can be disabled. This attribute does not apply to BYOC clusters (they have no public address); configuring it on a BYOC cluster is an error.",
+				Optional:            true,
+				Computed:            true,
 			},
 			"create_time": schema.StringAttribute{
 				MarkdownDescription: "The time at which the cluster has been created.",
@@ -577,6 +582,13 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 		if plan.Replica.IsNull() || plan.Replica.IsUnknown() {
 			state.Replica = newState.Replica
 		}
+		// When the attribute is not configured the plan value is unknown; the
+		// framework requires a known post-apply state, so adopt the remote value
+		// (unconfigured means track, not manage). The remote value may itself be
+		// null (BYOC — the toggle does not apply), which is preserved.
+		if plan.PublicAddressEnabled.IsNull() || plan.PublicAddressEnabled.IsUnknown() {
+			state.PublicAddressEnabled = newState.PublicAddressEnabled
+		}
 	}
 
 	diags := resp.State.Set(ctx, state)
@@ -592,6 +604,22 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 			return
 		}
 		state.SecurityGroups = plan.SecurityGroups
+	}
+
+	// The create API cannot disable the public address, so apply it here on a
+	// best-effort basis. Disabling requires an existing private link, which a
+	// fresh cluster usually does not have yet; surface the API error as a warning.
+	// On failure the state keeps the plan's false even though the address is
+	// still enabled: the framework requires the post-apply state to match known
+	// plan values, so the truth can only be restored by the next refresh, which
+	// surfaces it as drift that the update path then rejects with a hard error.
+	if !plan.PublicAddressEnabled.IsNull() && !plan.PublicAddressEnabled.IsUnknown() && !plan.PublicAddressEnabled.ValueBool() {
+		if err := r.store.UpdatePublicAddressEnabled(ctx, state.ClusterId.ValueString(), false); err != nil {
+			resp.Diagnostics.AddWarning("Failed to disable cluster public address",
+				err.Error()+" If this cluster type does not support disabling the public address (Free/Serverless/BYOC), remove public_address_enabled from the configuration — keeping it makes every subsequent terraform apply fail, because the configuration keeps requesting a state this cluster cannot have. Otherwise set up a private link first, then run terraform apply again.")
+		} else {
+			state.PublicAddressEnabled = types.BoolValue(false)
+		}
 	}
 
 	diags = resp.State.Set(ctx, state)
@@ -628,6 +656,7 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.Status = cluster.Status
 	state.ConnectAddress = cluster.ConnectAddress
 	state.PrivateLinkAddress = cluster.PrivateLinkAddress
+	state.PublicAddressEnabled = cluster.PublicAddressEnabled
 	state.CreateTime = cluster.CreateTime
 	state.Plan = cluster.Plan
 	state.Replica = cluster.Replica
@@ -768,6 +797,69 @@ func (r *ClusterResource) handleSecurityGroupsUpdate(ctx context.Context, plan, 
 	return nil
 }
 
+func (r *ClusterResource) handlePublicAddressUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	clusterId := state.ClusterId.ValueString()
+
+	// Without a schema default the plan value can be unknown (e.g. a new cluster
+	// created without the attribute); bail out defensively rather than panic on
+	// ValueBool() in that case.
+	if plan.PublicAddressEnabled.IsNull() || plan.PublicAddressEnabled.IsUnknown() {
+		return diags
+	}
+
+	// A null state means the API omits the field for this cluster — the toggle
+	// does not apply (BYOC, which has no public address). Any explicitly
+	// configured value against a null state is a misconfiguration: reject it
+	// with guidance rather than issuing a call the API would reject anyway.
+	if state.PublicAddressEnabled.IsNull() {
+		diags.AddError("public_address_enabled does not apply to this cluster",
+			"The API reports no public address for this cluster, so the public_address_enabled attribute is not applicable to it (this is the case for BYOC clusters, whose connect address is a VPC-internal address). Remove public_address_enabled from the configuration.")
+		return diags
+	}
+
+	// Fail fast with actionable guidance instead of surfacing the raw API error:
+	// the API rejects disabling the public address when no private link exists.
+	// A live Get is deliberate: private link attachment is asynchronous and may
+	// have completed after the plan-phase refresh, so state.PrivateLinkAddress
+	// can be stale at apply time.
+	if !plan.PublicAddressEnabled.ValueBool() {
+		cluster, err := r.store.Get(ctx, clusterId)
+		if err != nil {
+			diags.AddError("Failed to get cluster", err.Error())
+			return diags
+		}
+		if cluster.PrivateLinkAddress.ValueString() == "" {
+			diags.AddError("Cannot disable public address",
+				"Only dedicated (non-BYOC) clusters with an active private link support disabling the public address, and this cluster has no private link address yet. Private link requires the Enterprise plan or higher. If you have just registered a zillizcloud_private_endpoint, private link setup is asynchronous on the Zilliz Cloud side — wait a few minutes and run terraform apply again. Otherwise configure zillizcloud_private_endpoint (and its whitelist) first, and make sure it is applied before this change (e.g. with depends_on).")
+			return diags
+		}
+	}
+
+	if err := r.store.UpdatePublicAddressEnabled(ctx, clusterId, plan.PublicAddressEnabled.ValueBool()); err != nil {
+		diags.AddError("Failed to update cluster public address", err.Error())
+		return diags
+	}
+
+	// Waiting for RUNNING here is what makes the post-update Get (populate at
+	// the end of Update) return the converged publicAddressEnabled, so the
+	// final state matches the known plan value and the framework's consistency
+	// check passes. The toggle is an async workflow on the server side, but
+	// its DAG flips the domain record (and verifies the infra-level change has
+	// actually taken effect) strictly before restoring the instance status to
+	// RUNNING — so RUNNING means the public address is truly on/off, not just
+	// that a status enum changed. This depends on the intermediate status
+	// (DISABLE/ENABLE_PUBLIC_DOMAIN) staying visible rather than being
+	// display-mapped to RUNNING; if that ever changes, poll
+	// publicAddressEnabled itself instead.
+	err := r.waitForStatus(ctx, r.timeout(), clusterId, "RUNNING")
+	if err != nil && !util.IsNetworkGiveUpError(err) {
+		diags.AddError("Failed to wait for cluster to enter RUNNING state", err.Error())
+	}
+	return diags
+}
+
 // handleAutoscalingUpdate sends a single API call with the complete autoscaling state
 // (cu + replica) to avoid partial overwrites — the API replaces the entire autoscaling object.
 func (r *ClusterResource) handleAutoscalingUpdate(ctx context.Context, plan, state ClusterResourceModel) diag.Diagnostics {
@@ -894,6 +986,13 @@ func (r *ClusterResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if plan.isCuSettingsChanged(state) || plan.isReplicaSettingsChanged(state) {
 		resp.Diagnostics.Append(r.handleAutoscalingUpdate(ctx, plan, state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	if plan.isPublicAddressEnabledChanged(state) {
+		resp.Diagnostics.Append(r.handlePublicAddressUpdate(ctx, plan, state)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}

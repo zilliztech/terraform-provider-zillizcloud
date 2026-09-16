@@ -61,6 +61,26 @@ func (c *Client) ResumeCluster(clusterId string) (*string, error) {
 	return &response.Data.ClusterId, err
 }
 
+// UpdatePublicAddressEnabledParams carries the public-address toggle on the
+// cluster-properties PATCH. The field is a *bool so an omitted value is left
+// unchanged on the server side (merge-patch semantics).
+type UpdatePublicAddressEnabledParams struct {
+	PublicAddressEnabled *bool `json:"publicAddressEnabled,omitempty"`
+}
+
+// UpdatePublicAddressEnabled enables or disables the cluster's public address via the
+// cluster-properties PATCH. Disabling requires an existing private link; the
+// server rejects the whole patch synchronously (40059) before any other
+// property changes.
+func (c *Client) UpdatePublicAddressEnabled(clusterId string, enabled bool) (*string, error) {
+	var response zillizResponse[ClusterResponse]
+	err := c.do("PATCH", "clusters/"+clusterId, &UpdatePublicAddressEnabledParams{PublicAddressEnabled: &enabled}, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.Data.ClusterId, err
+}
+
 func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*string, error) {
 	var response zillizResponse[ClusterResponse]
 	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
@@ -188,23 +208,26 @@ type Clusters struct {
 }
 
 type Cluster struct {
-	ClusterId          string            `json:"clusterId"`
-	ClusterName        string            `json:"clusterName"`
-	Description        string            `json:"description"`
-	RegionId           string            `json:"regionId"`
-	ClusterType        string            `json:"clusterType"`
-	CuType             string            `json:"cuType"`
-	Plan               string            `json:"plan"`
-	CuSize             int64             `json:"cuSize"`
-	Status             string            `json:"status"`
-	ConnectAddress     string            `json:"connectAddress"`
-	PrivateLinkAddress string            `json:"privateLinkAddress"`
-	CreateTime         string            `json:"createTime"`
-	ProjectId          string            `json:"projectId"`
-	Labels             map[string]string `json:"labels,omitempty"`
-	Replica            int64             `json:"replica,omitempty"`
-	AwsCseKeyArn       string            `json:"keyIdentifier,omitempty"`
-	Autoscaling        AutoscalingConfig `json:"autoscaling"`
+	ClusterId          string `json:"clusterId"`
+	ClusterName        string `json:"clusterName"`
+	Description        string `json:"description"`
+	RegionId           string `json:"regionId"`
+	ClusterType        string `json:"clusterType"`
+	CuType             string `json:"cuType"`
+	Plan               string `json:"plan"`
+	CuSize             int64  `json:"cuSize"`
+	Status             string `json:"status"`
+	ConnectAddress     string `json:"connectAddress"`
+	PrivateLinkAddress string `json:"privateLinkAddress"`
+	// nil when the API omits the field — the toggle does not apply (BYOC, which
+	// has no public address) or the deployment predates it
+	PublicAddressEnabled *bool             `json:"publicAddressEnabled,omitempty"`
+	CreateTime           string            `json:"createTime"`
+	ProjectId            string            `json:"projectId"`
+	Labels               map[string]string `json:"labels,omitempty"`
+	Replica              int64             `json:"replica,omitempty"`
+	AwsCseKeyArn         string            `json:"keyIdentifier,omitempty"`
+	Autoscaling          AutoscalingConfig `json:"autoscaling"`
 }
 
 type AutoscalingPolicy struct {
