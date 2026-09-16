@@ -88,6 +88,7 @@ jobs:
         env:
           ZILLIZCLOUD_HOST_ADDRESS: "http://localhost:8080/v2"
           ZILLIZCLOUD_API_KEY: "xxxxxxxxxxx"
+          ZILLIZCLOUD_PROJECT_ID: "proj-ebc5ac7f430702aec8c57b"
           ZILLIZCLOUD_QPS: "1000"
           ZILLIZCLOUD_BURST: "1000"
           TF_ACC: "1"
