@@ -155,7 +155,7 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"region_id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the region where the cluster exists.",
+				MarkdownDescription: "The ID of the region where the cluster is to be created. Required unless region_id is configured in the provider. If omitted, the provider's region_id is used.",
 				Optional:            true,
 				Computed:            true,
 			},
