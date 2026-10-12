@@ -176,6 +176,10 @@ Required:
 - `region` (String) GCP region
 - `storage` (Attributes) GCP storage configuration (see [below for nested schema](#nestedatt--gcp--storage))
 
+Optional:
+
+- `cse` (Attributes) Optional Milvus CMEK configuration. Uses a dedicated GCP service account; the DataPlane workload identity must be allowed to impersonate it. (see [below for nested schema](#nestedatt--gcp--cse))
+
 <a id="nestedatt--gcp--gke"></a>
 ### Nested Schema for `gcp.gke`
 
@@ -217,6 +221,15 @@ Optional:
 Required:
 
 - `bucket_id` (String) GCS bucket ID
+
+
+<a id="nestedatt--gcp--cse"></a>
+### Nested Schema for `gcp.cse`
+
+Required:
+
+- `default_key_name` (String) Regional CryptoKey resource name to verify and register during bootstrap. Individual clusters must still opt into CMEK.
+- `service_account_email` (String) Dedicated GCP CSE service account email in the BYOC project.
 
 
 

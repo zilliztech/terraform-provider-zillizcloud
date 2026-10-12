@@ -460,6 +460,22 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 							},
 						},
 					},
+					"cse": schema.SingleNestedAttribute{
+						MarkdownDescription: "Optional Milvus CMEK configuration. Uses a dedicated GCP service account; the DataPlane workload identity must be allowed to impersonate it.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"service_account_email": schema.StringAttribute{
+								MarkdownDescription: "Dedicated GCP CSE service account email in the BYOC project.",
+								Required:            true,
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+							},
+							"default_key_name": schema.StringAttribute{
+								MarkdownDescription: "Regional CryptoKey resource name to verify and register during bootstrap. Individual clusters must still opt into CMEK.",
+								Required:            true,
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+							},
+						},
+					},
 					"gke": schema.SingleNestedAttribute{
 						MarkdownDescription: "GKE cluster configuration",
 						Required:            true,

@@ -124,6 +124,10 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 			PSCEndpointIP:     optionalStringPointer(data.GCP.Network.PSCEndpointIP),
 			Zones:             zones,
 		}
+		if data.GCP.CSE != nil {
+			request.GCPParam.CseSA = data.GCP.CSE.ServiceAccountEmail.ValueString()
+			request.GCPParam.DefaultGCPCseKeyName = data.GCP.CSE.DefaultKeyName.ValueString()
+		}
 	}
 
 	// if data.ExtConfig.ValueString() is set, set it to ExtConfig

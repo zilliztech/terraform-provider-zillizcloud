@@ -85,12 +85,18 @@ type AzureStorageConfig struct {
 }
 
 type GCPConfig struct {
+	CSE       *GCPCSEConfig     `tfsdk:"cse"`
 	Region    types.String      `tfsdk:"region"`
 	ProjectID types.String      `tfsdk:"project_id"`
 	Network   GCPNetworkConfig  `tfsdk:"network"`
 	Identity  GCPIdentityConfig `tfsdk:"identity"`
 	GKE       GCPGKEConfig      `tfsdk:"gke"`
 	Storage   GCPStorageConfig  `tfsdk:"storage"`
+}
+
+type GCPCSEConfig struct {
+	ServiceAccountEmail types.String `tfsdk:"service_account_email"`
+	DefaultKeyName      types.String `tfsdk:"default_key_name"`
 }
 
 type GCPNetworkConfig struct {
