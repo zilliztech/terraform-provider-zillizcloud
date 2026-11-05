@@ -22,16 +22,20 @@ func TestUnitSettingsTunnelClientImageSchema(t *testing.T) {
 	var dataSchema datasource.SchemaResponse
 	NewBYOCOpProjectSettingsData().Schema(context.Background(), datasource.SchemaRequest{}, &dataSchema)
 	require.False(t, dataSchema.Diagnostics.HasError())
-	dataConfig := dataSchema.Schema.Attributes["op_config"].(datasourceschema.SingleNestedAttribute)
-	dataImage := dataConfig.Attributes["tunnel_client_image_url"].(datasourceschema.StringAttribute)
+	dataConfig, ok := dataSchema.Schema.Attributes["op_config"].(datasourceschema.SingleNestedAttribute)
+	require.True(t, ok)
+	dataImage, ok := dataConfig.Attributes["tunnel_client_image_url"].(datasourceschema.StringAttribute)
+	require.True(t, ok)
 	require.True(t, dataImage.Computed)
 	require.False(t, dataImage.Required)
 
 	var resourceSchema resource.SchemaResponse
 	NewBYOCOpProjectSettingsResource().Schema(context.Background(), resource.SchemaRequest{}, &resourceSchema)
 	require.False(t, resourceSchema.Diagnostics.HasError())
-	resourceConfig := resourceSchema.Schema.Attributes["op_config"].(resourceschema.SingleNestedAttribute)
-	resourceImage := resourceConfig.Attributes["tunnel_client_image_url"].(resourceschema.StringAttribute)
+	resourceConfig, ok := resourceSchema.Schema.Attributes["op_config"].(resourceschema.SingleNestedAttribute)
+	require.True(t, ok)
+	resourceImage, ok := resourceConfig.Attributes["tunnel_client_image_url"].(resourceschema.StringAttribute)
+	require.True(t, ok)
 	require.True(t, resourceImage.Computed)
 	require.False(t, resourceImage.Required)
 }
