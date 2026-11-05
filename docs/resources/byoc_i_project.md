@@ -100,6 +100,10 @@ Required:
 - `region` (String) Azure region
 - `storage` (Attributes) Storage configuration (see [below for nested schema](#nestedatt--azure--storage))
 
+Optional:
+
+- `cse` (Attributes) Optional Milvus client-side encryption using an existing Azure AES Key Vault key and a dedicated user-assigned managed identity. The identity must be authorized for the key and trusted by the DataPlane workload. (see [below for nested schema](#nestedatt--azure--cse))
+
 <a id="nestedatt--azure--identity"></a>
 ### Nested Schema for `azure.identity`
 
@@ -161,6 +165,26 @@ Required:
 
 - `container_name` (String) Storage container name
 - `storage_account_name` (String) Storage account name
+
+
+<a id="nestedatt--azure--cse"></a>
+### Nested Schema for `azure.cse`
+
+Required:
+
+- `default_key_identifier` (String) Existing Azure AES Key Vault key URL without a version, for example https://customer-kms.vault.azure.net/keys/cmek-key. Requires encrypt, decrypt and get permissions; RSA and Managed HSM are not supported.
+- `identity` (Attributes) Dedicated user-assigned managed identity for CMEK; separate from storage identities. (see [below for nested schema](#nestedatt--azure--cse--identity))
+- `tenant_id` (String) Microsoft Entra tenant ID of the dedicated CMEK identity.
+
+<a id="nestedatt--azure--cse--identity"></a>
+### Nested Schema for `azure.cse.identity`
+
+Required:
+
+- `client_id` (String) CMEK identity application (client) ID.
+- `principal_id` (String) CMEK identity principal (object) ID.
+- `resource_id` (String) CMEK user-assigned managed identity Azure resource ID.
+
 
 
 

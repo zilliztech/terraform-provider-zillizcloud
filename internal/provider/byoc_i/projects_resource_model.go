@@ -53,7 +53,14 @@ type CSEConfig struct {
 	ExternalID          types.String `tfsdk:"external_id"`
 }
 
+type AzureCSEConfig struct {
+	Identity             AzureIdentity `tfsdk:"identity"`
+	TenantID             types.String  `tfsdk:"tenant_id"`
+	DefaultKeyIdentifier types.String  `tfsdk:"default_key_identifier"`
+}
+
 type AzureConfig struct {
+	CSE      *AzureCSEConfig     `tfsdk:"cse"`
 	Region   types.String        `tfsdk:"region"`
 	Network  AzureNetworkConfig  `tfsdk:"network"`
 	Identity AzureIdentityConfig `tfsdk:"identity"`

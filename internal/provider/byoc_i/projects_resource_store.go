@@ -100,6 +100,15 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 				PrincipalID: data.Azure.Identity.Maintenance.PrincipalID.ValueString(),
 			},
 		}
+		if data.Azure.CSE != nil {
+			request.AzureParam.CSEIdentity = &zilliz.AzureIdentityParam{
+				ClientID:    data.Azure.CSE.Identity.ClientID.ValueString(),
+				PrincipalID: data.Azure.CSE.Identity.PrincipalID.ValueString(),
+				ResourceID:  data.Azure.CSE.Identity.ResourceID.ValueString(),
+			}
+			request.AzureParam.AzureTenantID = data.Azure.CSE.TenantID.ValueString()
+			request.AzureParam.DefaultAzureCseKeyIdentifier = data.Azure.CSE.DefaultKeyIdentifier.ValueString()
+		}
 	}
 
 	if data.GCP != nil {

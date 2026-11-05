@@ -50,6 +50,9 @@ type AzureIdentityParam struct {
 }
 
 type AzureParam struct {
+	CSEIdentity                  *AzureIdentityParam `json:"cseIdentity,omitempty"`
+	AzureTenantID                string              `json:"azureTenantId,omitempty"`
+	DefaultAzureCseKeyIdentifier string              `json:"defaultAzureCseKeyIdentifier,omitempty"`
 	// network parameters
 	VNetID            string   `json:"vnetId"`
 	SubnetIDs         []string `json:"subnetIds"`

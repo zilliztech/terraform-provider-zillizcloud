@@ -240,10 +240,10 @@ func (r *BackupPolicyResource) Read(ctx context.Context, req resource.ReadReques
 	state.Enabled = types.BoolValue(enabled)
 
 	state.CrossRegionCopies = make([]CrossRegionCopy, len(policy.CrossRegionCopies))
-	for i, copy := range policy.CrossRegionCopies {
+	for i, crossRegionCopy := range policy.CrossRegionCopies {
 		state.CrossRegionCopies[i] = CrossRegionCopy{
-			RegionId:      types.StringValue(copy.RegionId),
-			RetentionDays: types.Int64Value(int64(copy.RetentionDays)),
+			RegionId:      types.StringValue(crossRegionCopy.RegionId),
+			RetentionDays: types.Int64Value(int64(crossRegionCopy.RetentionDays)),
 		}
 	}
 
@@ -301,10 +301,10 @@ func (r *BackupPolicyResource) buildBackupPolicyParams(data *BackupPolicyResourc
 	// Handle cross-region copies
 	if len(data.CrossRegionCopies) > 0 {
 		params.CrossRegionCopies = make([]zilliz.CrossRegionCopy, len(data.CrossRegionCopies))
-		for i, copy := range data.CrossRegionCopies {
+		for i, crossRegionCopy := range data.CrossRegionCopies {
 			params.CrossRegionCopies[i] = zilliz.CrossRegionCopy{
-				RegionId:      copy.RegionId.ValueString(),
-				RetentionDays: int(copy.RetentionDays.ValueInt64()),
+				RegionId:      crossRegionCopy.RegionId.ValueString(),
+				RetentionDays: int(crossRegionCopy.RetentionDays.ValueInt64()),
 			}
 		}
 	}
