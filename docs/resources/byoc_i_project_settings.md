@@ -160,6 +160,7 @@ Read-Only:
 Read-Only:
 
 - `agent_image_url` (String) Agent image URL
+- `tunnel_client_image_url` (String) Tunnel client image URL. Empty when the data plane uses the legacy combined agent image.
 - `token` (String) Operation token
 
 

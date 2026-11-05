@@ -81,8 +81,9 @@ type DescribeByocOpProjectResponse struct {
 	RegionID        string      `json:"regionId"`
 	Status          int         `json:"status"`
 	OpConfig        *struct {
-		Token         string `json:"token"`
-		AgentImageUrl string `json:"agentImageUrl"`
+		Token                string `json:"token"`
+		AgentImageUrl        string `json:"agentImageUrl"`
+		TunnelClientImageUrl string `json:"tunnelClientImageUrl"`
 	} `json:"vpcOpConfig"`
 	Mode int `json:"mode"`
 }
