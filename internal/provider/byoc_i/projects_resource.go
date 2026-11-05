@@ -3,11 +3,13 @@ package byoc_op
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -210,6 +212,48 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 				MarkdownDescription: "Azure configuration for the BYOC project",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
+					"cse": schema.SingleNestedAttribute{
+						MarkdownDescription: "Optional Milvus client-side encryption using an existing Azure AES Key Vault key and a dedicated user-assigned managed identity. The identity must be authorized for the key and trusted by the DataPlane workload.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"identity": schema.SingleNestedAttribute{
+								MarkdownDescription: "Dedicated user-assigned managed identity for CMEK; separate from storage identities.",
+								Required:            true,
+								Attributes: map[string]schema.Attribute{
+									"client_id": schema.StringAttribute{
+										MarkdownDescription: "CMEK identity application (client) ID.",
+										Required:            true,
+										Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+										PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+									},
+									"principal_id": schema.StringAttribute{
+										MarkdownDescription: "CMEK identity principal (object) ID.",
+										Required:            true,
+										Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+										PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+									},
+									"resource_id": schema.StringAttribute{
+										MarkdownDescription: "CMEK user-assigned managed identity Azure resource ID.",
+										Required:            true,
+										Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+										PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+									},
+								},
+							},
+							"tenant_id": schema.StringAttribute{
+								MarkdownDescription: "Microsoft Entra tenant ID of the dedicated CMEK identity.",
+								Required:            true,
+								Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+							},
+							"default_key_identifier": schema.StringAttribute{
+								MarkdownDescription: "Existing Azure AES Key Vault key URL without a version, for example https://customer-kms.vault.azure.net/keys/cmek-key. Requires encrypt, decrypt and get permissions; RSA and Managed HSM are not supported.",
+								Required:            true,
+								Validators:          []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^https://[a-zA-Z0-9-]+\.vault\.azure\.net/keys/[a-zA-Z0-9-]+$`), "must be a versionless public Azure Key Vault key URL")},
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+							},
+						},
+					},
 					"region": schema.StringAttribute{
 						MarkdownDescription: "Azure region",
 						Required:            true,
@@ -596,7 +640,11 @@ func (r *BYOCOpProjectResource) Read(ctx context.Context, req resource.ReadReque
 	// Overwrite items with refreshed state
 	data.ID = project.ID
 	data.AWS = project.AWS
-	data.Azure = project.Azure
+	// Describe currently returns lifecycle metadata without the Azure configuration.
+	// Keep the configured identities and CSE fields when they are not returned.
+	if project.Azure != nil {
+		data.Azure = project.Azure
+	}
 	data.Status = project.Status
 	data.DataPlaneID = project.DataPlaneID
 	data.ProjectID = project.ProjectID

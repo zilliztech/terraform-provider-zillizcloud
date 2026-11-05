@@ -67,6 +67,19 @@ resource "zillizcloud_byoc_i_project" "this" {
 
     region = "eastus"
 
+    # Optional: register an existing AES Key Vault key for Milvus client-side encryption.
+    # Configure the dedicated identity's workload federation and key-scoped encrypt,
+    # decrypt, and get permissions before deploying. Omit cse when CSE is disabled.
+    # cse = {
+    #   identity = {
+    #     client_id    = "CSE_MANAGED_IDENTITY_CLIENT_ID"
+    #     principal_id = "CSE_MANAGED_IDENTITY_PRINCIPAL_ID"
+    #     resource_id  = "/subscriptions/SUBSCRIPTION_ID/resourceGroups/RESOURCE_GROUP/providers/Microsoft.ManagedIdentity/userAssignedIdentities/CSE_IDENTITY_NAME"
+    #   }
+    #   tenant_id              = "TENANT_ID"
+    #   default_key_identifier = "https://customer-kms.vault.azure.net/keys/cmek-key"
+    # }
+
     network = {
       vnet_id = "/subscriptions/sub-xxxxx/resourceGroups/rg-xxxxx/providers/Microsoft.Network/virtualNetworks/my-vnet"
 

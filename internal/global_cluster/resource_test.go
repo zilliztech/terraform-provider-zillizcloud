@@ -696,7 +696,9 @@ func TestGlobalClusterResourceUpdateRejectsSecondaryModification(t *testing.T) {
 func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T) {
 	ctx := context.Background()
 	testGlobalClusterSecondaryDeleteWait(t, time.Millisecond, time.Second)
+	completedCalls := 0
 	resource := newTestGlobalClusterResource(t, func(call int, req *http.Request, body []byte) (*http.Response, error) {
+		completedCalls = call
 		switch call {
 		case 1:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
@@ -704,6 +706,11 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 			}
 			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(4)), nil
 		case 2:
+			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
+				t.Fatalf("check primary before first secondary delete %s %s", req.Method, req.URL.Path)
+			}
+			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayload(4)), nil
+		case 3:
 			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-secondary" {
 				t.Fatalf("delete first secondary %s %s", req.Method, req.URL.Path)
 			}
@@ -711,12 +718,12 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 				"code": 0,
 				"data": map[string]any{"globalClusterId": "glo-1", "clusterId": "in01-secondary", "prompt": "deleted"},
 			}), nil
-		case 3:
+		case 4:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe after first secondary deleted %s %s", req.Method, req.URL.Path)
+				t.Fatalf("check primary before second secondary delete %s %s", req.Method, req.URL.Path)
 			}
 			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaryEU(4)), nil
-		case 4:
+		case 5:
 			if req.Method != http.MethodDelete || req.URL.Path != "/v2/globalClusters/glo-1/clusters/in01-secondary-ap" {
 				t.Fatalf("delete second secondary %s %s", req.Method, req.URL.Path)
 			}
@@ -724,11 +731,6 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 				"code": 0,
 				"data": map[string]any{"globalClusterId": "glo-1", "clusterId": "in01-secondary-ap", "prompt": "deleted"},
 			}), nil
-		case 5:
-			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
-				t.Fatalf("describe after second secondary deleted %s %s", req.Method, req.URL.Path)
-			}
-			return globalClusterJSONResponse(t, http.StatusOK, describeGlobalClusterPayloadWithoutSecondaries()), nil
 		case 6:
 			if req.Method != http.MethodGet || req.URL.Path != "/v2/globalClusters/glo-1" {
 				t.Fatalf("describe primary deletable %s %s", req.Method, req.URL.Path)
@@ -758,6 +760,9 @@ func TestGlobalClusterResourceDeleteRemovesSecondariesBeforePrimary(t *testing.T
 	resource.Delete(ctx, fwresource.DeleteRequest{State: state}, &resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Delete diagnostics: %s", resp.Diagnostics.Errors()[0].Summary())
+	}
+	if completedCalls != 8 {
+		t.Fatalf("delete calls = %d, want 8 including primary delete", completedCalls)
 	}
 }
 

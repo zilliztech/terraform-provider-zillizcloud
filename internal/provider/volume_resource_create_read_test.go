@@ -477,56 +477,26 @@ func TestVolumeResourceDeleteReportsDeleteError(t *testing.T) {
 	}
 }
 
-func TestVolumeResourceDeleteReportsTimeout(t *testing.T) {
+func TestVolumeResourceWaitUntilDeletedReportsTimeout(t *testing.T) {
 	ctx := context.Background()
 	testVolumeDeletePolling(t, 5*time.Millisecond, time.Millisecond)
 	resource := newTestVolumeResource(t, func(call int, req *http.Request, body []byte) (*http.Response, error) {
-		switch call {
-		case 1:
-			if req.Method != http.MethodDelete {
-				t.Fatalf("delete method=%s", req.Method)
-			}
-			return volumeJSONResponse(t, http.StatusOK, map[string]any{
-				"code": 0,
-				"data": map[string]any{"volumeName": "vol-1"},
-			}), nil
-		default:
-			if req.Method != http.MethodGet {
-				t.Fatalf("describe method=%s", req.Method)
-			}
-			if req.URL.Path != "/v2/volumes/vol-1" {
-				t.Fatalf("describe path=%s", req.URL.Path)
-			}
-			return volumeJSONResponse(t, http.StatusOK, map[string]any{
-				"code": 0,
-				"data": map[string]any{
-					"volumeName": "vol-1",
-					"type":       "MANAGED",
-					"regionId":   "aws-us-west-2",
-					"status":     "Deleting",
-				},
-			}), nil
+		if req.Method != http.MethodGet || req.URL.Path != "/v2/volumes/vol-1" {
+			t.Fatalf("describe method=%s path=%s", req.Method, req.URL.Path)
 		}
-	})
-	schema := testVolumeResourceSchema(t, resource)
-	state := testVolumeState(t, ctx, schema, VolumeResourceModel{
-		Id:                   types.StringValue("vol-1"),
-		ProjectId:            types.StringValue("proj-1"),
-		RegionId:             types.StringValue("aws-us-west-2"),
-		VolumeName:           types.StringValue("vol-1"),
-		Type:                 types.StringValue("MANAGED"),
-		StorageIntegrationId: types.StringNull(),
-		Path:                 types.StringNull(),
-		Status:               types.StringValue("Available"),
-		CreateTime:           types.StringValue("2026-05-05T13:00:00Z"),
+		return volumeJSONResponse(t, http.StatusOK, map[string]any{
+			"code": 0,
+			"data": map[string]any{
+				"volumeName": "vol-1",
+				"type":       "MANAGED",
+				"regionId":   "aws-us-west-2",
+				"status":     "Deleting",
+			},
+		}), nil
 	})
 
-	var resp fwresource.DeleteResponse
-	resource.Delete(ctx, fwresource.DeleteRequest{State: state}, &resp)
-	if !resp.Diagnostics.HasError() {
-		t.Fatal("expected timeout diagnostics")
-	}
-	if resp.Diagnostics.Errors()[0].Summary() != "Timed out deleting volume" {
-		t.Fatalf("diagnostic summary=%q", resp.Diagnostics.Errors()[0].Summary())
+	err := resource.waitUntilVolumeDeleted(ctx, "vol-1")
+	if err == nil || err.Error() != "timed out waiting for volume to be removed" {
+		t.Fatalf("waitUntilVolumeDeleted error = %v, want deletion timeout", err)
 	}
 }
