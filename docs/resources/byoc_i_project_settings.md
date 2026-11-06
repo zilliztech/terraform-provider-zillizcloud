@@ -161,6 +161,7 @@ Read-Only:
 
 - `agent_image_url` (String) Agent image URL
 - `token` (String) Operation token
+- `tunnel_client_image_url` (String) Tunnel client image URL. Empty when the data plane uses the legacy combined agent image.
 
 
 <a id="nestedatt--tiered_node_quota"></a>
