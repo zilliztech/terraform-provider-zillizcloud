@@ -24,7 +24,7 @@ The `bucket_info` attribute allows you to specify which storage bucket your BYOC
 The `bucket_info` block contains two attributes:
 
 - **`bucket_name`** (Required): The name of the bucket
-- **`prefix`** (Optional): A prefix path within the bucket for organizing cluster data. If not provided, the cluster will use the bucket's root directory.
+- **`prefix`** (Optional): A prefix path within the bucket for organizing cluster data. The prefix must not start with `/`. If not provided, the cluster will use the bucket's root directory.
 
 ### Important Constraints
 
@@ -52,7 +52,7 @@ resource "zillizcloud_cluster" "byoc_cluster_with_custom_bucket" {
 
   bucket_info = {
     bucket_name = "my-production-data-bucket"  # Required: Your bucket name
-    prefix      = "/a-prefix"                  # Optional: Path prefix within bucket
+    prefix      = "a-prefix"                   # Optional: Path prefix within bucket
   }
 }
 ```
