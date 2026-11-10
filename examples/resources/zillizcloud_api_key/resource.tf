@@ -11,20 +11,23 @@ provider "zillizcloud" {
 
 # Create an API key with Member role scoped to a specific project
 resource "zillizcloud_api_key" "member_key" {
-  name = "app-readonly-key"
-  role = "Member"
+  name        = "app-readonly-key"
+  description = "Read-only key for the production project"
+  role        = "Member"
 
   project_access = [{
     project_id  = "proj-xxxxxxxxxxxxxxxxxxxx"
     role        = "Read-Only"
     all_cluster = true
+    all_volume  = true
   }]
 }
 
 # Create an API key with Billing-Admin role
 resource "zillizcloud_api_key" "billing_key" {
-  name = "billing-automation"
-  role = "Billing-Admin"
+  name        = "billing-automation"
+  description = "Key for billing pipeline"
+  role        = "Billing-Admin"
 }
 
 # The key value is only available at creation time.
