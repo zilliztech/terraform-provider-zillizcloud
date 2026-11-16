@@ -115,6 +115,8 @@ type ClusterResourceModel struct {
 	Prompt             types.String `tfsdk:"prompt"`
 	Description        types.String `tfsdk:"description"`
 	RegionId           types.String `tfsdk:"region_id"`
+	Version            types.Object `tfsdk:"version"`
+	MilvusVersion      types.String `tfsdk:"milvus_version"`
 	Status             types.String `tfsdk:"status"`
 	DesiredStatus      types.String `tfsdk:"desired_status"`
 	ConnectAddress     types.String `tfsdk:"connect_address"`
@@ -179,6 +181,7 @@ func (c *ClusterResourceModel) setUnknown() {
 // populate the ClusterResourceModel with the input which is the response from the API.
 func (c *ClusterResourceModel) populate(input *ClusterResourceModel) {
 	c.ClusterId = input.ClusterId
+	c.MilvusVersion = input.MilvusVersion
 	c.ClusterName = input.ClusterName
 	c.ProjectId = input.ProjectId
 	if !input.RegionId.IsNull() && input.RegionId.ValueString() != "" {
