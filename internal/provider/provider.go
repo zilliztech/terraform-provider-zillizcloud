@@ -172,6 +172,7 @@ func (p *ZillizProvider) parseBurst(burstValue types.Int64) (int64, error) {
 func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		cluster.NewClusterResource,
+		cluster.NewClusterRestoreResource,
 		global_cluster.NewGlobalClusterResource,
 		on_demand_cluster.NewOnDemandClusterResource,
 		cluster.NewClusterLoadBalancerSecurityGroupsResource,
@@ -202,6 +203,7 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewProjectDataSource,
 		cluster.NewClustersDataSource,
 		cluster.NewClusterDataSource,
+		cluster.NewClusterVersionsDataSource,
 		byoc.NewExternalIdDataSource,
 		byoc.NewGCPServiceAccountDataSource,
 		byoc_op.NewBYOCOpProjectSettingsData,

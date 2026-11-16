@@ -57,7 +57,8 @@ func TestAliRegistrationCreateAndRefresh(t *testing.T) {
 	require.JSONEq(t, string(create), string(captured))
 	require.Equal(t, types.StringValue("prj-byoci:vpc-byoci"), model.ID)
 
-	r := NewBYOCOpProjectResource().(*BYOCOpProjectResource)
+	r, ok := NewBYOCOpProjectResource().(*BYOCOpProjectResource)
+	require.True(t, ok)
 	r.store = store
 	var schemaResponse resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &schemaResponse)
@@ -84,8 +85,11 @@ func TestAliDescribeRejectsMissingConfigAndHandlesNullEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	var fixture map[string]any
 	require.NoError(t, json.Unmarshal(raw, &fixture))
-	data := fixture["data"].(map[string]any)
-	data["aliConfig"].(map[string]any)["endpointId"] = nil
+	data, ok := fixture["data"].(map[string]any)
+	require.True(t, ok)
+	aliConfig, ok := data["aliConfig"].(map[string]any)
+	require.True(t, ok)
+	aliConfig["endpointId"] = nil
 	data["opConfig"] = nil
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _ = json.NewEncoder(w).Encode(fixture) }))
 	defer server.Close()
