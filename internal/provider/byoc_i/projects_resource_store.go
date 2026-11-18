@@ -247,7 +247,7 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 	data.DataPlaneID = types.StringValue(response.DataPlaneID)
 	data.Status = types.Int64Value(int64(response.Status))
 	if response.OpConfig != nil {
-		data.ExtConfig = types.StringValue(response.OpConfig.Token)
+		data.ExtConfig = types.StringPointerValue(response.OpConfig.ExtConfig)
 	}
 
 	if response.CloudID == string(zilliz.AliCloud) {
@@ -259,10 +259,6 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 			if err != nil {
 				return data, err
 			}
-		}
-		data.ExtConfig = types.StringNull()
-		if response.OpConfig != nil {
-			data.ExtConfig = types.StringPointerValue(response.OpConfig.ExtConfig)
 		}
 	}
 	return data, nil
