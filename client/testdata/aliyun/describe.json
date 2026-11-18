@@ -1,0 +1,39 @@
+{
+  "code": 0,
+  "data": {
+    "projectId": "prj-byoci",
+    "dataPlaneId": "vpc-byoci",
+    "cloudId": "ali",
+    "regionId": "ali-cn-hangzhou",
+    "aliConfig": {
+      "accountId": "1234567890123456",
+      "ackClusterId": "c-aliyun-byoci",
+      "vpcId": "vpc-customer",
+      "bucketId": "byoci-customer-oss",
+      "nodeRoleArn": "acs:ram::1234567890123456:role/byoci-node",
+      "maintenanceRoleArn": "acs:ram::1234567890123456:role/byoci-maintenance",
+      "storageRoleArn": "acs:ram::1234567890123456:role/byoci-storage",
+      "oidcProviderArn": "acs:ram::1234567890123456:oidc-provider/ack-rrsa",
+      "vswitchIds": [
+        "vsw-a",
+        "vsw-b"
+      ],
+      "securityGroupIds": [
+        "sg-byoci"
+      ],
+      "zones": [
+        "cn-hangzhou-h",
+        "cn-hangzhou-i"
+      ],
+      "endpointId": "ep-byoci"
+    },
+    "opConfig": {
+      "extConfig": "{\"feature\":\"test\"}",
+      "agentImageUrl": "registry.example.cn/infra-agent:test"
+    },
+    "status": 1,
+    "mode": 2,
+    "createTimeMilli": 1770000000000,
+    "lastUpdateMilli": 1770000001000
+  }
+}

@@ -84,6 +84,7 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
+			"aliyun": aliyunSchema(),
 			"aws": schema.SingleNestedAttribute{
 				MarkdownDescription: "AWS configuration for the BYOC project",
 				Optional:            true,
@@ -529,6 +530,7 @@ func (r *BYOCOpProjectResource) ConfigValidators(ctx context.Context) []resource
 			path.MatchRoot("aws"),
 			path.MatchRoot("azure"),
 			path.MatchRoot("gcp"),
+			path.MatchRoot("aliyun"),
 		),
 	}
 }
@@ -597,6 +599,7 @@ func (r *BYOCOpProjectResource) Read(ctx context.Context, req resource.ReadReque
 	data.ID = project.ID
 	data.AWS = project.AWS
 	data.Azure = project.Azure
+	data.Aliyun = project.Aliyun
 	data.Status = project.Status
 	data.DataPlaneID = project.DataPlaneID
 	data.ProjectID = project.ProjectID

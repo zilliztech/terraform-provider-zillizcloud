@@ -17,6 +17,7 @@ type BYOCOpProjectResourceModel struct {
 	ExtConfig   types.String   `tfsdk:"ext_config"`
 	AWS         *AWSConfig     `tfsdk:"aws"`
 	Azure       *AzureConfig   `tfsdk:"azure"`
+	Aliyun      *AliyunConfig  `tfsdk:"aliyun"`
 	GCP         *GCPConfig     `tfsdk:"gcp"`
 	Timeouts    timeouts.Value `tfsdk:"timeouts"`
 	Status      types.Int64    `tfsdk:"status"`
@@ -153,6 +154,7 @@ func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel
 	data.AWS = input.AWS
 	data.Azure = input.Azure
 	data.GCP = input.GCP
+	data.Aliyun = input.Aliyun
 	data.Status = input.Status
 	data.DataPlaneID = input.DataPlaneID
 	data.ProjectID = input.ProjectID

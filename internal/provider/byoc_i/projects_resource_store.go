@@ -130,6 +130,15 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		}
 	}
 
+	if data.Aliyun != nil {
+		request.CloudID = zilliz.AliCloud
+		request.RegionID = data.Aliyun.Region.ValueString()
+		request.AliParam, err = data.Aliyun.registration(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
 	// if data.ExtConfig.ValueString() is set, set it to ExtConfig
 	if !data.ExtConfig.IsNull() {
 		request.ExtConfig = data.ExtConfig.ValueStringPointer()
@@ -241,5 +250,20 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 		data.ExtConfig = types.StringValue(response.OpConfig.Token)
 	}
 
+	if response.CloudID == string(zilliz.AliCloud) {
+		if response.AliConfig == nil && data.Status.ValueInt64() != int64(BYOCProjectStatusDeleted) {
+			return data, fmt.Errorf("Aliyun dataplane response has no aliConfig; verify backend compatibility")
+		}
+		if response.AliConfig != nil {
+			data.Aliyun, err = aliyunFromResponse(ctx, response.RegionID, response.AliConfig)
+			if err != nil {
+				return data, err
+			}
+		}
+		data.ExtConfig = types.StringNull()
+		if response.OpConfig != nil {
+			data.ExtConfig = types.StringPointerValue(response.OpConfig.ExtConfig)
+		}
+	}
 	return data, nil
 }

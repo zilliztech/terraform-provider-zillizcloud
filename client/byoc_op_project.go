@@ -1,5 +1,7 @@
 package client
 
+import "encoding/json"
+
 // VmNodeGroup represents a node group in the new vmNodeGroups array format.
 type VmNodeGroup struct {
 	Name string `json:"name"`
@@ -9,9 +11,10 @@ type VmNodeGroup struct {
 }
 
 type CreateByocOpProjectRequest struct {
-	AWSParam   *AWSParam   `json:"awsParam,omitempty"`
-	AzureParam *AzureParam `json:"azureParam,omitempty"`
-	GCPParam   *GCPParam   `json:"gcpParam,omitempty"`
+	AWSParam   *AWSParam    `json:"awsParam,omitempty"`
+	AzureParam *AzureParam  `json:"azureParam,omitempty"`
+	AliParam   *AliyunParam `json:"aliParam,omitempty"`
+	GCPParam   *GCPParam    `json:"gcpParam,omitempty"`
 
 	RegionID string  `json:"regionId"`
 	CloudID  CloudId `json:"cloudId"`
@@ -69,23 +72,20 @@ type DescribeByocOpProjectResponse struct {
 		} `json:"vmCombine"`
 		VPCID string `json:"vpcId"`
 	} `json:"awsConfig"`
-	AzureConfig     AzureParam  `json:"azureConfig"`
-	CloudID         string      `json:"cloudId"`
-	CreateTimeMilli int64       `json:"createTimeMilli"`
-	DataPlaneID     string      `json:"dataPlaneId"`
-	GCPConfig       interface{} `json:"gcpConfig"`
-	LastUpdateMilli int64       `json:"lastUpdateMilli"`
-	Message         string      `json:"message"`
-	ProjectID       string      `json:"projectId"`
-	ProjectName     string      `json:"projectName"`
-	RegionID        string      `json:"regionId"`
-	Status          int         `json:"status"`
-	OpConfig        *struct {
-		Token                string `json:"token"`
-		AgentImageUrl        string `json:"agentImageUrl"`
-		TunnelClientImageUrl string `json:"tunnelClientImageUrl"`
-	} `json:"vpcOpConfig"`
-	Mode int `json:"mode"`
+	AzureConfig     AzureParam             `json:"azureConfig"`
+	CloudID         string                 `json:"cloudId"`
+	CreateTimeMilli int64                  `json:"createTimeMilli"`
+	DataPlaneID     string                 `json:"dataPlaneId"`
+	AliConfig       *AliyunParam           `json:"aliConfig"`
+	GCPConfig       interface{}            `json:"gcpConfig"`
+	LastUpdateMilli int64                  `json:"lastUpdateMilli"`
+	Message         string                 `json:"message"`
+	ProjectID       string                 `json:"projectId"`
+	ProjectName     string                 `json:"projectName"`
+	RegionID        string                 `json:"regionId"`
+	Status          int                    `json:"status"`
+	OpConfig        *ByocDataPlaneOpConfig `json:"opConfig"`
+	Mode            int                    `json:"mode"`
 }
 
 func (c *Client) DescribeByocOpProject(params *DescribeByocOpProjectRequest) (*DescribeByocOpProjectResponse, error) {
@@ -114,4 +114,29 @@ type DeleteByocOpProjectRequest struct {
 type DeleteByocOpProjectResponse struct {
 	ProjectId   string `json:"projectId"`
 	DataPlaneID string `json:"dataPlaneId"`
+}
+
+// ByocDataPlaneOpConfig is the configuration returned by dataplane describe.
+type ByocDataPlaneOpConfig struct {
+	Token                string  `json:"token"`
+	ExtConfig            *string `json:"extConfig"`
+	AgentImageUrl        string  `json:"agentImageUrl"`
+	TunnelClientImageUrl string  `json:"tunnelClientImageUrl"`
+}
+
+// Older control-api versions returned vpcOpConfig instead of opConfig.
+func (r *DescribeByocOpProjectResponse) UnmarshalJSON(data []byte) error {
+	type response DescribeByocOpProjectResponse
+	var wire struct {
+		response
+		LegacyOpConfig *ByocDataPlaneOpConfig `json:"vpcOpConfig"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*r = DescribeByocOpProjectResponse(wire.response)
+	if r.OpConfig == nil {
+		r.OpConfig = wire.LegacyOpConfig
+	}
+	return nil
 }
