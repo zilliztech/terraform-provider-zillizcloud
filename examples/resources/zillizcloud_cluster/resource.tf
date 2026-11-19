@@ -45,6 +45,20 @@ resource "zillizcloud_cluster" "enterprise_plan_cluster" {
   project_id   = data.zillizcloud_project.default.id # Linking to the project ID fetched earlier
 }
 
+# Choose a version offered in the target region at creation.
+resource "zillizcloud_cluster" "versioned_cluster" {
+  cluster_name = "Cluster-versioned"
+  region_id    = "aws-us-east-2"
+  plan         = "Enterprise"
+  cu_type      = "Performance-optimized"
+  cu_size      = 1
+  project_id   = data.zillizcloud_project.default.id
+  version = {
+    milvus_version = "3.0.x"
+    channel        = "PUBLIC_PREVIEW"
+  }
+}
+
 # Create a cluster with CU autoscaling enabled from the start
 resource "zillizcloud_cluster" "autoscaling_cluster" {
   cluster_name = "Cluster-05"

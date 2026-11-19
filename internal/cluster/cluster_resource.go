@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -45,6 +46,7 @@ var (
 	_ resource.Resource                = &ClusterResource{}
 	_ resource.ResourceWithConfigure   = &ClusterResource{}
 	_ resource.ResourceWithImportState = &ClusterResource{}
+	_ resource.ResourceWithModifyPlan  = &ClusterResource{}
 )
 
 func NewClusterResource() resource.Resource {
@@ -76,6 +78,8 @@ func (r *ClusterResource) Metadata(ctx context.Context, req resource.MetadataReq
 }
 
 func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	version := versionSelectionSchema("Milvus version selected when creating a Dedicated cluster. Adding, removing, or changing this selection on an existing cluster plans a replacement that can delete cluster data. Keep it unset for existing or imported clusters that should be preserved. Use the cluster upgrade workflow to change their running version.", "GA", "PUBLIC_PREVIEW")
+	version.PlanModifiers = []planmodifier.Object{objectplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Cluster resource. If 'plan', 'cu_size' and 'cu_type' are not specified, then a free cluster is created.",
 		Attributes: map[string]schema.Attribute{
@@ -157,6 +161,11 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 			"region_id": schema.StringAttribute{
 				MarkdownDescription: "The ID of the region where the cluster is to be created. Required unless region_id is configured in the provider. If omitted, the provider's region_id is used.",
 				Optional:            true,
+				Computed:            true,
+			},
+			"version": version,
+			"milvus_version": schema.StringAttribute{
+				MarkdownDescription: "The Milvus version series currently reported by the cluster.",
 				Computed:            true,
 			},
 			"desired_status": schema.StringAttribute{
@@ -372,6 +381,25 @@ func (r *ClusterResource) Schema(ctx context.Context, req resource.SchemaRequest
 	}
 }
 
+func (r *ClusterResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	versionPath := path.Root("version")
+	var version types.Object
+	var plan types.String
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, versionPath, &version)...)
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("plan"), &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !version.IsNull() && (plan.ValueString() == FreePlan || plan.ValueString() == ServerlessPlan) {
+		resp.Diagnostics.AddAttributeError(versionPath, "Version selection requires a Dedicated cluster",
+			"Choose a Dedicated plan or omit the version.")
+	}
+}
+
 func (r *ClusterResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -571,8 +599,11 @@ func (r *ClusterResource) tryBestUpdateStatesAfterCreation(ctx context.Context, 
 	if !isRunning {
 		resp.Diagnostics.AddWarning("Cluster created but not in RUNNING state", "The cluster was created successfully, but it is not in the RUNNING state after waiting for the specified timeout. Please check the Zilliz Cloud console for more details or contact support.")
 	}
+	// The create response has no running version. Keep a known null until a describe succeeds.
+	state.MilvusVersion = types.StringNull()
 	if newState != nil {
 		state.Status = newState.Status
+		state.MilvusVersion = newState.MilvusVersion
 		state.ConnectAddress = newState.ConnectAddress
 		state.PrivateLinkAddress = newState.PrivateLinkAddress
 		state.CreateTime = newState.CreateTime
@@ -649,6 +680,7 @@ func (r *ClusterResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	state.ClusterId = cluster.ClusterId
+	state.MilvusVersion = cluster.MilvusVersion
 	state.ClusterName = cluster.ClusterName
 	state.ProjectId = cluster.ProjectId
 	state.RegionId = cluster.RegionId

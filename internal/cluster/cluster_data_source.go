@@ -31,6 +31,7 @@ type ClusterDataSourceModel struct {
 	ClusterName          types.String `tfsdk:"cluster_name"`
 	Description          types.String `tfsdk:"description"`
 	RegionId             types.String `tfsdk:"region_id"`
+	MilvusVersion        types.String `tfsdk:"milvus_version"`
 	ClusterType          types.String `tfsdk:"cluster_type"`
 	CuSize               types.Int64  `tfsdk:"cu_size"`
 	Status               types.String `tfsdk:"status"`
@@ -64,6 +65,10 @@ func (d *ClusterDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			},
 			"region_id": schema.StringAttribute{
 				MarkdownDescription: "The ID of the region where the cluster exists.",
+				Computed:            true,
+			},
+			"milvus_version": schema.StringAttribute{
+				MarkdownDescription: "The Milvus version series currently reported by the cluster.",
 				Computed:            true,
 			},
 			"cluster_type": schema.StringAttribute{
@@ -140,6 +145,7 @@ func (d *ClusterDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	state.ClusterName = types.StringValue(c.ClusterName)
 	state.Description = types.StringValue(c.Description)
 	state.RegionId = types.StringValue(c.RegionId)
+	state.MilvusVersion = types.StringPointerValue(c.MilvusVersion)
 	state.ClusterType = types.StringValue(c.ClusterType)
 	state.CuSize = types.Int64Value(c.CuSize)
 	state.Status = types.StringValue(c.Status)
