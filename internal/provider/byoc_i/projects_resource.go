@@ -86,7 +86,7 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
-			"aliyun": schema.SingleNestedAttribute{
+			"ali": schema.SingleNestedAttribute{
 				Optional:            true,
 				MarkdownDescription: "Customer-owned Aliyun ACK resources for BYOC-I. Requires the Aliyun registration backend.",
 				Attributes: map[string]schema.Attribute{
@@ -618,7 +618,7 @@ func (r *BYOCOpProjectResource) ConfigValidators(ctx context.Context) []resource
 			path.MatchRoot("aws"),
 			path.MatchRoot("azure"),
 			path.MatchRoot("gcp"),
-			path.MatchRoot("aliyun"),
+			path.MatchRoot("ali"),
 		),
 	}
 }
@@ -687,7 +687,7 @@ func (r *BYOCOpProjectResource) Read(ctx context.Context, req resource.ReadReque
 	data.ID = project.ID
 	data.AWS = project.AWS
 	data.Azure = project.Azure
-	data.Aliyun = project.Aliyun
+	data.Ali = project.Ali
 	data.Status = project.Status
 	data.DataPlaneID = project.DataPlaneID
 	data.ProjectID = project.ProjectID

@@ -18,7 +18,7 @@ import (
 	zilliz "github.com/zilliztech/terraform-provider-zillizcloud/client"
 )
 
-func TestAliyunRegistrationCreateAndRefresh(t *testing.T) {
+func TestAliRegistrationCreateAndRefresh(t *testing.T) {
 	ctx := context.Background()
 	create, err := os.ReadFile("../../../client/testdata/aliyun/create.json")
 	require.NoError(t, err)
@@ -26,7 +26,7 @@ func TestAliyunRegistrationCreateAndRefresh(t *testing.T) {
 	require.NoError(t, err)
 	var request zilliz.CreateByocOpProjectRequest
 	require.NoError(t, json.Unmarshal(create, &request))
-	config, err := aliyunFromResponse(ctx, request.RegionID, request.AliParam)
+	config, err := aliFromResponse(ctx, request.RegionID, request.AliParam)
 	require.NoError(t, err)
 	var captured []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +50,7 @@ func TestAliyunRegistrationCreateAndRefresh(t *testing.T) {
 	store := &byocOpProjectStore{client: c}
 	model := BYOCOpProjectResourceModel{
 		ProjectID: types.StringValue(request.ProjectId), DataPlaneID: types.StringValue(request.DataPlaneId),
-		Aliyun: config, ExtConfig: types.StringPointerValue(request.ExtConfig),
+		Ali: config, ExtConfig: types.StringPointerValue(request.ExtConfig),
 		Timeouts: timeouts.Value{Object: types.ObjectNull(map[string]attr.Type{"create": types.StringType, "delete": types.StringType, "update": types.StringType})},
 	}
 	require.NoError(t, store.Create(ctx, &model, func(*BYOCOpProjectResourceModel) error { return nil }))
@@ -64,7 +64,7 @@ func TestAliyunRegistrationCreateAndRefresh(t *testing.T) {
 	require.False(t, schemaResponse.Diagnostics.HasError(), schemaResponse.Diagnostics)
 	state := tfsdk.State{Schema: schemaResponse.Schema}
 	// Import starts without Aliyun attributes; Read must reconstruct the complete block.
-	model.Aliyun = nil
+	model.Ali = nil
 	diags := state.Set(ctx, &model)
 	require.False(t, diags.HasError(), diags)
 	response := resource.ReadResponse{State: state}
@@ -73,12 +73,12 @@ func TestAliyunRegistrationCreateAndRefresh(t *testing.T) {
 	var refreshed BYOCOpProjectResourceModel
 	diags = response.State.Get(ctx, &refreshed)
 	require.False(t, diags.HasError(), diags)
-	require.Equal(t, config, refreshed.Aliyun)
+	require.Equal(t, config, refreshed.Ali)
 	require.Equal(t, types.StringPointerValue(request.ExtConfig), refreshed.ExtConfig)
 	require.Equal(t, types.Int64Value(1), refreshed.Status)
 }
 
-func TestAliyunDescribeRejectsMissingConfigAndHandlesNullEndpoint(t *testing.T) {
+func TestAliDescribeRejectsMissingConfigAndHandlesNullEndpoint(t *testing.T) {
 	ctx := context.Background()
 	raw, err := os.ReadFile("../../../client/testdata/aliyun/describe.json")
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestAliyunDescribeRejectsMissingConfigAndHandlesNullEndpoint(t *testing.T) 
 	model, err := store.Describe(ctx, "prj-byoci", "vpc-byoci")
 	require.NoError(t, err)
 	require.True(t, model.ExtConfig.IsNull())
-	require.True(t, model.Aliyun.EndpointID.IsNull())
+	require.True(t, model.Ali.EndpointID.IsNull())
 	delete(data, "aliConfig")
 	_, err = store.Describe(ctx, "prj-byoci", "vpc-byoci")
 	require.ErrorContains(t, err, "no aliConfig")

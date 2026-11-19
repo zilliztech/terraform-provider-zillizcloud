@@ -22,7 +22,7 @@ BYOC-I Project resource for managing bring-your-own-cloud operator projects.
 
 ### Optional
 
-- `aliyun` (Attributes) Customer-owned Aliyun ACK resources for BYOC-I. Requires the Aliyun registration backend. (see [below for nested schema](#nestedatt--aliyun))
+- `ali` (Attributes) Customer-owned Aliyun ACK resources for BYOC-I. Requires the Aliyun registration backend. (see [below for nested schema](#nestedatt--ali))
 - `aws` (Attributes) AWS configuration for the BYOC project (see [below for nested schema](#nestedatt--aws))
 - `azure` (Attributes) Azure configuration for the BYOC project (see [below for nested schema](#nestedatt--azure))
 - `ext_config` (String) External configuration
@@ -34,8 +34,8 @@ BYOC-I Project resource for managing bring-your-own-cloud operator projects.
 - `id` (String) Project identifier
 - `status` (Number) The status of the BYOC project
 
-<a id="nestedatt--aliyun"></a>
-### Nested Schema for `aliyun`
+<a id="nestedatt--ali"></a>
+### Nested Schema for `ali`
 
 Required:
 

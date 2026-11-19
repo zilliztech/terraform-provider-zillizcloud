@@ -1,7 +1,7 @@
 package client
 
-// AliyunParam registers customer-owned ACK resources; it contains no credentials.
-type AliyunParam struct {
+// AliParam registers customer-owned ACK resources; it contains no credentials.
+type AliParam struct {
 	AccountID          string   `json:"accountId"`
 	ACKClusterID       string   `json:"ackClusterId"`
 	VPCID              string   `json:"vpcId"`

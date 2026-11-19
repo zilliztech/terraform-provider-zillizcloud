@@ -130,10 +130,10 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		}
 	}
 
-	if data.Aliyun != nil {
+	if data.Ali != nil {
 		request.CloudID = zilliz.AliCloud
-		request.RegionID = data.Aliyun.Region.ValueString()
-		request.AliParam, err = data.Aliyun.registration(ctx)
+		request.RegionID = data.Ali.Region.ValueString()
+		request.AliParam, err = data.Ali.registration(ctx)
 		if err != nil {
 			return err
 		}
@@ -255,7 +255,7 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 			return data, fmt.Errorf("Aliyun dataplane response has no aliConfig; verify backend compatibility")
 		}
 		if response.AliConfig != nil {
-			data.Aliyun, err = aliyunFromResponse(ctx, response.RegionID, response.AliConfig)
+			data.Ali, err = aliFromResponse(ctx, response.RegionID, response.AliConfig)
 			if err != nil {
 				return data, err
 			}
@@ -264,8 +264,8 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 	return data, nil
 }
 
-func (a *AliyunConfig) registration(ctx context.Context) (*zilliz.AliyunParam, error) {
-	p := &zilliz.AliyunParam{
+func (a *AliConfig) registration(ctx context.Context) (*zilliz.AliParam, error) {
+	p := &zilliz.AliParam{
 		AccountID:          a.AccountID.ValueString(),
 		ACKClusterID:       a.ACKClusterID.ValueString(),
 		VPCID:              a.VPCID.ValueString(),
@@ -288,8 +288,8 @@ func (a *AliyunConfig) registration(ctx context.Context) (*zilliz.AliyunParam, e
 	return p, nil
 }
 
-func aliyunFromResponse(ctx context.Context, region string, p *zilliz.AliyunParam) (*AliyunConfig, error) {
-	a := &AliyunConfig{
+func aliFromResponse(ctx context.Context, region string, p *zilliz.AliParam) (*AliConfig, error) {
+	a := &AliConfig{
 		Region:             types.StringValue(region),
 		AccountID:          types.StringValue(p.AccountID),
 		ACKClusterID:       types.StringValue(p.ACKClusterID),

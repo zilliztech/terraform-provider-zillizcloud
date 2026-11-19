@@ -12,7 +12,7 @@ terraform {
 # Inputs below are outputs from the customer-owned ACK/RAM/OSS infrastructure.
 variable "project_id" { type = string }
 variable "data_plane_id" { type = string }
-variable "aliyun" {
+variable "ali" {
   type = object({
     region               = string
     account_id           = string
@@ -35,5 +35,5 @@ variable "aliyun" {
 resource "zillizcloud_byoc_i_project" "this" {
   project_id    = var.project_id
   data_plane_id = var.data_plane_id
-  aliyun        = var.aliyun
+  ali           = var.ali
 }
