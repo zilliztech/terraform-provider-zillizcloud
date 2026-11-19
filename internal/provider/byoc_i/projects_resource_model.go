@@ -17,6 +17,7 @@ type BYOCOpProjectResourceModel struct {
 	ExtConfig   types.String   `tfsdk:"ext_config"`
 	AWS         *AWSConfig     `tfsdk:"aws"`
 	Azure       *AzureConfig   `tfsdk:"azure"`
+	Ali         *AliConfig     `tfsdk:"ali"`
 	GCP         *GCPConfig     `tfsdk:"gcp"`
 	Timeouts    timeouts.Value `tfsdk:"timeouts"`
 	Status      types.Int64    `tfsdk:"status"`
@@ -123,6 +124,22 @@ type GCPStorageConfig struct {
 	BucketID types.String `tfsdk:"bucket_id"`
 }
 
+type AliConfig struct {
+	Region             types.String `tfsdk:"region"`
+	AccountID          types.String `tfsdk:"account_id"`
+	ACKClusterID       types.String `tfsdk:"ack_cluster_id"`
+	VPCID              types.String `tfsdk:"vpc_id"`
+	BucketID           types.String `tfsdk:"bucket_id"`
+	NodeRoleARN        types.String `tfsdk:"node_role_arn"`
+	MaintenanceRoleARN types.String `tfsdk:"maintenance_role_arn"`
+	StorageRoleARN     types.String `tfsdk:"storage_role_arn"`
+	OIDCProviderARN    types.String `tfsdk:"oidc_provider_arn"`
+	EndpointID         types.String `tfsdk:"endpoint_id"`
+	VSwitchIDs         types.Set    `tfsdk:"vswitch_ids"`
+	SecurityGroupIDs   types.Set    `tfsdk:"security_group_ids"`
+	Zones              types.Set    `tfsdk:"zones"`
+}
+
 type Instances struct {
 	CoreVM        types.String `tfsdk:"core_vm"`
 	FundamentalVM types.String `tfsdk:"fundamental_vm"`
@@ -153,6 +170,7 @@ func (data *BYOCOpProjectResourceModel) refresh(input BYOCOpProjectResourceModel
 	data.AWS = input.AWS
 	data.Azure = input.Azure
 	data.GCP = input.GCP
+	data.Ali = input.Ali
 	data.Status = input.Status
 	data.DataPlaneID = input.DataPlaneID
 	data.ProjectID = input.ProjectID

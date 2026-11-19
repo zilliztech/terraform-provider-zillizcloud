@@ -23,7 +23,7 @@ func TestByocOpProjectResourceExactlyOneOfIncludesGCP(t *testing.T) {
 	}
 
 	description := validators[0].Description(ctx)
-	for _, blockName := range []string{"aws", "azure", "gcp"} {
+	for _, blockName := range []string{"aws", "azure", "gcp", "ali"} {
 		if !strings.Contains(description, blockName) {
 			t.Fatalf("ExactlyOneOf validator description %q does not include %q", description, blockName)
 		}

@@ -3,11 +3,13 @@ package byoc_op
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -82,6 +84,93 @@ func (r *BYOCOpProjectResource) Schema(ctx context.Context, req resource.SchemaR
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
+				},
+			},
+			"ali": schema.SingleNestedAttribute{
+				Optional:            true,
+				MarkdownDescription: "Customer-owned Aliyun ACK resources for BYOC-I. Requires the Aliyun registration backend.",
+				Attributes: map[string]schema.Attribute{
+					"region": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^ali-[a-z0-9-]+$`), "must use the ali- region prefix")},
+						MarkdownDescription: "region",
+					},
+					"account_id": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9]{16}$`), "must be a 16-digit Alibaba Cloud account ID")},
+						MarkdownDescription: "account id",
+					},
+					"ack_cluster_id": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "ack cluster id",
+					},
+					"vpc_id": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "vpc id",
+					},
+					"bucket_id": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "bucket id",
+					},
+					"node_role_arn": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "node role arn",
+					},
+					"maintenance_role_arn": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "maintenance role arn",
+					},
+					"storage_role_arn": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "storage role arn",
+					},
+					"oidc_provider_arn": schema.StringAttribute{
+						Required:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "oidc provider arn",
+					},
+					"endpoint_id": schema.StringAttribute{
+						Optional:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+						MarkdownDescription: "endpoint id",
+					},
+					"vswitch_ids": schema.SetAttribute{
+						Required:            true,
+						ElementType:         types.StringType,
+						Validators:          []validator.Set{setvalidator.SizeAtLeast(1), setvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1))},
+						PlanModifiers:       []planmodifier.Set{setplanmodifier.RequiresReplace()},
+						MarkdownDescription: "vswitch ids",
+					},
+					"security_group_ids": schema.SetAttribute{
+						Required:            true,
+						ElementType:         types.StringType,
+						Validators:          []validator.Set{setvalidator.SizeAtLeast(1), setvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1))},
+						PlanModifiers:       []planmodifier.Set{setplanmodifier.RequiresReplace()},
+						MarkdownDescription: "security group ids",
+					},
+					"zones": schema.SetAttribute{
+						Required:            true,
+						ElementType:         types.StringType,
+						Validators:          []validator.Set{setvalidator.SizeAtLeast(1), setvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1))},
+						PlanModifiers:       []planmodifier.Set{setplanmodifier.RequiresReplace()},
+						MarkdownDescription: "zones",
+					},
 				},
 			},
 			"aws": schema.SingleNestedAttribute{
@@ -529,6 +618,7 @@ func (r *BYOCOpProjectResource) ConfigValidators(ctx context.Context) []resource
 			path.MatchRoot("aws"),
 			path.MatchRoot("azure"),
 			path.MatchRoot("gcp"),
+			path.MatchRoot("ali"),
 		),
 	}
 }
@@ -597,6 +687,7 @@ func (r *BYOCOpProjectResource) Read(ctx context.Context, req resource.ReadReque
 	data.ID = project.ID
 	data.AWS = project.AWS
 	data.Azure = project.Azure
+	data.Ali = project.Ali
 	data.Status = project.Status
 	data.DataPlaneID = project.DataPlaneID
 	data.ProjectID = project.ProjectID

@@ -130,6 +130,15 @@ func (s *byocOpProjectStore) Create(ctx context.Context, data *BYOCOpProjectReso
 		}
 	}
 
+	if data.Ali != nil {
+		request.CloudID = zilliz.AliCloud
+		request.RegionID = data.Ali.Region.ValueString()
+		request.AliParam, err = data.Ali.registration(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
 	// if data.ExtConfig.ValueString() is set, set it to ExtConfig
 	if !data.ExtConfig.IsNull() {
 		request.ExtConfig = data.ExtConfig.ValueStringPointer()
@@ -238,8 +247,74 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 	data.DataPlaneID = types.StringValue(response.DataPlaneID)
 	data.Status = types.Int64Value(int64(response.Status))
 	if response.OpConfig != nil {
-		data.ExtConfig = types.StringValue(response.OpConfig.Token)
+		data.ExtConfig = types.StringPointerValue(response.OpConfig.ExtConfig)
 	}
 
+	if response.CloudID == string(zilliz.AliCloud) {
+		if response.AliConfig == nil && data.Status.ValueInt64() != int64(BYOCProjectStatusDeleted) {
+			return data, fmt.Errorf("Aliyun dataplane response has no aliConfig; verify backend compatibility")
+		}
+		if response.AliConfig != nil {
+			data.Ali, err = aliFromResponse(ctx, response.RegionID, response.AliConfig)
+			if err != nil {
+				return data, err
+			}
+		}
+	}
 	return data, nil
+}
+
+func (a *AliConfig) registration(ctx context.Context) (*zilliz.AliParam, error) {
+	p := &zilliz.AliParam{
+		AccountID:          a.AccountID.ValueString(),
+		ACKClusterID:       a.ACKClusterID.ValueString(),
+		VPCID:              a.VPCID.ValueString(),
+		BucketID:           a.BucketID.ValueString(),
+		NodeRoleARN:        a.NodeRoleARN.ValueString(),
+		MaintenanceRoleARN: a.MaintenanceRoleARN.ValueString(),
+		StorageRoleARN:     a.StorageRoleARN.ValueString(),
+		OIDCProviderARN:    a.OIDCProviderARN.ValueString(),
+		EndpointID:         optionalStringPointer(a.EndpointID),
+	}
+	if diags := a.VSwitchIDs.ElementsAs(ctx, &p.VSwitchIDs, false); diags.HasError() {
+		return nil, fmt.Errorf("invalid Aliyun VSwitchIDs: %v", diags)
+	}
+	if diags := a.SecurityGroupIDs.ElementsAs(ctx, &p.SecurityGroupIDs, false); diags.HasError() {
+		return nil, fmt.Errorf("invalid Aliyun SecurityGroupIDs: %v", diags)
+	}
+	if diags := a.Zones.ElementsAs(ctx, &p.Zones, false); diags.HasError() {
+		return nil, fmt.Errorf("invalid Aliyun Zones: %v", diags)
+	}
+	return p, nil
+}
+
+func aliFromResponse(ctx context.Context, region string, p *zilliz.AliParam) (*AliConfig, error) {
+	a := &AliConfig{
+		Region:             types.StringValue(region),
+		AccountID:          types.StringValue(p.AccountID),
+		ACKClusterID:       types.StringValue(p.ACKClusterID),
+		VPCID:              types.StringValue(p.VPCID),
+		BucketID:           types.StringValue(p.BucketID),
+		NodeRoleARN:        types.StringValue(p.NodeRoleARN),
+		MaintenanceRoleARN: types.StringValue(p.MaintenanceRoleARN),
+		StorageRoleARN:     types.StringValue(p.StorageRoleARN),
+		OIDCProviderARN:    types.StringValue(p.OIDCProviderARN),
+		EndpointID:         types.StringPointerValue(p.EndpointID),
+	}
+	valueVSwitchIDs, diagsVSwitchIDs := types.SetValueFrom(ctx, types.StringType, p.VSwitchIDs)
+	if diagsVSwitchIDs.HasError() {
+		return nil, fmt.Errorf("invalid returned Aliyun VSwitchIDs: %v", diagsVSwitchIDs)
+	}
+	a.VSwitchIDs = valueVSwitchIDs
+	valueSecurityGroupIDs, diagsSecurityGroupIDs := types.SetValueFrom(ctx, types.StringType, p.SecurityGroupIDs)
+	if diagsSecurityGroupIDs.HasError() {
+		return nil, fmt.Errorf("invalid returned Aliyun SecurityGroupIDs: %v", diagsSecurityGroupIDs)
+	}
+	a.SecurityGroupIDs = valueSecurityGroupIDs
+	valueZones, diagsZones := types.SetValueFrom(ctx, types.StringType, p.Zones)
+	if diagsZones.HasError() {
+		return nil, fmt.Errorf("invalid returned Aliyun Zones: %v", diagsZones)
+	}
+	a.Zones = valueZones
+	return a, nil
 }

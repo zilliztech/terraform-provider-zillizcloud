@@ -11,6 +11,7 @@ type VmNodeGroup struct {
 type CreateByocOpProjectRequest struct {
 	AWSParam   *AWSParam   `json:"awsParam,omitempty"`
 	AzureParam *AzureParam `json:"azureParam,omitempty"`
+	AliParam   *AliParam   `json:"aliParam,omitempty"`
 	GCPParam   *GCPParam   `json:"gcpParam,omitempty"`
 
 	RegionID string  `json:"regionId"`
@@ -73,6 +74,7 @@ type DescribeByocOpProjectResponse struct {
 	CloudID         string      `json:"cloudId"`
 	CreateTimeMilli int64       `json:"createTimeMilli"`
 	DataPlaneID     string      `json:"dataPlaneId"`
+	AliConfig       *AliParam   `json:"aliConfig"`
 	GCPConfig       interface{} `json:"gcpConfig"`
 	LastUpdateMilli int64       `json:"lastUpdateMilli"`
 	Message         string      `json:"message"`
@@ -81,10 +83,11 @@ type DescribeByocOpProjectResponse struct {
 	RegionID        string      `json:"regionId"`
 	Status          int         `json:"status"`
 	OpConfig        *struct {
-		Token                string `json:"token"`
-		AgentImageUrl        string `json:"agentImageUrl"`
-		TunnelClientImageUrl string `json:"tunnelClientImageUrl"`
-	} `json:"vpcOpConfig"`
+		Token                string  `json:"token"`
+		ExtConfig            *string `json:"extConfig"`
+		AgentImageUrl        string  `json:"agentImageUrl"`
+		TunnelClientImageUrl string  `json:"tunnelClientImageUrl"`
+	} `json:"opConfig"`
 	Mode int `json:"mode"`
 }
 

@@ -1,0 +1,30 @@
+{
+  "projectId": "prj-byoci",
+  "dataPlaneId": "vpc-byoci",
+  "cloudId": "ali",
+  "regionId": "ali-cn-hangzhou",
+  "deployType": 7,
+  "aliParam": {
+    "accountId": "1234567890123456",
+    "ackClusterId": "c-aliyun-byoci",
+    "vpcId": "vpc-customer",
+    "bucketId": "byoci-customer-oss",
+    "nodeRoleArn": "acs:ram::1234567890123456:role/byoci-node",
+    "maintenanceRoleArn": "acs:ram::1234567890123456:role/byoci-maintenance",
+    "storageRoleArn": "acs:ram::1234567890123456:role/byoci-storage",
+    "oidcProviderArn": "acs:ram::1234567890123456:oidc-provider/ack-rrsa",
+    "vswitchIds": [
+      "vsw-a",
+      "vsw-b"
+    ],
+    "securityGroupIds": [
+      "sg-byoci"
+    ],
+    "zones": [
+      "cn-hangzhou-h",
+      "cn-hangzhou-i"
+    ],
+    "endpointId": "ep-byoci"
+  },
+  "extConfig": "{\"feature\":\"test\"}"
+}
