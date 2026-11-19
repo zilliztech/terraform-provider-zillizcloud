@@ -263,3 +263,58 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 	}
 	return data, nil
 }
+
+func (a *AliyunConfig) registration(ctx context.Context) (*zilliz.AliyunParam, error) {
+	p := &zilliz.AliyunParam{
+		AccountID:          a.AccountID.ValueString(),
+		ACKClusterID:       a.ACKClusterID.ValueString(),
+		VPCID:              a.VPCID.ValueString(),
+		BucketID:           a.BucketID.ValueString(),
+		NodeRoleARN:        a.NodeRoleARN.ValueString(),
+		MaintenanceRoleARN: a.MaintenanceRoleARN.ValueString(),
+		StorageRoleARN:     a.StorageRoleARN.ValueString(),
+		OIDCProviderARN:    a.OIDCProviderARN.ValueString(),
+		EndpointID:         optionalStringPointer(a.EndpointID),
+	}
+	if diags := a.VSwitchIDs.ElementsAs(ctx, &p.VSwitchIDs, false); diags.HasError() {
+		return nil, fmt.Errorf("invalid Aliyun VSwitchIDs: %v", diags)
+	}
+	if diags := a.SecurityGroupIDs.ElementsAs(ctx, &p.SecurityGroupIDs, false); diags.HasError() {
+		return nil, fmt.Errorf("invalid Aliyun SecurityGroupIDs: %v", diags)
+	}
+	if diags := a.Zones.ElementsAs(ctx, &p.Zones, false); diags.HasError() {
+		return nil, fmt.Errorf("invalid Aliyun Zones: %v", diags)
+	}
+	return p, nil
+}
+
+func aliyunFromResponse(ctx context.Context, region string, p *zilliz.AliyunParam) (*AliyunConfig, error) {
+	a := &AliyunConfig{
+		Region:             types.StringValue(region),
+		AccountID:          types.StringValue(p.AccountID),
+		ACKClusterID:       types.StringValue(p.ACKClusterID),
+		VPCID:              types.StringValue(p.VPCID),
+		BucketID:           types.StringValue(p.BucketID),
+		NodeRoleARN:        types.StringValue(p.NodeRoleARN),
+		MaintenanceRoleARN: types.StringValue(p.MaintenanceRoleARN),
+		StorageRoleARN:     types.StringValue(p.StorageRoleARN),
+		OIDCProviderARN:    types.StringValue(p.OIDCProviderARN),
+		EndpointID:         types.StringPointerValue(p.EndpointID),
+	}
+	valueVSwitchIDs, diagsVSwitchIDs := types.SetValueFrom(ctx, types.StringType, p.VSwitchIDs)
+	if diagsVSwitchIDs.HasError() {
+		return nil, fmt.Errorf("invalid returned Aliyun VSwitchIDs: %v", diagsVSwitchIDs)
+	}
+	a.VSwitchIDs = valueVSwitchIDs
+	valueSecurityGroupIDs, diagsSecurityGroupIDs := types.SetValueFrom(ctx, types.StringType, p.SecurityGroupIDs)
+	if diagsSecurityGroupIDs.HasError() {
+		return nil, fmt.Errorf("invalid returned Aliyun SecurityGroupIDs: %v", diagsSecurityGroupIDs)
+	}
+	a.SecurityGroupIDs = valueSecurityGroupIDs
+	valueZones, diagsZones := types.SetValueFrom(ctx, types.StringType, p.Zones)
+	if diagsZones.HasError() {
+		return nil, fmt.Errorf("invalid returned Aliyun Zones: %v", diagsZones)
+	}
+	a.Zones = valueZones
+	return a, nil
+}
