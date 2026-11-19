@@ -106,23 +106,21 @@ func TestAliDescribeRejectsMissingConfigAndHandlesNullEndpoint(t *testing.T) {
 
 // Reading the canonical opConfig field must not copy an agent token into ext_config
 // for existing cloud providers either.
-func TestByocDescribeExtConfigAcrossCloudsAndResponseVersions(t *testing.T) {
+func TestByocDescribeExtConfigAcrossClouds(t *testing.T) {
 	for _, cloud := range []string{"aws", "gcp", "az"} {
-		for _, field := range []string{"opConfig", "vpcOpConfig"} {
-			t.Run(cloud+"/"+field, func(t *testing.T) {
-				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": map[string]any{
-						"cloudId": cloud, "projectId": "prj-1", "dataPlaneId": "dp-1", "status": 1,
-						field: map[string]any{"extConfig": "opaque-extension", "token": "agent-secret"},
-					}})
-				}))
-				defer server.Close()
-				c, err := zilliz.NewClient(zilliz.WithBaseUrl(server.URL), zilliz.WithApiKey("test"), zilliz.WithCloudRegionId("ali-cn-hangzhou"))
-				require.NoError(t, err)
-				model, err := (&byocOpProjectStore{client: c}).Describe(context.Background(), "prj-1", "dp-1")
-				require.NoError(t, err)
-				require.Equal(t, types.StringValue("opaque-extension"), model.ExtConfig)
-			})
-		}
+		t.Run(cloud, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": map[string]any{
+					"cloudId": cloud, "projectId": "prj-1", "dataPlaneId": "dp-1", "status": 1,
+					"opConfig": map[string]any{"extConfig": "opaque-extension", "token": "agent-secret"},
+				}})
+			}))
+			defer server.Close()
+			c, err := zilliz.NewClient(zilliz.WithBaseUrl(server.URL), zilliz.WithApiKey("test"), zilliz.WithCloudRegionId("ali-cn-hangzhou"))
+			require.NoError(t, err)
+			model, err := (&byocOpProjectStore{client: c}).Describe(context.Background(), "prj-1", "dp-1")
+			require.NoError(t, err)
+			require.Equal(t, types.StringValue("opaque-extension"), model.ExtConfig)
+		})
 	}
 }

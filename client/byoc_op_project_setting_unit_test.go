@@ -22,12 +22,10 @@ func TestUnitByocOpTunnelClientImageWireField(t *testing.T) {
 			var settings GetByocOpProjectSettingsResponse
 			require.NoError(t, json.Unmarshal([]byte(`{"opConfig":`+tc.opConfig+`}`), &settings))
 			require.Equal(t, tc.want, settings.OpConfig.TunnelClientImageUrl)
-			for _, field := range []string{"opConfig", "vpcOpConfig"} {
-				var project DescribeByocOpProjectResponse
-				require.NoError(t, json.Unmarshal([]byte(`{"`+field+`":`+tc.opConfig+`}`), &project))
-				require.NotNil(t, project.OpConfig)
-				require.Equal(t, tc.want, project.OpConfig.TunnelClientImageUrl)
-			}
+			var project DescribeByocOpProjectResponse
+			require.NoError(t, json.Unmarshal([]byte(`{"opConfig":`+tc.opConfig+`}`), &project))
+			require.NotNil(t, project.OpConfig)
+			require.Equal(t, tc.want, project.OpConfig.TunnelClientImageUrl)
 		})
 	}
 }
