@@ -215,6 +215,7 @@ func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.Da
 		NewEndpointServicesDataSource,
 		NewByocVpcEndpointServiceDataSource,
 		NewEndpointsDataSource,
+		NewApiKeysDataSource,
 	}
 }
 

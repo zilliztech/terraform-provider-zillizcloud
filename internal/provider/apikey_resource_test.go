@@ -28,6 +28,7 @@ resource "zillizcloud_api_key" "test" {
     project_id  = %q
     role        = "Admin"
     all_cluster = true
+    all_volume  = true
   }]
 }
 `, testProjectId),
@@ -35,12 +36,14 @@ resource "zillizcloud_api_key" "test" {
 					resource.TestCheckResourceAttrSet("zillizcloud_api_key.test", "id"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "name", "tf-acc-test-member"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "role", "Member"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "description", ""),
 					resource.TestCheckResourceAttrSet("zillizcloud_api_key.test", "key_value"),
 					resource.TestCheckResourceAttrSet("zillizcloud_api_key.test", "create_time"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.#", "1"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.0.project_id", testProjectId),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.0.role", "Admin"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.0.all_cluster", "true"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.test", "project_access.0.all_volume", "true"),
 				),
 			},
 			// Step 2: Update name and project role
@@ -54,6 +57,7 @@ resource "zillizcloud_api_key" "test" {
     project_id  = %q
     role        = "Read-Write"
     all_cluster = true
+    all_volume  = true
   }]
 }
 `, testProjectId),
@@ -77,6 +81,75 @@ resource "zillizcloud_api_key" "test" {
 					}
 					return rs.Primary.Attributes["id"], nil
 				},
+			},
+		},
+	})
+}
+
+func TestAccApiKeyResource_Description(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: Create with description
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "desc_test" {
+  name        = "tf-acc-test-desc"
+  description = "Initial description"
+  role        = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    all_cluster = true
+    all_volume  = true
+  }]
+}
+`, testProjectId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("zillizcloud_api_key.desc_test", "id"),
+					resource.TestCheckResourceAttr("zillizcloud_api_key.desc_test", "description", "Initial description"),
+				),
+			},
+			// Step 2: Update description
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "desc_test" {
+  name        = "tf-acc-test-desc"
+  description = "Updated description"
+  role        = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    all_cluster = true
+    all_volume  = true
+  }]
+}
+`, testProjectId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_api_key.desc_test", "description", "Updated description"),
+				),
+			},
+			// Step 3: Clear description (set to empty)
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "desc_test" {
+  name        = "tf-acc-test-desc"
+  description = ""
+  role        = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    all_cluster = true
+    all_volume  = true
+  }]
+}
+`, testProjectId),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("zillizcloud_api_key.desc_test", "description", ""),
+				),
 			},
 		},
 	})
@@ -123,6 +196,30 @@ resource "zillizcloud_api_key" "conflict" {
 	})
 }
 
+func TestAccApiKeyResource_AllVolumeTrueWithVolumeIdsConflict(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + fmt.Sprintf(`
+resource "zillizcloud_api_key" "vol_conflict" {
+  name = "tf-acc-test-vol-conflict"
+  role = "Member"
+
+  project_access = [{
+    project_id  = %q
+    role        = "Read-Only"
+    all_volume  = true
+    volume_ids  = ["vol-fake"]
+  }]
+}
+`, testProjectId),
+				ExpectError: regexp.MustCompile(`Conflicting configuration`),
+			},
+		},
+	})
+}
+
 func TestAccApiKeyResource_ProjectRoles(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
@@ -138,6 +235,7 @@ resource "zillizcloud_api_key" "readonly" {
     project_id  = %q
     role        = "Read-Only"
     all_cluster = true
+    all_volume  = true
   }]
 }
 `, testProjectId),
@@ -157,6 +255,7 @@ resource "zillizcloud_api_key" "readonly" {
     project_id  = %q
     role        = "Read-Write"
     all_cluster = true
+    all_volume  = true
   }]
 }
 `, testProjectId),
@@ -243,6 +342,41 @@ resource "zillizcloud_api_key" "explicit_test" {
 					resource.TestCheckResourceAttrSet("zillizcloud_api_key.explicit_test", "id"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.explicit_test", "project_access.0.all_cluster", "false"),
 					resource.TestCheckResourceAttr("zillizcloud_api_key.explicit_test", "project_access.0.cluster_ids.0", testClusterId),
+				),
+			},
+		},
+	})
+}
+
+// TestAccApiKeyResource_OwnerBlocked verifies that creating an Owner key is blocked client-side.
+func TestAccApiKeyResource_OwnerBlocked(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
+resource "zillizcloud_api_key" "owner_test" {
+  name = "tf-acc-test-owner"
+  role = "Owner"
+}
+`,
+				ExpectError: regexp.MustCompile(`cannot be created or updated via API`),
+			},
+		},
+	})
+}
+
+// TestAccApiKeysDataSource verifies the data source lists API keys.
+func TestAccApiKeysDataSource(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: provider.TestAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: provider.ProviderConfig + `
+data "zillizcloud_api_keys" "all" {}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("data.zillizcloud_api_keys.all", "api_keys.#"),
 				),
 			},
 		},
