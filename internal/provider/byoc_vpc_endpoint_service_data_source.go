@@ -2,7 +2,10 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -21,9 +24,10 @@ type ByocVpcEndpointServiceDataSource struct {
 }
 
 type ByocVpcEndpointServiceDataSourceModel struct {
-	CloudId         types.String `tfsdk:"cloud_id"`
-	Region          types.String `tfsdk:"region"`
-	EndpointService types.String `tfsdk:"endpoint_service"`
+	CloudId                 types.String `tfsdk:"cloud_id"`
+	Region                  types.String `tfsdk:"region"`
+	FallbackEndpointService types.String `tfsdk:"fallback_endpoint_service"`
+	EndpointService         types.String `tfsdk:"endpoint_service"`
 }
 
 func (d *ByocVpcEndpointServiceDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -41,6 +45,10 @@ func (d *ByocVpcEndpointServiceDataSource) Schema(_ context.Context, _ datasourc
 			"region": schema.StringAttribute{
 				MarkdownDescription: "Cloud-native region, for example ap-southeast-7.",
 				Required:            true,
+			},
+			"fallback_endpoint_service": schema.StringAttribute{
+				MarkdownDescription: "Optional endpoint service to use when the control plane has no configured service for the cloud and region.",
+				Optional:            true,
 			},
 			"endpoint_service": schema.StringAttribute{
 				MarkdownDescription: "Full private endpoint service name.",
@@ -70,10 +78,25 @@ func (d *ByocVpcEndpointServiceDataSource) Read(ctx context.Context, req datasou
 	}
 
 	result, err := d.client.GetByocVpcEndpointService(state.CloudId.ValueString(), state.Region.ValueString())
+	endpointService, err := resolveByocVpcEndpointService(result, err, state.FallbackEndpointService.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to get BYOC VPC endpoint service", err.Error())
 		return
 	}
-	state.EndpointService = types.StringValue(result.EndpointService)
+	state.EndpointService = types.StringValue(endpointService)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func resolveByocVpcEndpointService(result *zilliz.ByocVpcEndpointService, err error, fallback string) (string, error) {
+	fallback = strings.TrimSpace(fallback)
+	if err != nil {
+		if fallback != "" && errors.Is(err, zilliz.Error{Code: http.StatusNotFound}) {
+			return fallback, nil
+		}
+		return "", err
+	}
+	if result != nil && strings.TrimSpace(result.EndpointService) != "" {
+		return result.EndpointService, nil
+	}
+	return fallback, nil
 }

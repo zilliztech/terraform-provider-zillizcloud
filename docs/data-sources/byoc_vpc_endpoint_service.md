@@ -20,6 +20,10 @@ Get the private endpoint service used to connect a BYOC dataplane to the Zilliz 
 - `cloud_id` (String) Cloud provider ID, for example aws.
 - `region` (String) Cloud-native region, for example ap-southeast-7.
 
+### Optional
+
+- `fallback_endpoint_service` (String) Optional endpoint service to use when the control plane has no configured service for the cloud and region.
+
 ### Read-Only
 
 - `endpoint_service` (String) Full private endpoint service name.
