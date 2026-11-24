@@ -182,6 +182,8 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 		byoc_op.NewBYOCOpProjectAgentResource,
 		NewProjectResource,
 		NewApiKeyResource,
+		NewServiceAccountResource,
+		NewServiceAccountKeyResource,
 		NewUserResource,
 		NewUserRoleResource,
 		NewDatabaseResource,
@@ -199,6 +201,10 @@ func (p *ZillizProvider) Resources(ctx context.Context) []func() resource.Resour
 func (p *ZillizProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewCloudProvidersDataSource,
+		NewServiceAccountDataSource,
+		NewServiceAccountsDataSource,
+		NewServiceAccountKeyDataSource,
+		NewServiceAccountKeysDataSource,
 		NewCloudRegionsDataSource,
 		NewProjectDataSource,
 		cluster.NewClustersDataSource,

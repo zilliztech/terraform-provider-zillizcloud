@@ -21,3 +21,18 @@ func (err Error) Is(target error) bool {
 	}
 	return t.Code == err.Code
 }
+
+// HTTPError retains the HTTP status while preserving the underlying API error.
+type HTTPError struct {
+	StatusCode int
+	RequestId  string
+	Err        error
+}
+
+func (err *HTTPError) Error() string {
+	return fmt.Sprintf("http status code: %d, error: %v, requestId: %s", err.StatusCode, err.Err, err.RequestId)
+}
+
+func (err *HTTPError) Unwrap() error {
+	return err.Err
+}

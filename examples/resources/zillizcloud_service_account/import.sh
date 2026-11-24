@@ -1,0 +1,1 @@
+terraform import zillizcloud_service_account.ingestion sa-example

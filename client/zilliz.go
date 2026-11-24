@@ -296,6 +296,10 @@ func (c *Client) do(method string, path string, body interface{}, result interfa
 }
 
 func (c *Client) doContext(ctx context.Context, method string, path string, body interface{}, result interface{}) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	u, err := c.url(path)
 	if err != nil {
 		return err
@@ -380,7 +384,7 @@ func (c *Client) doRequest(req *http.Request, v any) error {
 	requestId := res.Header.Get("requestid")
 
 	if res.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("http status code: %d, error: %w, requestId: %s", res.StatusCode, parseError(bytes.NewReader(bodyBytes)), requestId)
+		return &HTTPError{StatusCode: res.StatusCode, RequestId: requestId, Err: parseError(bytes.NewReader(bodyBytes))}
 	}
 
 	return c.decodeResponse(bytes.NewReader(bodyBytes), requestId, v)
