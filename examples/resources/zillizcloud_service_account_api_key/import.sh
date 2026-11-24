@@ -1,0 +1,1 @@
+terraform import zillizcloud_service_account_api_key.ingestion sa-example/key-example
