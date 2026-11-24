@@ -50,6 +50,7 @@ output "output" {
 - `create_time` (String) The time at which the cluster has been created.
 - `cu_size` (Number) The size of the CU associated with the cluster.
 - `description` (String) An optional description about the cluster.
+- `milvus_version` (String) The Milvus version series currently reported by the cluster.
 - `private_link_address` (String) The private endpoint of the cluster. You can set up a private link to allow your VPS in the same cloud region to access your cluster.
 - `public_address_enabled` (Boolean) Whether the cluster's public address is enabled. Not applicable to BYOC clusters (they have no public address), for which the value is null.
 - `region_id` (String) The ID of the region where the cluster exists.

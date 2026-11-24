@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -82,8 +83,12 @@ func (c *Client) UpdatePublicAddressEnabled(clusterId string, enabled bool) (*st
 }
 
 func (c *Client) ModifyCluster(clusterId string, params *ModifyClusterParams) (*string, error) {
+	return c.ModifyClusterContext(context.Background(), clusterId, params)
+}
+
+func (c *Client) ModifyClusterContext(ctx context.Context, clusterId string, params *ModifyClusterParams) (*string, error) {
 	var response zillizResponse[ClusterResponse]
-	err := c.do("POST", "clusters/"+clusterId+"/modify", params, &response)
+	err := c.doContext(ctx, "POST", "clusters/"+clusterId+"/modify", params, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -139,14 +144,19 @@ func (c *Client) ModifyClusterAutoscaling(clusterId string, params *ModifyCluste
 	return &response.Data.ClusterId, err
 }
 
-// add or remove cu
+// ModifyPropertiesParams carries the cluster properties to update.
 type ModifyPropertiesParams struct {
-	ClusterName string `json:"clusterName"`
+	ClusterName string  `json:"clusterName,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 func (c *Client) ModifyClusterProperties(clusterId string, params *ModifyPropertiesParams) (*string, error) {
+	return c.ModifyClusterPropertiesContext(context.Background(), clusterId, params)
+}
+
+func (c *Client) ModifyClusterPropertiesContext(ctx context.Context, clusterId string, params *ModifyPropertiesParams) (*string, error) {
 	var response zillizResponse[ClusterResponse]
-	err := c.do("POST", "clusters/"+clusterId+"/modifyProperties", params, &response)
+	err := c.doContext(ctx, "POST", "clusters/"+clusterId+"/modifyProperties", params, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +204,12 @@ type DropClusterResponse struct {
 }
 
 func (c *Client) DropCluster(clusterId string) (*string, error) {
+	return c.DropClusterContext(context.Background(), clusterId)
+}
+
+func (c *Client) DropClusterContext(ctx context.Context, clusterId string) (*string, error) {
 	var response zillizResponse[DropClusterResponse]
-	err := c.do("DELETE", "clusters/"+clusterId+"/drop", nil, &response)
+	err := c.doContext(ctx, "DELETE", "clusters/"+clusterId+"/drop", nil, &response)
 	if err != nil {
 		return nil, err
 	}
@@ -208,17 +222,18 @@ type Clusters struct {
 }
 
 type Cluster struct {
-	ClusterId          string `json:"clusterId"`
-	ClusterName        string `json:"clusterName"`
-	Description        string `json:"description"`
-	RegionId           string `json:"regionId"`
-	ClusterType        string `json:"clusterType"`
-	CuType             string `json:"cuType"`
-	Plan               string `json:"plan"`
-	CuSize             int64  `json:"cuSize"`
-	Status             string `json:"status"`
-	ConnectAddress     string `json:"connectAddress"`
-	PrivateLinkAddress string `json:"privateLinkAddress"`
+	ClusterId          string  `json:"clusterId"`
+	ClusterName        string  `json:"clusterName"`
+	Description        string  `json:"description"`
+	RegionId           string  `json:"regionId"`
+	MilvusVersion      *string `json:"milvusVersion,omitempty"`
+	ClusterType        string  `json:"clusterType"`
+	CuType             string  `json:"cuType"`
+	Plan               string  `json:"plan"`
+	CuSize             int64   `json:"cuSize"`
+	Status             string  `json:"status"`
+	ConnectAddress     string  `json:"connectAddress"`
+	PrivateLinkAddress string  `json:"privateLinkAddress"`
 	// nil when the API omits the field — the toggle does not apply (BYOC, which
 	// has no public address) or the deployment predates it
 	PublicAddressEnabled *bool             `json:"publicAddressEnabled,omitempty"`
@@ -248,11 +263,15 @@ func (c *Client) ListClusters() (Clusters, error) {
 }
 
 func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
+	return c.DescribeClusterContext(context.Background(), clusterId)
+}
+
+func (c *Client) DescribeClusterContext(ctx context.Context, clusterId string) (Cluster, error) {
 	if clusterId == "" {
 		return Cluster{}, fmt.Errorf("clusterId is required")
 	}
 	var response zillizResponse[Cluster]
-	err := c.do("GET", "clusters/"+clusterId, nil, &response)
+	err := c.doContext(ctx, "GET", "clusters/"+clusterId, nil, &response)
 	if err != nil {
 		return Cluster{}, err
 	}
@@ -275,17 +294,18 @@ func (c *Client) DescribeCluster(clusterId string) (Cluster, error) {
 }
 
 type CreateClusterParams struct {
-	Plan         *string            `json:"plan,omitempty"`
-	ClusterName  string             `json:"clusterName"`
-	CUSize       *int               `json:"cuSize,omitempty"`
-	CUType       string             `json:"cuType"`
-	ProjectId    string             `json:"projectId"`
-	RegionId     string             `json:"regionId"`
-	Replica      *int               `json:"replica,omitempty"`
-	Autoscaling  *AutoscalingConfig `json:"autoscaling,omitempty"`
-	Labels       map[string]string  `json:"labels,omitempty"`
-	BucketInfo   *BucketInfo        `json:"bucketInfo,omitempty"`
-	AwsCseKeyArn *string            `json:"keyIdentifier,omitempty"`
+	Plan         *string                  `json:"plan,omitempty"`
+	ClusterName  string                   `json:"clusterName"`
+	CUSize       *int                     `json:"cuSize,omitempty"`
+	CUType       string                   `json:"cuType"`
+	ProjectId    string                   `json:"projectId"`
+	RegionId     string                   `json:"regionId"`
+	Replica      *int                     `json:"replica,omitempty"`
+	Autoscaling  *AutoscalingConfig       `json:"autoscaling,omitempty"`
+	Labels       map[string]string        `json:"labels,omitempty"`
+	BucketInfo   *BucketInfo              `json:"bucketInfo,omitempty"`
+	AwsCseKeyArn *string                  `json:"keyIdentifier,omitempty"`
+	Version      *ClusterVersionSelection `json:"version,omitempty"`
 }
 type BucketInfo struct {
 	BucketName string  `json:"bucketName"`
@@ -316,8 +336,12 @@ func (c *Client) CreateCluster(params CreateClusterParams) (*CreateClusterRespon
 }
 
 func (c *Client) CreateDedicatedCluster(params CreateClusterParams) (*CreateClusterResponse, error) {
+	path := "clusters/createDedicated"
+	if params.Version != nil {
+		path = "clusters"
+	}
 	var clusterResponse zillizResponse[CreateClusterResponse]
-	err := c.do("POST", "clusters/createDedicated", params, &clusterResponse)
+	err := c.do("POST", path, params, &clusterResponse)
 	return &clusterResponse.Data, err
 }
 

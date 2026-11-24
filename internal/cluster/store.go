@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -94,12 +96,13 @@ func (c *ClusterStoreImpl) Get(ctx context.Context, clusterId string) (*ClusterR
 	}
 
 	return &ClusterResourceModel{
-		ClusterId:   types.StringValue(cluster.ClusterId),
-		Plan:        types.StringValue(cluster.Plan),
-		ClusterName: types.StringValue(cluster.ClusterName),
-		CuSize:      types.Int64Value(cluster.CuSize),
-		CuType:      types.StringValue(cluster.CuType),
-		ProjectId:   types.StringValue(cluster.ProjectId),
+		ClusterId:     types.StringValue(cluster.ClusterId),
+		MilvusVersion: types.StringPointerValue(cluster.MilvusVersion),
+		Plan:          types.StringValue(cluster.Plan),
+		ClusterName:   types.StringValue(cluster.ClusterName),
+		CuSize:        types.Int64Value(cluster.CuSize),
+		CuType:        types.StringValue(cluster.CuType),
+		ProjectId:     types.StringValue(cluster.ProjectId),
 		// state fixed by input
 		// Username:           types.StringValue(cluster.Username),
 		// Password:           types.StringValue(cluster.Password),
@@ -149,6 +152,14 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 		regionId = c.client.RegionId
 	}
 
+	version, err := versionSelection(ctx, cluster.Version)
+	if err != nil {
+		return nil, err
+	}
+	if version != nil && strings.TrimSpace(regionId) == "" {
+		return nil, fmt.Errorf("region_id is required when selecting a Milvus version")
+	}
+
 	// Convert terraform map to Go map for labels
 	labels := make(map[string]string)
 	if !cluster.Labels.IsNull() && !cluster.Labels.IsUnknown() {
@@ -160,6 +171,9 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 		}
 	}
 	zillizPlan := cluster.Plan.ValueString()
+	if version != nil && (zillizPlan == FreePlan || zillizPlan == ServerlessPlan) {
+		return nil, fmt.Errorf("version selection is only available for Dedicated clusters")
+	}
 	switch zillizPlan {
 	case FreePlan:
 		response, err = c.client.CreateFreeCluster(zilliz.CreateServerlessClusterParams{
@@ -204,6 +218,7 @@ func (c *ClusterStoreImpl) Create(ctx context.Context, cluster *ClusterResourceM
 			Labels:       labels,
 			BucketInfo:   bucketInfo,
 			AwsCseKeyArn: awsCseKeyArn,
+			Version:      version,
 		}
 		if cluster.CuSettings != nil && !cluster.CuSettings.IsDynamicScalingNull() {
 			params.Autoscaling = &zilliz.AutoscalingConfig{

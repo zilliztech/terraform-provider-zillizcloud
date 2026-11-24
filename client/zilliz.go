@@ -292,7 +292,10 @@ type zillizPage struct {
 }
 
 func (c *Client) do(method string, path string, body interface{}, result interface{}) error {
+	return c.doContext(context.Background(), method, path, body, result)
+}
 
+func (c *Client) doContext(ctx context.Context, method string, path string, body interface{}, result interface{}) error {
 	u, err := c.url(path)
 	if err != nil {
 		return err
@@ -302,7 +305,7 @@ func (c *Client) do(method string, path string, body interface{}, result interfa
 	if err != nil {
 		return err
 	}
-	return c.doRequest(req, result)
+	return c.doRequest(req.WithContext(ctx), result)
 }
 
 func (c *Client) newRequest(method string, u *url.URL, body interface{}) (*http.Request, error) {

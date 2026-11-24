@@ -252,7 +252,7 @@ func (s *byocOpProjectStore) Describe(ctx context.Context, projectID string, dat
 
 	if response.CloudID == string(zilliz.AliCloud) {
 		if response.AliConfig == nil && data.Status.ValueInt64() != int64(BYOCProjectStatusDeleted) {
-			return data, fmt.Errorf("Aliyun dataplane response has no aliConfig; verify backend compatibility")
+			return data, fmt.Errorf("aliyun dataplane response has no aliConfig; verify backend compatibility")
 		}
 		if response.AliConfig != nil {
 			data.Ali, err = aliFromResponse(ctx, response.RegionID, response.AliConfig)
