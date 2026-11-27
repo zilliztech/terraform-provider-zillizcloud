@@ -3,17 +3,22 @@
 page_title: "zillizcloud_api_key Resource - zillizcloud"
 subcategory: ""
 description: |-
-  Manages an API key in Zilliz Cloud.
-  This resource creates and manages shared API keys with scoped permissions.
+  Manages a Customized API key in Zilliz Cloud.
+  This resource creates and manages organization-scoped API keys with project-level permissions.
   The API key value is only available at creation time and stored in Terraform state.
+  Important: API key management requires an Org Owner API key. A project-scoped key cannot
+  manage API keys. See the bootstrap pattern in the provider documentation.
 ---
 
 # zillizcloud_api_key (Resource)
 
-Manages an API key in Zilliz Cloud.
+Manages a Customized API key in Zilliz Cloud.
 
-This resource creates and manages shared API keys with scoped permissions.
+This resource creates and manages organization-scoped API keys with project-level permissions.
 The API key value is only available at creation time and stored in Terraform state.
+
+**Important:** API key management requires an Org Owner API key. A project-scoped key cannot
+manage API keys. See the bootstrap pattern in the provider documentation.
 
 ## Example Usage
 
@@ -31,20 +36,23 @@ provider "zillizcloud" {
 
 # Create an API key with Member role scoped to a specific project
 resource "zillizcloud_api_key" "member_key" {
-  name = "app-readonly-key"
-  role = "Member"
+  name        = "app-readonly-key"
+  description = "Read-only key for the production project"
+  role        = "Member"
 
   project_access = [{
     project_id  = "proj-xxxxxxxxxxxxxxxxxxxx"
     role        = "Read-Only"
     all_cluster = true
+    all_volume  = true
   }]
 }
 
 # Create an API key with Billing-Admin role
 resource "zillizcloud_api_key" "billing_key" {
-  name = "billing-automation"
-  role = "Billing-Admin"
+  name        = "billing-automation"
+  description = "Key for billing pipeline"
+  role        = "Billing-Admin"
 }
 
 # The key value is only available at creation time.
@@ -61,19 +69,24 @@ output "api_key_value" {
 ### Required
 
 - `name` (String) The name of the API key.
-- `role` (String) The organization role for this API key. Valid values: "Member", "Billing-Admin". Note: "Owner" keys cannot be created or updated via API; use the Console instead. "Owner" is accepted for import compatibility.
+- `role` (String) The organization role for this API key. Known values: "Member", "Billing-Admin".
+
+**Note:** "Owner" keys cannot be created or updated via API — use the Console instead.
+"Owner" is accepted for import of Console-created keys. Unknown role values are passed
+through to the API (forward compatibility).
 
 ### Optional
 
-- `project_access` (Attributes List) Project access configuration. Required when role is Member. (see [below for nested schema](#nestedatt--project_access))
+- `description` (String) Description of the API key.
+- `project_access` (Attributes List) Project access configuration. Required when role is `Member`. (see [below for nested schema](#nestedatt--project_access))
 
 ### Read-Only
 
 - `create_time` (String) Creation time in ISO 8601 format.
 - `created_by` (String) The creator identifier (email address or API key ID).
-- `creator_name` (String) The name of the API key creator.
-- `id` (String) The unique identifier of the API key.
-- `key_value` (String, Sensitive) The API key value. Only available at creation time.
+- `creator_name` (String) The display name of the API key creator.
+- `id` (String) The unique identifier of the API key (apiKeyId).
+- `key_value` (String, Sensitive) The API key secret. Only available at creation time; not retrievable after.
 
 <a id="nestedatt--project_access"></a>
 ### Nested Schema for `project_access`
@@ -85,5 +98,7 @@ Required:
 Optional:
 
 - `all_cluster` (Boolean) Whether to include all clusters in this project.
-- `cluster_ids` (List of String) Specific cluster IDs when all_cluster is false.
-- `role` (String) The project role. Valid values: "Admin", "Read-Write", "Read-Only".
+- `all_volume` (Boolean) Whether to include all volumes in this project.
+- `cluster_ids` (List of String) Specific cluster IDs when `all_cluster` is false.
+- `role` (String) The project role. Known values: "Admin", "Read-Write", "Read-Only".
+- `volume_ids` (List of String) Specific volume IDs when `all_volume` is false.
