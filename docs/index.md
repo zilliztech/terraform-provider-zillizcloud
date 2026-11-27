@@ -21,6 +21,7 @@ terraform {
   }
 }
 
+
 provider "zillizcloud" {
 }
 ```
